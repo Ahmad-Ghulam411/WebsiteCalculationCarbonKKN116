@@ -115,59 +115,16 @@ function simpanData(record) {
   return kirimKeSheet(record);
 }
 
-/* ---------- Ubah / hapus data di Google Sheets (POST no-cors) ---------- */
-/* Karena "no-cors", jawaban server tidak bisa dibaca. Kita anggap terkirim
- * lalu perbarui tampilan secara optimis; sinkron penuh terjadi saat "Muat Ulang". */
-function kirimAksiKeSheet(aksi, index, record) {
+/* ---------- Panggilan JSONP umum ke Apps Script ----------
+ * Dipakai untuk baca (list) MAUPUN ubah/hapus data. Sengaja lewat GET+JSONP
+ * (bukan POST "no-cors") karena "no-cors" membuat balasan server tidak bisa
+ * dibaca oleh JS — sehingga kegagalan di server (token salah, baris tak
+ * ditemukan, dll.) tidak akan pernah terlihat dan dashboard akan selalu
+ * menampilkan "berhasil" walau data sebenarnya tidak berubah. Dengan JSONP,
+ * balasan asli { ok, pesan, ... } dari apps-script/Code.gs bisa dibaca. */
+function panggilJsonp(params) {
   const url = KONFIGURASI.APPS_SCRIPT_URL;
-  if (!url) return Promise.resolve({ status: 'lokal' }); // belum dikonfigurasi
-
-  const body = new URLSearchParams();
-  body.append('action', aksi);
-  body.append('token', KONFIGURASI.ADMIN.token);
-  body.append('baris', index);
-  if (record) {
-    Object.keys(record).forEach(function (k) {
-      body.append(k, record[k] === null || record[k] === undefined ? '' : record[k]);
-    });
-  }
-
-  return fetch(url, {
-    method: 'POST',
-    mode: 'no-cors',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
-    body: body.toString(),
-  })
-    .then(function () { return { status: 'terkirim' }; })
-    .catch(function (err) {
-      console.warn('Gagal mengirim aksi ke Google Sheets:', err);
-      return { status: 'gagal' };
-    });
-}
-
-/**
- * Memperbarui satu baris data (indeks 0-based) di Sheets.
- * @returns {Promise<{status:string}>}
- */
-function perbaruiDataSheet(index, record) {
-  return kirimAksiKeSheet('edit', index, record);
-}
-
-/**
- * Menghapus satu baris data (indeks 0-based) di Sheets.
- * @returns {Promise<{status:string}>}
- */
-function hapusDataSheet(index) {
-  return kirimAksiKeSheet('hapus', index, null);
-}
-
-/* ---------- Baca semua data untuk dashboard admin (JSONP) ---------- */
-/**
- * @returns {Promise<{sumber:string, data:Array}>}
- */
-function ambilSemuaData() {
-  const url = KONFIGURASI.APPS_SCRIPT_URL;
-  if (!url) return Promise.resolve({ sumber: 'lokal', data: ambilDataLokal() });
+  if (!url) return Promise.resolve(null); // belum dikonfigurasi
 
   return new Promise(function (resolve) {
     const cbName = 'jsonp_karbon_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
@@ -180,30 +137,77 @@ function ambilSemuaData() {
       if (script.parentNode) script.parentNode.removeChild(script);
     }
 
-    function pakaiCadangan() {
+    function gagal() {
       if (selesai) return;
       bersihkan();
-      resolve({ sumber: 'lokal', data: ambilDataLokal() });
+      resolve(null);
     }
 
     window[cbName] = function (resp) {
       if (selesai) return;
       bersihkan();
-      if (resp && resp.ok && Array.isArray(resp.data)) {
-        resolve({ sumber: 'sheet', data: resp.data });
-      } else {
-        resolve({ sumber: 'lokal', data: ambilDataLokal() });
-      }
+      resolve(resp || null);
     };
 
+    const query = new URLSearchParams(params);
+    query.set('callback', cbName);
     const pemisah = url.indexOf('?') >= 0 ? '&' : '?';
-    script.src = url + pemisah + 'action=list'
-      + '&token=' + encodeURIComponent(KONFIGURASI.ADMIN.token)
-      + '&callback=' + cbName;
-    script.onerror = pakaiCadangan;
+    script.src = url + pemisah + query.toString();
+    script.onerror = gagal;
     document.body.appendChild(script);
 
-    // Bila server tidak menjawab dalam 12 detik → pakai cadangan lokal
-    setTimeout(pakaiCadangan, 12000);
+    // Bila server tidak menjawab dalam 12 detik → anggap gagal
+    setTimeout(gagal, 12000);
+  });
+}
+
+/* ---------- Ubah / hapus data di Google Sheets ---------- */
+/**
+ * @returns {Promise<{ok:boolean, pesan:string}>}
+ */
+function kirimAksiKeSheet(aksi, index, record) {
+  if (!KONFIGURASI.APPS_SCRIPT_URL) return Promise.resolve({ ok: true, pesan: 'lokal' });
+
+  const params = { action: aksi, token: KONFIGURASI.ADMIN.token, baris: index };
+  if (record) {
+    Object.keys(record).forEach(function (k) {
+      params[k] = record[k] === null || record[k] === undefined ? '' : record[k];
+    });
+  }
+
+  return panggilJsonp(params).then(function (resp) {
+    if (resp && resp.ok) return { ok: true, pesan: resp.pesan || 'Berhasil.' };
+    return { ok: false, pesan: (resp && resp.pesan) || 'Tidak ada balasan dari server.' };
+  });
+}
+
+/**
+ * Memperbarui satu baris data (indeks 0-based) di Sheets.
+ * @returns {Promise<{ok:boolean, pesan:string}>}
+ */
+function perbaruiDataSheet(index, record) {
+  return kirimAksiKeSheet('edit', index, record);
+}
+
+/**
+ * Menghapus satu baris data (indeks 0-based) di Sheets.
+ * @returns {Promise<{ok:boolean, pesan:string}>}
+ */
+function hapusDataSheet(index) {
+  return kirimAksiKeSheet('hapus', index, null);
+}
+
+/* ---------- Baca semua data untuk dashboard admin (JSONP) ---------- */
+/**
+ * @returns {Promise<{sumber:string, data:Array}>}
+ */
+function ambilSemuaData() {
+  if (!KONFIGURASI.APPS_SCRIPT_URL) return Promise.resolve({ sumber: 'lokal', data: ambilDataLokal() });
+
+  return panggilJsonp({ action: 'list', token: KONFIGURASI.ADMIN.token }).then(function (resp) {
+    if (resp && resp.ok && Array.isArray(resp.data)) {
+      return { sumber: 'sheet', data: resp.data };
+    }
+    return { sumber: 'lokal', data: ambilDataLokal() };
   });
 }

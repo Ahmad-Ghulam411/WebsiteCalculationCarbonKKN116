@@ -96,11 +96,19 @@ ke Google Sheet Anda, dan bisa dilihat dari perangkat mana pun lewat dashboard a
 
 > **Jika mengubah kode Apps Script setelahnya**, lakukan **Deploy ▸ Manage
 > deployments ▸ (pensil) ▸ Version: New version ▸ Deploy** agar perubahan aktif.
+> Meng-*edit* `Code.gs` di editor Apps Script **tidak otomatis** memperbarui
+> URL Web App yang sudah dipakai website Anda — Anda **wajib** membuat
+> "New version" seperti di atas setiap kali kode ini berubah.
 >
-> ⚠️ **Fitur Edit & Hapus** di dashboard admin membutuhkan versi `Code.gs`
-> terbaru (yang mengenali `action=edit` & `action=hapus`). Bila Anda sudah
-> pernah men-*deploy* versi lama, **deploy ulang versi baru** seperti langkah di
-> atas — kalau tidak, tombol Edit di data online justru akan menambah baris baru.
+> ⚠️ **Fitur Edit & Hapus di dashboard admin tidak akan tersimpan permanen**
+> (data kembali seperti semula setelah dimuat ulang) selama Web App yang
+> ter-*deploy* masih menjalankan versi `Code.gs` yang lama — termasuk versi
+> sebelum perbaikan terbaru (yang membuat aksi edit/hapus terverifikasi lewat
+> `doGet`, bukan lagi POST `no-cors` yang balasannya tak terbaca browser).
+> **Tempel ulang seluruh isi `apps-script/Code.gs` versi terbaru** ke proyek
+> Apps Script Anda, lalu **deploy ulang versi baru** — kalau tidak, tombol
+> Edit/Hapus akan tampak berhasil di layar tapi diam-diam gagal, dan data
+> lama akan muncul kembali begitu dashboard dimuat ulang.
 
 ---
 
