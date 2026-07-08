@@ -21,10 +21,10 @@
  */
 
 // ⚠️  GANTI token ini. HARUS SAMA dengan KONFIGURASI.ADMIN.token di js/config.js
-var TOKEN_RAHASIA = 'rahasia-kkn-116';
+var TOKEN_RAHASIA = 'rahasia-kkn-116-kampungbaru';
 
 // Nama tab/sheet tempat data disimpan
-var NAMA_SHEET = 'DataWarga';
+var NAMA_SHEET = 'Data Jejak Karbon Kampung Baru';
 
 // Urutan kolom — HARUS sama dengan SKEMA_KOLOM di js/storage.js
 var KOLOM = [
