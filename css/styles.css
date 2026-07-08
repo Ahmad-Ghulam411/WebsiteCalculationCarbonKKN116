@@ -392,6 +392,38 @@ button { font-family: inherit; cursor: pointer; }
 .admin-tabel tbody tr:hover { background: var(--hijau-muda); }
 .admin-no { text-align: center; color: var(--tinta-lembut); }
 
+/* Kolom aksi (Edit / Hapus) */
+.admin-aksi-kol { text-align: center; }
+.admin-aksi { white-space: nowrap; }
+.admin-aksi-btn {
+  border: none; border-radius: 8px; padding: 6px 11px; margin: 0 3px; cursor: pointer;
+  font-size: .82rem; font-weight: 700; color: #fff; transition: var(--trans);
+}
+.admin-aksi-btn:hover { transform: translateY(-1px); box-shadow: var(--bayang-lg); }
+.admin-edit { background: linear-gradient(135deg, #2e9e5b, #147a44); }
+.admin-hapus { background: linear-gradient(135deg, #e0533d, #c0392b); }
+
+/* Form edit data warga (di dalam modal) */
+.admin-edit-form {
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px;
+  text-align: left; margin-bottom: 18px;
+}
+.admin-edit-field { display: flex; flex-direction: column; gap: 5px; }
+.admin-edit-field span { font-size: .8rem; font-weight: 700; color: var(--tinta-lembut); }
+.admin-edit-field input {
+  padding: 9px 11px; border: 2px solid var(--garis); border-radius: var(--radius-sm);
+  font-size: .92rem; width: 100%;
+}
+.admin-edit-field input:focus {
+  outline: none; border-color: var(--hijau-terang); box-shadow: 0 0 0 3px rgba(46,158,91,.15);
+}
+.admin-edit-aksi { margin-top: 4px; }
+.tombol-batal { background: linear-gradient(135deg, #8a97a0, #6c7a83); }
+
+@media (max-width: 560px) {
+  .admin-edit-form { grid-template-columns: 1fr; }
+}
+
 /* ================================ TOAST ================================== */
 .toast {
   position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 120%);
