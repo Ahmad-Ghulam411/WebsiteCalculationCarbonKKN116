@@ -119,14 +119,34 @@ Semua angka ada di **`js/config.js`** dan diberi penjelasan. Contoh yang sering 
 
 | Pengaturan | Arti | Default |
 | --- | --- | --- |
-| `FAKTOR_EMISI.listrik_per_kwh` | kg CO₂ per 1 kWh listrik | `0.85` |
-| `FAKTOR_EMISI.lpg_per_kg` | kg CO₂ per 1 kg elpiji | `2.98` |
-| `FAKTOR_EMISI.bensin_per_liter` | kg CO₂ per 1 liter bensin | `2.30` |
+| `FAKTOR_EMISI.listrik_per_kwh` | kg CO₂ per 1 kWh listrik | `0.73` |
+| `FAKTOR_EMISI.lpg_per_kg` | kg CO₂ per 1 kg elpiji | `3.00` |
+| `FAKTOR_EMISI.bensin_per_liter` | kg CO₂ per 1 liter bensin | `2.31` |
+| `FAKTOR_EMISI.solar_per_liter` | kg CO₂ per 1 liter solar | `2.68` |
 | `TARIF_LISTRIK_PER_KWH` | Rp per kWh (untuk konversi tagihan) | `1444.70` |
 | `AMBANG_KATEGORI.rendah_maks` | batas atas kategori "Rendah" (kg/hari) | `5` |
-| `AMBANG_KATEGORI.sedang_maks` | batas atas kategori "Sedang" (kg/hari) | `15` |
+| `AMBANG_KATEGORI.sedang_maks` | batas atas kategori "Sedang" (kg/hari) | `12` |
 
 Cukup ubah angkanya, simpan, lalu muat ulang halaman.
+
+### 📚 Sumber data resmi (acuan Dinas Lingkungan Hidup)
+
+Angka faktor emisi memakai data resmi pemerintah agar dapat dipertanggungjawabkan:
+
+- **Listrik — 0,73 kg CO₂/kWh.** Parepare berada di **Sistem Sulselbar**
+  (Sulawesi Selatan–Barat). Nilai *Operating Margin* (OM) sistem ini = 0,73
+  ton CO₂/MWh menurut *"Faktor Emisi GRK Sistem Ketenagalistrikan Tahun 2019"*,
+  Ditjen Ketenagalistrikan, **Kementerian ESDM**.
+- **Bensin 2,31 · Solar 2,68 kg/liter · LPG 3,0 kg/kg.** Dihitung dari
+  *"Nilai Faktor Emisi (FE) CO₂ Nasional dan Nilai Kalor Netto (NCV)"*,
+  **Kementerian ESDM** — rumus: `FE (ton CO₂/TJ) × NCV (TJ/Gg) ÷ 1000 × massa jenis`.
+- **Batas kategori** mengacu rata-rata emisi energi rumah tangga di Indonesia
+  untuk cakupan kalkulator ini (± 6–8 kg CO₂e/hari/rumah tangga, atau ± 2
+  kg/hari/orang): di bawah rata-rata = **Rendah**, sekitar rata-rata =
+  **Sedang**, jauh di atas rata-rata = **Tinggi**.
+
+> Semua angka ini adalah **variabel** di `js/config.js`. Bila Dinas LH Parepare
+> memiliki angka lokal/terbaru, cukup ganti nilainya di sana.
 
 ---
 

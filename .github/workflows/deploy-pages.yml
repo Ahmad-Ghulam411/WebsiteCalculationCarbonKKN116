@@ -1,0 +1,45 @@
+name: Deploy ke GitHub Pages
+
+# Menerbitkan situs statis (index.html + css + js) ke GitHub Pages.
+# Berjalan otomatis setiap kali ada perubahan yang di-push ke branch di bawah,
+# dan bisa juga dijalankan manual dari tab "Actions".
+
+on:
+  push:
+    branches:
+      - claude/carbon-footprint-calculator-g50y7m
+  workflow_dispatch:
+
+# Izin yang dibutuhkan agar bisa deploy ke Pages
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# Hanya satu proses deploy berjalan pada satu waktu
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Ambil kode
+        uses: actions/checkout@v4
+
+      - name: Siapkan GitHub Pages
+        uses: actions/configure-pages@v5
+
+      - name: Unggah berkas situs
+        uses: actions/upload-pages-artifact@v3
+        with:
+          # Seluruh isi repositori (situs berada di root: index.html)
+          path: '.'
+
+      - name: Terbitkan ke GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4
