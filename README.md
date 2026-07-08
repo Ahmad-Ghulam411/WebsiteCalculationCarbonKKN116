@@ -7,7 +7,7 @@ data ke Google Sheets**, dan **dashboard admin** yang bisa mengunduh data
 warga ke **Excel**.
 
 Dibuat dengan **HTML5 + CSS3 + JavaScript murni (tanpa framework)** — ringan,
-responsif (mobile-first), dan bisa dijalankan langsung di GitHub Pages.
+responsif (mobile-first), dan di-*hosting* gratis di **Vercel**.
 
 ---
 
@@ -158,13 +158,32 @@ rapi memakai emblem & gradien bawaan.
 
 ---
 
-## 🌐 Menerbitkan Gratis dengan GitHub Pages
+## 🌐 Menerbitkan Gratis dengan Vercel
 
+Situs ini **statis** (tanpa proses build), jadi Vercel langsung menyajikan
+`index.html` di root — tidak perlu framework atau perintah build apa pun.
+
+### Cara termudah (lewat web)
 1. Push kode ini ke GitHub.
-2. Buka **Settings ▸ Pages** pada repositori.
-3. Bagian **Source**: pilih branch (mis. `main`) dan folder `/ (root)`.
-4. Simpan. Beberapa menit kemudian situs bisa diakses lewat
-   `https://<username>.github.io/<nama-repo>/`.
+2. Buka [vercel.com/new](https://vercel.com/new) dan login (bisa pakai akun GitHub).
+3. Klik **Import** pada repositori ini.
+4. Biarkan pengaturan default:
+   - **Framework Preset**: `Other`
+   - **Build Command**: *(kosongkan)*
+   - **Output Directory**: *(kosongkan / biarkan root)*
+5. Klik **Deploy**. Beberapa saat kemudian situs bisa diakses lewat
+   `https://<nama-proyek>.vercel.app`.
+
+Setiap kali Anda **push** perubahan ke branch, Vercel otomatis men-*deploy*
+ulang. Berkas `vercel.json` sudah menyertakan pengaturan *clean URLs* dan
+*caching* untuk `assets/`, `css/`, dan `js/`.
+
+### Alternatif (lewat terminal)
+```bash
+npm i -g vercel   # sekali saja
+vercel            # deploy pratinjau
+vercel --prod     # deploy ke produksi
+```
 
 ---
 
