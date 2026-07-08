@@ -1,0 +1,426 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Kalkulator Jejak Karbon Harian Masyarakat Kampung Baru, Kota Parepare. Ukur dampak aktivitas sehari-hari Anda terhadap lingkungan.">
+  <meta name="theme-color" content="#1b7a43">
+  <title>Kalkulator Jejak Karbon Harian — Kampung Baru, Parepare</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+
+  <!-- ============================ HERO / HEADER ============================ -->
+  <header class="hero" id="atas">
+    <div class="hero-bg" aria-hidden="true"></div>
+    <div class="hero-partikel" aria-hidden="true">
+      <span></span><span></span><span></span><span></span><span></span><span></span>
+    </div>
+
+    <nav class="nav">
+      <div class="nav-merek">
+        <span class="logo-wrap">
+          <img class="logo" src="assets/logo-parepare.png" alt="Logo Kota Parepare"
+               onerror="this.style.display='none';var f=document.getElementById('logoFallback');if(f)f.style.display='block';">
+          <!-- Fallback emblem (tampil bila logo asli belum diunggah) -->
+          <svg id="logoFallback" class="logo logo-fallback" viewBox="0 0 100 100" style="display:none" role="img" aria-label="Emblem Parepare">
+            <circle cx="50" cy="50" r="48" fill="#1b7a43" stroke="#fff" stroke-width="3"/>
+            <polygon points="50,14 54,26 66,26 56,34 60,46 50,38 40,46 44,34 34,26 46,26" fill="#ffd23f"/>
+            <path d="M24 70 h52 l-4 8 h-44 z" fill="#ffffff"/>
+            <path d="M50 40 v28 M50 42 l16 24 h-16 z" fill="#ffffff" stroke="#0e5e33" stroke-width="1.5"/>
+            <path d="M22 66 q6 4 12 0 q6 -4 12 0 q6 4 12 0 q6 -4 12 0" fill="none" stroke="#4fc3f7" stroke-width="2.4"/>
+          </svg>
+        </span>
+        <span class="nav-judul">Kampung Baru<small>Kota Parepare</small></span>
+      </div>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Buka menu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="#tentang">Tentang Kami</a></li>
+        <li><a href="#belajar">Mengenal Karbon</a></li>
+        <li><a href="#hitung">Hitung Sekarang</a></li>
+      </ul>
+    </nav>
+
+    <div class="hero-isi">
+      <span class="hero-lencana">🌏 Gerakan Lingkungan Warga Kampung Baru</span>
+      <h1>Kalkulator Jejak Karbon Harian<br>Kampung Baru</h1>
+      <p class="hero-teks">
+        Yuk, cari tahu seberapa besar dampak kegiatan sehari-hari kita — seperti pakai listrik,
+        gas, kendaraan, dan buang sampah — terhadap udara dan lingkungan.
+        Cukup isi beberapa pertanyaan mudah, gratis, dan langsung dapat hasilnya!
+      </p>
+      <a href="#hitung" class="tombol tombol-hero">Mulai Hitung Sekarang ↓</a>
+    </div>
+
+    <svg class="hero-gelombang" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,64 C240,120 480,0 720,32 C960,64 1200,120 1440,72 L1440,120 L0,120 Z"></path>
+    </svg>
+  </header>
+
+  <main>
+
+    <!-- ============================ TENTANG KAMI ============================ -->
+    <section id="tentang" class="seksi reveal">
+      <div class="wadah">
+        <span class="seksi-label">Tentang Kami</span>
+        <h2 class="seksi-judul">Kenapa Kalkulator Ini Dibuat?</h2>
+        <p class="seksi-intro">
+          Kalkulator ini dibuat oleh mahasiswa <strong>KKN</strong> bersama
+          <strong>Dinas Lingkungan Hidup Kota Parepare</strong> untuk warga Kampung Baru.
+          Tujuannya sederhana: membantu kita semua mengetahui dampak kebiasaan harian
+          terhadap lingkungan, sekaligus belajar cara hidup yang lebih hemat dan sehat.
+        </p>
+
+        <div class="kartu-grid">
+          <div class="kartu">
+            <div class="kartu-ikon">🎯</div>
+            <h3>Tujuan Kami</h3>
+            <p>Mengajak warga sadar bahwa kegiatan kecil sehari-hari punya pengaruh pada udara dan bumi kita.</p>
+          </div>
+          <div class="kartu">
+            <div class="kartu-ikon">🤝</div>
+            <h3>Untuk Siapa?</h3>
+            <p>Untuk semua warga Kampung Baru. Bahasanya dibuat mudah, jadi siapa saja bisa ikut mengisi.</p>
+          </div>
+          <div class="kartu">
+            <div class="kartu-ikon">🌱</div>
+            <h3>Manfaatnya</h3>
+            <p>Anda mendapat saran praktis untuk menghemat listrik, gas, dan mengelola sampah dengan lebih baik.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ======================= MENGENAL KARBON HARIAN ======================= -->
+    <section id="belajar" class="seksi seksi-alt reveal">
+      <div class="wadah">
+        <span class="seksi-label">Mengenal Lebih Lanjut</span>
+        <h2 class="seksi-judul">Apa Itu "Jejak Karbon" Harian?</h2>
+        <p class="seksi-intro">
+          <strong>Jejak karbon</strong> adalah banyaknya gas (terutama karbondioksida / CO₂)
+          yang keluar ke udara karena kegiatan kita sehari-hari. Gas ini membuat bumi makin panas.
+          Semakin banyak listrik, bensin, dan gas yang kita pakai — serta semakin banyak sampah
+          yang dibakar — semakin besar jejak karbon kita. Ukurannya memakai satuan
+          <strong>kg CO₂e</strong> (kilogram setara karbondioksida).
+        </p>
+
+        <div class="kartu-grid kartu-grid-4">
+          <div class="kartu kartu-mini">
+            <div class="kartu-ikon">💡</div>
+            <h3>Listrik</h3>
+            <p>Menyalakan lampu, TV, kulkas, dan AC memakai listrik yang sebagian besar masih dari bahan bakar fosil.</p>
+          </div>
+          <div class="kartu kartu-mini">
+            <div class="kartu-ikon">🔥</div>
+            <h3>Gas &amp; Bensin</h3>
+            <p>Memasak dengan elpiji dan mengendarai motor/mobil menghasilkan asap karbon.</p>
+          </div>
+          <div class="kartu kartu-mini">
+            <div class="kartu-ikon">🗑️</div>
+            <h3>Sampah</h3>
+            <p>Sampah yang dibakar atau menumpuk di TPA melepaskan gas berbahaya ke udara.</p>
+          </div>
+          <div class="kartu kartu-mini">
+            <div class="kartu-ikon">🌳</div>
+            <h3>Solusinya</h3>
+            <p>Hemat energi, kurangi sampah plastik, memilah &amp; mengompos, serta menanam pohon.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ FORMULIR ============================ -->
+    <section id="hitung" class="seksi reveal">
+      <div class="wadah wadah-sempit">
+        <span class="seksi-label">Ayo Hitung</span>
+        <h2 class="seksi-judul">Isi Data Kegiatan Harian Anda</h2>
+        <p class="seksi-intro">Isi sebisanya. Kalau tidak tahu angka pastinya, boleh dikira-kira saja. 😊</p>
+
+        <form id="formKarbon" class="form-karbon" novalidate>
+
+          <!-- Identitas -->
+          <fieldset class="grup">
+            <legend><span class="grup-nomor">1</span> Data Diri</legend>
+            <div class="baris-input">
+              <label for="nama">Nama Lengkap <span class="wajib">*</span></label>
+              <input type="text" id="nama" placeholder="Contoh: Budi Santoso" autocomplete="name">
+            </div>
+            <div class="baris-input">
+              <label for="alamat">Alamat / RT-RW</label>
+              <input type="text" id="alamat" placeholder="Contoh: RT 02 / RW 05, Kampung Baru">
+            </div>
+            <div class="dua-kolom">
+              <div class="baris-input">
+                <label for="anggotaKeluarga">Jumlah Anggota Keluarga</label>
+                <input type="number" id="anggotaKeluarga" min="1" step="1" inputmode="numeric" placeholder="Contoh: 4">
+              </div>
+              <div class="baris-input">
+                <label for="noHp">No. HP <span class="opsional">(boleh dikosongkan)</span></label>
+                <input type="tel" id="noHp" inputmode="tel" placeholder="Contoh: 0812xxxxxxx">
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Listrik -->
+          <fieldset class="grup">
+            <legend><span class="grup-nomor">2</span> 💡 Pemakaian Listrik</legend>
+            <p class="grup-hint">Pilih cara yang paling Anda ketahui:</p>
+            <div class="pilihan-pill pilihan-mode">
+              <input type="radio" id="modeKwh" name="modeListrik" value="kwh" checked>
+              <label for="modeKwh">Saya tahu jumlah kWh</label>
+              <input type="radio" id="modeTagihan" name="modeListrik" value="tagihan">
+              <label for="modeTagihan">Saya tahu tagihan (Rp)</label>
+            </div>
+
+            <div class="baris-input" id="grupKwh">
+              <label for="kwhListrik">Pemakaian listrik per bulan (kWh)</label>
+              <input type="number" id="kwhListrik" min="0" step="1" inputmode="decimal" placeholder="Contoh: 150">
+              <small class="petunjuk">Lihat di struk/aplikasi PLN, bagian "pemakaian kWh".</small>
+            </div>
+
+            <div class="baris-input tersembunyi" id="grupTagihan">
+              <label for="tagihanListrik">Tagihan listrik per bulan (Rp)</label>
+              <input type="number" id="tagihanListrik" min="0" step="1000" inputmode="decimal" placeholder="Contoh: 250000">
+              <small class="petunjuk">Nanti kami perkirakan otomatis jumlah kWh-nya.</small>
+            </div>
+          </fieldset>
+
+          <!-- Gas -->
+          <fieldset class="grup">
+            <legend><span class="grup-nomor">3</span> 🔥 Gas Elpiji</legend>
+            <div class="dua-kolom">
+              <div class="baris-input">
+                <label for="jenisTabung">Jenis Tabung</label>
+                <select id="jenisTabung">
+                  <option value="3">Tabung 3 kg (melon/hijau)</option>
+                  <option value="12">Tabung 12 kg (biru)</option>
+                </select>
+              </div>
+              <div class="baris-input">
+                <label for="jumlahTabung">Jumlah tabung per bulan</label>
+                <input type="number" id="jumlahTabung" min="0" step="1" inputmode="decimal" placeholder="Contoh: 2">
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- Kendaraan -->
+          <fieldset class="grup">
+            <legend><span class="grup-nomor">4</span> 🛵 Kendaraan Bermotor</legend>
+            <div class="baris-input">
+              <label for="bensinMinggu">Perkiraan bensin per minggu (liter)</label>
+              <input type="number" id="bensinMinggu" min="0" step="0.5" inputmode="decimal" placeholder="Contoh: 10">
+              <small class="petunjuk">Total untuk semua motor/mobil di rumah. Kalau tidak punya kendaraan, isi 0.</small>
+            </div>
+          </fieldset>
+
+          <!-- Sampah -->
+          <fieldset class="grup">
+            <legend><span class="grup-nomor">5</span> 🗑️ Pengelolaan Sampah</legend>
+
+            <div class="baris-input">
+              <label>Apakah Anda memilah sampah basah &amp; kering?</label>
+              <div class="pilihan-pill">
+                <input type="radio" id="memilahYa" name="memilah" value="Ya"><label for="memilahYa">Ya</label>
+                <input type="radio" id="memilahTidak" name="memilah" value="Tidak" checked><label for="memilahTidak">Belum</label>
+              </div>
+            </div>
+
+            <div class="baris-input">
+              <label>Apakah Anda mengompos sampah sisa dapur?</label>
+              <div class="pilihan-pill">
+                <input type="radio" id="komposYa" name="mengompos" value="Ya"><label for="komposYa">Ya</label>
+                <input type="radio" id="komposTidak" name="mengompos" value="Tidak" checked><label for="komposTidak">Belum</label>
+              </div>
+            </div>
+
+            <div class="baris-input">
+              <label>Apakah Anda membakar sampah?</label>
+              <div class="pilihan-pill">
+                <input type="radio" id="bakarYa" name="membakar" value="Ya"><label for="bakarYa">Ya</label>
+                <input type="radio" id="bakarTidak" name="membakar" value="Tidak" checked><label for="bakarTidak">Tidak</label>
+              </div>
+            </div>
+
+            <div class="baris-input">
+              <label for="kantongMinggu">Berapa kantong sampah dibuang per minggu?</label>
+              <input type="number" id="kantongMinggu" min="0" step="1" inputmode="decimal" placeholder="Contoh: 3">
+              <small class="petunjuk">Kira-kira saja (1 kantong ± 3 kg). Boleh dikosongkan.</small>
+            </div>
+          </fieldset>
+
+          <!-- Aktivitas lain -->
+          <fieldset class="grup">
+            <legend><span class="grup-nomor">6</span> 🏠 Kegiatan Lain <span class="opsional">(opsional)</span></legend>
+            <div class="dua-kolom">
+              <div class="baris-input">
+                <label for="acJam">Pemakaian AC per hari (jam)</label>
+                <input type="number" id="acJam" min="0" step="1" inputmode="decimal" placeholder="Contoh: 6">
+              </div>
+              <div class="baris-input">
+                <label for="transUmumMinggu">Naik angkot/bus per minggu (kali)</label>
+                <input type="number" id="transUmumMinggu" min="0" step="1" inputmode="decimal" placeholder="Contoh: 4">
+              </div>
+              <div class="baris-input">
+                <label for="barangBaruBulan">Beli barang baru per bulan (buah)</label>
+                <input type="number" id="barangBaruBulan" min="0" step="1" inputmode="decimal" placeholder="Contoh: 2">
+              </div>
+              <div class="baris-input">
+                <label for="dagingMinggu">Makan daging per minggu (porsi)</label>
+                <input type="number" id="dagingMinggu" min="0" step="1" inputmode="decimal" placeholder="Contoh: 3">
+              </div>
+            </div>
+          </fieldset>
+
+          <button type="submit" class="tombol tombol-hitung" id="tombolHitung">
+            🌍 Hitung Jejak Karbon Saya
+          </button>
+        </form>
+
+        <!-- ============================ HASIL ============================ -->
+        <section id="hasil" class="hasil tersembunyi" aria-live="polite">
+          <h2 class="hasil-judul">Hasil Jejak Karbon Anda</h2>
+
+          <div class="hasil-total-kotak">
+            <span class="hasil-total-label">Total jejak karbon harian Anda</span>
+            <div class="hasil-total-angka">
+              <span id="hasilTotal">0</span> <small>kg CO₂e / hari</small>
+            </div>
+          </div>
+
+          <div id="hasilKategori" class="kategori-badge">
+            <div class="kategori-ikon" id="hasilKategoriIkon">🌱</div>
+            <div class="kategori-teks">
+              <strong id="hasilKategoriNama">Jejak Karbon Rendah</strong>
+              <span id="hasilKategoriKet"></span>
+            </div>
+          </div>
+
+          <div class="gauge">
+            <div class="gauge-jalur">
+              <div class="gauge-isi" id="gaugeIsi"></div>
+            </div>
+            <div class="gauge-skala">
+              <span>Rendah</span><span>Sedang</span><span>Tinggi</span>
+            </div>
+          </div>
+
+          <div class="hasil-blok">
+            <h3>Dari mana saja karbonnya?</h3>
+            <div id="hasilRincian" class="rincian"></div>
+          </div>
+
+          <div class="hasil-blok">
+            <h3>💚 Saran untuk Anda</h3>
+            <ul id="hasilSaran" class="saran-daftar"></ul>
+          </div>
+
+          <div class="hasil-aksi">
+            <a href="#hitung" class="tombol tombol-kecil">↻ Hitung Ulang</a>
+          </div>
+        </section>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================ FOOTER ============================ -->
+  <footer class="footer">
+    <div class="wadah footer-isi">
+      <div class="footer-kolom">
+        <h3>📞 Hubungi Kami</h3>
+        <p id="kontakInstansi">Dinas Lingkungan Hidup Kota Parepare</p>
+        <p>Telepon / WA: <a id="kontakTelepon" href="tel:081280933445">081280933445</a></p>
+        <p>Alamat: <span id="kontakAlamat">Jl. Jend. Ahmad Yani Km. 6, Parepare</span></p>
+      </div>
+      <div class="footer-kolom">
+        <h3>🌏 Tentang Program</h3>
+        <p>Kalkulator Jejak Karbon Harian ini adalah program kerja sama mahasiswa KKN
+           dan Dinas Lingkungan Hidup untuk warga Kampung Baru, Kota Parepare.</p>
+      </div>
+      <div class="footer-kolom">
+        <h3>🔗 Tautan</h3>
+        <p><a href="#tentang">Tentang Kami</a></p>
+        <p><a href="#belajar">Mengenal Karbon</a></p>
+        <p><a href="#hitung">Hitung Jejak Karbon</a></p>
+        <p><a href="#" id="bukaAdmin" class="tautan-admin">🔒 Masuk Admin</a></p>
+      </div>
+    </div>
+    <div class="footer-bawah">
+      <p>&copy; <span id="tahunFooter">2026</span> Kampung Baru, Kota Parepare · Dibuat dengan 💚 untuk lingkungan yang lebih sehat.</p>
+    </div>
+  </footer>
+
+  <!-- ============================ MODAL SARAN ============================ -->
+  <div id="modalSaran" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalJudul">
+    <div class="modal-latar"></div>
+    <div class="modal-kotak">
+      <button class="modal-tutup" id="modalTutup" aria-label="Tutup">&times;</button>
+      <div class="modal-ikon" id="modalIkon">🌱</div>
+      <h3 class="modal-judul" id="modalJudul">Jejak Karbon Anda</h3>
+      <p class="modal-ket" id="modalKet"></p>
+      <h4 class="modal-subjudul">Beberapa langkah mudah yang bisa Anda coba:</h4>
+      <ul class="modal-saran" id="modalSaranDaftar"></ul>
+      <button class="tombol tombol-penuh" id="modalTutup2" onclick="document.getElementById('modalSaran').classList.remove('tampil')">Baik, Saya Mengerti 👍</button>
+    </div>
+  </div>
+
+  <!-- ============================ PANEL ADMIN ============================ -->
+  <div id="panelAdmin" class="modal panel-admin" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Dashboard Admin">
+    <div class="modal-latar"></div>
+    <div class="modal-kotak admin-kotak">
+      <button class="modal-tutup" id="adminTutup" aria-label="Tutup">&times;</button>
+      <h3 class="modal-judul">🔒 Dashboard Admin</h3>
+
+      <!-- Gerbang password -->
+      <div id="adminGerbang" class="admin-gerbang">
+        <p>Masukkan kata sandi untuk melihat data warga.</p>
+        <input type="password" id="adminPassword" placeholder="Kata sandi admin" autocomplete="current-password">
+        <p class="admin-pesan" id="adminPesanGerbang"></p>
+        <button class="tombol tombol-penuh" id="adminMasukBtn">Masuk</button>
+      </div>
+
+      <!-- Isi dashboard -->
+      <div id="adminIsi" class="admin-isi tersembunyi">
+        <div class="admin-ringkasan">
+          <div class="admin-stat">
+            <span class="admin-stat-angka" id="adminJumlah">0</span>
+            <span class="admin-stat-label">Data Warga</span>
+          </div>
+          <div class="admin-stat admin-stat-sumber">
+            <span class="admin-stat-label">Sumber Data</span>
+            <span class="admin-stat-teks" id="adminSumber">—</span>
+          </div>
+        </div>
+
+        <div class="admin-tombol-baris">
+          <button class="tombol tombol-kecil" id="adminMuatBtn">↻ Muat Ulang</button>
+          <button class="tombol tombol-kecil tombol-excel" id="adminUnduhXlsx">⬇️ Unduh Excel (.xlsx)</button>
+          <button class="tombol tombol-kecil tombol-csv" id="adminUnduhCsv">⬇️ Unduh CSV</button>
+        </div>
+
+        <p class="admin-status" id="adminStatus"></p>
+        <div class="admin-tabel-wadah" id="adminTabelWadah"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ============================ TOAST ============================ -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <!-- ============================ SCRIPT ============================ -->
+  <script src="js/config.js"></script>
+  <script src="js/xlsx-export.js"></script>
+  <script src="js/storage.js"></script>
+  <script src="js/calculator.js"></script>
+  <script src="js/admin.js"></script>
+  <script src="js/main.js"></script>
+</body>
+</html>
