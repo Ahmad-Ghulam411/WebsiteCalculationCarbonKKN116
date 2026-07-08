@@ -144,44 +144,73 @@ const Admin = (function () {
   function simpanEdit() {
     if (indeksDiedit < 0 || indeksDiedit >= dataTerakhir.length) { tutupEdit(); return; }
     const index = indeksDiedit;
+    const dataLama = dataTerakhir[index];
 
     // Mulai dari data lama agar kunci yang tak ada di form tetap terjaga
-    const record = Object.assign({}, dataTerakhir[index]);
+    const record = Object.assign({}, dataLama);
     el('adminEditForm').querySelectorAll('input[data-kunci]').forEach(function (inp) {
       record[inp.getAttribute('data-kunci')] = inp.value;
     });
+    tutupEdit();
 
-    // Perbarui tampilan secara optimis
-    dataTerakhir[index] = record;
-    render(dataTerakhir, sumberTerakhir);
-
-    if (sumberTerakhir === 'sheet') {
-      perbaruiDataSheet(index, record);
-      toast('✅ Perubahan dikirim ke Google Sheets.');
-    } else {
+    if (sumberTerakhir !== 'sheet') {
+      dataTerakhir[index] = record;
+      render(dataTerakhir, sumberTerakhir);
       perbaruiDataLokal(index, record);
       toast('✅ Perubahan tersimpan di perangkat ini.');
+      return;
     }
-    tutupEdit();
+
+    // Perbarui tampilan secara optimis, lalu benar-benar kirim ke Sheets.
+    // Bila server menolak (token salah, deployment lama, baris tak ditemukan,
+    // dll.), tampilan dikembalikan ke data lama agar admin tahu perubahan
+    // TIDAK tersimpan (bukan malah tampak berhasil lalu kembali sendiri
+    // setelah dimuat ulang nanti).
+    dataTerakhir[index] = record;
+    render(dataTerakhir, sumberTerakhir);
+    toast('⏳ Menyimpan perubahan ke Google Sheets…');
+
+    perbaruiDataSheet(index, record).then(function (hasil) {
+      if (hasil.ok) {
+        toast('✅ Perubahan tersimpan di Google Sheets.');
+      } else {
+        dataTerakhir[index] = dataLama;
+        render(dataTerakhir, sumberTerakhir);
+        toast('❌ Gagal menyimpan ke Google Sheets: ' + hasil.pesan);
+      }
+    });
   }
 
   /* ---- Hapus data ---- */
   function hapus(index) {
     if (index < 0 || index >= dataTerakhir.length) { return; }
-    const nama = dataTerakhir[index].nama || 'data ini';
+    const dataLama = dataTerakhir[index];
+    const nama = dataLama.nama || 'data ini';
     if (!window.confirm('Hapus ' + nama + '? Tindakan ini tidak bisa dibatalkan.')) { return; }
 
-    // Perbarui tampilan secara optimis
-    dataTerakhir.splice(index, 1);
-    render(dataTerakhir, sumberTerakhir);
-
-    if (sumberTerakhir === 'sheet') {
-      hapusDataSheet(index);
-      toast('🗑️ Data dihapus dari Google Sheets.');
-    } else {
+    if (sumberTerakhir !== 'sheet') {
+      dataTerakhir.splice(index, 1);
+      render(dataTerakhir, sumberTerakhir);
       hapusDataLokal(index);
       toast('🗑️ Data dihapus dari perangkat ini.');
+      return;
     }
+
+    // Perbarui tampilan secara optimis, lalu benar-benar hapus di Sheets.
+    // Bila gagal, baris dikembalikan agar admin tahu data BELUM terhapus.
+    dataTerakhir.splice(index, 1);
+    render(dataTerakhir, sumberTerakhir);
+    toast('⏳ Menghapus data dari Google Sheets…');
+
+    hapusDataSheet(index).then(function (hasil) {
+      if (hasil.ok) {
+        toast('🗑️ Data dihapus dari Google Sheets.');
+      } else {
+        dataTerakhir.splice(index, 0, dataLama);
+        render(dataTerakhir, sumberTerakhir);
+        toast('❌ Gagal menghapus di Google Sheets: ' + hasil.pesan);
+      }
+    });
   }
 
   /* ---- Siapkan baris untuk ekspor ---- */

@@ -57,33 +57,41 @@ var JUDUL = [
  *  Baris nyata di Sheet = baris + 2  (1 untuk header, 1 karena Sheet 1-based).
  * ------------------------------------------------------------------------- */
 function doPost(e) {
+  var p = (e && e.parameter) ? e.parameter : {};
+  if (p.token !== TOKEN_RAHASIA) {
+    return keluarJson({ ok: false, pesan: 'Token tidak sah.' });
+  }
+  return keluarJson(prosesPermintaan(p));
+}
+
+/* Logika inti simpan/edit/hapus, dipakai bersama oleh doPost (form biasa)
+ * dan doGet (dipanggil lewat JSONP dari dashboard admin, karena "no-cors"
+ * POST tidak memungkinkan JS di browser membaca balasan server — sehingga
+ * kegagalan di sisi server jadi tak terlihat dan tampilan tetap "seolah
+ * berhasil" walau data sebenarnya tidak berubah). Selalu jalan di bawah
+ * lock supaya aman dari permintaan yang datang bersamaan. */
+function prosesPermintaan(p) {
   var lock = LockService.getScriptLock();
   try {
     lock.waitLock(20000);
-    var p = (e && e.parameter) ? e.parameter : {};
-
-    if (p.token !== TOKEN_RAHASIA) {
-      return keluarJson({ ok: false, pesan: 'Token tidak sah.' });
-    }
-
     var aksi = p.action || 'simpan';
     var sheet = ambilSheet();
 
     if (aksi === 'hapus') {
       var barisHapus = barisNyata(p, sheet);
-      if (barisHapus < 0) return keluarJson({ ok: false, pesan: 'Baris tidak ditemukan.' });
+      if (barisHapus < 0) return { ok: false, pesan: 'Baris tidak ditemukan.' };
       sheet.deleteRow(barisHapus);
-      return keluarJson({ ok: true, pesan: 'Data terhapus.' });
+      return { ok: true, pesan: 'Data terhapus.' };
     }
 
     if (aksi === 'edit') {
       var barisEdit = barisNyata(p, sheet);
-      if (barisEdit < 0) return keluarJson({ ok: false, pesan: 'Baris tidak ditemukan.' });
+      if (barisEdit < 0) return { ok: false, pesan: 'Baris tidak ditemukan.' };
       var barisBaru = KOLOM.map(function (k) {
         return (p[k] !== undefined && p[k] !== null) ? p[k] : '';
       });
       sheet.getRange(barisEdit, 1, 1, KOLOM.length).setValues([barisBaru]);
-      return keluarJson({ ok: true, pesan: 'Data diperbarui.' });
+      return { ok: true, pesan: 'Data diperbarui.' };
     }
 
     // Bawaan: simpan data baru
@@ -92,9 +100,9 @@ function doPost(e) {
     });
     sheet.appendRow(baris);
 
-    return keluarJson({ ok: true, pesan: 'Data tersimpan.' });
+    return { ok: true, pesan: 'Data tersimpan.' };
   } catch (err) {
-    return keluarJson({ ok: false, pesan: String(err) });
+    return { ok: false, pesan: String(err) };
   } finally {
     try { lock.releaseLock(); } catch (x) {}
   }
@@ -110,16 +118,24 @@ function barisNyata(p, sheet) {
   return target;
 }
 
-/* ------------------- Membaca data untuk admin (GET/JSONP) ---------------- */
+/* ------------------- Membaca / mengubah data lewat GET (JSONP) -----------
+ * doGet dipakai untuk action=list (baca semua data) DAN action=edit/hapus
+ * dari dashboard admin — sengaja lewat GET+JSONP (bukan POST no-cors) agar
+ * browser bisa membaca balasan asli server (ok:true/false), sehingga
+ * kegagalan (token salah, baris tak ditemukan, dst.) benar-benar terlihat
+ * di dashboard, bukan cuma dianggap berhasil. ------------------------- */
 function doGet(e) {
   var p = (e && e.parameter) ? e.parameter : {};
   var cb = p.callback;
 
-  if (p.action === 'list') {
+  if (p.action === 'list' || p.action === 'edit' || p.action === 'hapus') {
     if (p.token !== TOKEN_RAHASIA) {
       return balas({ ok: false, pesan: 'Token tidak sah.' }, cb);
     }
-    return balas({ ok: true, data: ambilSemua() }, cb);
+    if (p.action === 'list') {
+      return balas({ ok: true, data: ambilSemua() }, cb);
+    }
+    return balas(prosesPermintaan(p), cb);
   }
 
   return balas({ ok: true, pesan: 'Backend Kalkulator Jejak Karbon aktif.' }, cb);
