@@ -317,7 +317,7 @@
     if (!modal) return;
     $('modalTutup').addEventListener('click', tutupModal);
     modal.querySelector('.modal-latar').addEventListener('click', tutupModal);
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { tutupModal(); tutupAdmin(); } });
+    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') { tutupModal(); tutupAdmin(); if (Admin && Admin.tutupEdit) Admin.tutupEdit(); } });
   }
 
   /* ---------- Dashboard admin ---------- */
@@ -351,6 +351,16 @@
     if (xlsxBtn) xlsxBtn.addEventListener('click', Admin.unduhExcel);
     const csvBtn = $('adminUnduhCsv');
     if (csvBtn) csvBtn.addEventListener('click', Admin.unduhCsv);
+
+    // Modal edit data warga
+    const editSimpan = $('adminEditSimpan');
+    if (editSimpan) editSimpan.addEventListener('click', Admin.simpanEdit);
+    const editBatal = $('adminEditBatal');
+    if (editBatal) editBatal.addEventListener('click', Admin.tutupEdit);
+    const editTutup = $('adminEditTutup');
+    if (editTutup) editTutup.addEventListener('click', Admin.tutupEdit);
+    const editLatar = $('adminEditLatar');
+    if (editLatar) editLatar.addEventListener('click', Admin.tutupEdit);
   }
 
   /* ---------- Animasi muncul saat digulir ---------- */

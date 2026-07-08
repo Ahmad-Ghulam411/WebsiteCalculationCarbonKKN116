@@ -57,6 +57,30 @@ function simpanDataLokal(record) {
   }
 }
 
+function perbaruiDataLokal(index, record) {
+  try {
+    const arr = ambilDataLokal();
+    if (index >= 0 && index < arr.length) {
+      arr[index] = record;
+      localStorage.setItem(KUNCI_SIMPANAN_LOKAL, JSON.stringify(arr));
+    }
+  } catch (e) {
+    console.warn('Tidak bisa memperbarui cadangan lokal:', e);
+  }
+}
+
+function hapusDataLokal(index) {
+  try {
+    const arr = ambilDataLokal();
+    if (index >= 0 && index < arr.length) {
+      arr.splice(index, 1);
+      localStorage.setItem(KUNCI_SIMPANAN_LOKAL, JSON.stringify(arr));
+    }
+  } catch (e) {
+    console.warn('Tidak bisa menghapus cadangan lokal:', e);
+  }
+}
+
 /* ---------- Kirim ke Google Sheets ---------- */
 function kirimKeSheet(record) {
   const url = KONFIGURASI.APPS_SCRIPT_URL;
@@ -89,6 +113,52 @@ function kirimKeSheet(record) {
 function simpanData(record) {
   simpanDataLokal(record);
   return kirimKeSheet(record);
+}
+
+/* ---------- Ubah / hapus data di Google Sheets (POST no-cors) ---------- */
+/* Karena "no-cors", jawaban server tidak bisa dibaca. Kita anggap terkirim
+ * lalu perbarui tampilan secara optimis; sinkron penuh terjadi saat "Muat Ulang". */
+function kirimAksiKeSheet(aksi, index, record) {
+  const url = KONFIGURASI.APPS_SCRIPT_URL;
+  if (!url) return Promise.resolve({ status: 'lokal' }); // belum dikonfigurasi
+
+  const body = new URLSearchParams();
+  body.append('action', aksi);
+  body.append('token', KONFIGURASI.ADMIN.token);
+  body.append('baris', index);
+  if (record) {
+    Object.keys(record).forEach(function (k) {
+      body.append(k, record[k] === null || record[k] === undefined ? '' : record[k]);
+    });
+  }
+
+  return fetch(url, {
+    method: 'POST',
+    mode: 'no-cors',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded;charset=UTF-8' },
+    body: body.toString(),
+  })
+    .then(function () { return { status: 'terkirim' }; })
+    .catch(function (err) {
+      console.warn('Gagal mengirim aksi ke Google Sheets:', err);
+      return { status: 'gagal' };
+    });
+}
+
+/**
+ * Memperbarui satu baris data (indeks 0-based) di Sheets.
+ * @returns {Promise<{status:string}>}
+ */
+function perbaruiDataSheet(index, record) {
+  return kirimAksiKeSheet('edit', index, record);
+}
+
+/**
+ * Menghapus satu baris data (indeks 0-based) di Sheets.
+ * @returns {Promise<{status:string}>}
+ */
+function hapusDataSheet(index) {
+  return kirimAksiKeSheet('hapus', index, null);
 }
 
 /* ---------- Baca semua data untuk dashboard admin (JSONP) ---------- */

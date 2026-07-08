@@ -18,7 +18,7 @@ responsif (mobile-first), dan di-*hosting* gratis di **Vercel**.
 - 🧮 **Kalkulator lengkap** — listrik (kWh **atau** tagihan Rp), gas elpiji, bensin, pengelolaan sampah, dan kegiatan lain.
 - 🟢 **Kategori otomatis** — Rendah / Sedang / Tinggi + saran yang menyesuaikan jawaban warga.
 - 💾 **Simpan ke Google Sheets** (via Google Apps Script) + **cadangan otomatis** di perangkat (localStorage).
-- 🔒 **Dashboard admin** — lihat semua data warga & **unduh ke Excel (.xlsx)** atau **CSV** (tanpa pustaka pihak ketiga).
+- 🔒 **Dashboard admin** — lihat semua data warga, **edit** & **hapus** tiap data, serta **unduh ke Excel (.xlsx)** atau **CSV** (tanpa pustaka pihak ketiga).
 - 🌐 **Bahasa Indonesia yang sangat awam** — mudah dimengerti semua warga.
 
 ---
@@ -96,6 +96,11 @@ ke Google Sheet Anda, dan bisa dilihat dari perangkat mana pun lewat dashboard a
 
 > **Jika mengubah kode Apps Script setelahnya**, lakukan **Deploy ▸ Manage
 > deployments ▸ (pensil) ▸ Version: New version ▸ Deploy** agar perubahan aktif.
+>
+> ⚠️ **Fitur Edit & Hapus** di dashboard admin membutuhkan versi `Code.gs`
+> terbaru (yang mengenali `action=edit` & `action=hapus`). Bila Anda sudah
+> pernah men-*deploy* versi lama, **deploy ulang versi baru** seperti langkah di
+> atas — kalau tidak, tombol Edit di data online justru akan menambah baris baru.
 
 ---
 

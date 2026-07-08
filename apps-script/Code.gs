@@ -48,7 +48,14 @@ var JUDUL = [
   'TOTAL (kg CO2e/hari)', 'Kategori'
 ];
 
-/* ------------------------- Menyimpan data (POST) ------------------------- */
+/* ---------------- Menyimpan / mengubah / menghapus data (POST) ----------- *
+ *  action = 'simpan' (bawaan) : menambah 1 baris data baru.
+ *  action = 'edit'            : mengganti isi 1 baris (butuh param "baris").
+ *  action = 'hapus'           : menghapus 1 baris (butuh param "baris").
+ *
+ *  "baris" = indeks data (mulai 0) sesuai urutan yang dikirim doGet(list).
+ *  Baris nyata di Sheet = baris + 2  (1 untuk header, 1 karena Sheet 1-based).
+ * ------------------------------------------------------------------------- */
 function doPost(e) {
   var lock = LockService.getScriptLock();
   try {
@@ -59,7 +66,27 @@ function doPost(e) {
       return keluarJson({ ok: false, pesan: 'Token tidak sah.' });
     }
 
+    var aksi = p.action || 'simpan';
     var sheet = ambilSheet();
+
+    if (aksi === 'hapus') {
+      var barisHapus = barisNyata(p, sheet);
+      if (barisHapus < 0) return keluarJson({ ok: false, pesan: 'Baris tidak ditemukan.' });
+      sheet.deleteRow(barisHapus);
+      return keluarJson({ ok: true, pesan: 'Data terhapus.' });
+    }
+
+    if (aksi === 'edit') {
+      var barisEdit = barisNyata(p, sheet);
+      if (barisEdit < 0) return keluarJson({ ok: false, pesan: 'Baris tidak ditemukan.' });
+      var barisBaru = KOLOM.map(function (k) {
+        return (p[k] !== undefined && p[k] !== null) ? p[k] : '';
+      });
+      sheet.getRange(barisEdit, 1, 1, KOLOM.length).setValues([barisBaru]);
+      return keluarJson({ ok: true, pesan: 'Data diperbarui.' });
+    }
+
+    // Bawaan: simpan data baru
     var baris = KOLOM.map(function (k) {
       return (p[k] !== undefined && p[k] !== null) ? p[k] : '';
     });
@@ -71,6 +98,16 @@ function doPost(e) {
   } finally {
     try { lock.releaseLock(); } catch (x) {}
   }
+}
+
+/* Menerjemahkan param "baris" (indeks data 0-based) menjadi nomor baris nyata
+ * di Sheet. Mengembalikan -1 bila tidak sah / di luar jangkauan. */
+function barisNyata(p, sheet) {
+  var idx = parseInt(p.baris, 10);
+  if (isNaN(idx) || idx < 0) return -1;
+  var target = idx + 2; // +1 header, +1 karena Sheet 1-based
+  if (target > sheet.getLastRow()) return -1;
+  return target;
 }
 
 /* ------------------- Membaca data untuk admin (GET/JSONP) ---------------- */
