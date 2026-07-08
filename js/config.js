@@ -86,7 +86,7 @@ const KONFIGURASI = {
    *    Bila dikosongkan, data tetap tersimpan sementara di perangkat
    *    (localStorage) sebagai cadangan.
    * ------------------------------------------------------------------ */
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwG4cspZCvpHjjrIaXQvLWOU0wbkNcT-ChWyt0kwInsS4jf50DhDC7WTYdxbDBkOBaqIg/exec', // contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx36VZMNVjiZjTKEwSjmaSXkcZ_X4tQ5Qxjk1cvBy3DCxblTUo6s12GGp_mP6-8Qa_o0w/exec', // contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
 
   /* ------------------------------------------------------------------
    * 7) DASHBOARD ADMIN
@@ -95,7 +95,7 @@ const KONFIGURASI = {
    *      (dipakai agar tidak sembarang orang bisa menarik data warga)
    * ------------------------------------------------------------------ */
   ADMIN: {
-    password: 'admin123',
+    password: 'kampungbaru116',
     token: 'rahasia-kkn-116-kampungbaru',
   },
 
