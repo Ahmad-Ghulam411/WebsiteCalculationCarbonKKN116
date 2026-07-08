@@ -2,7 +2,11 @@ name: Deploy ke GitHub Pages
 
 # Menerbitkan situs statis (index.html + css + js) ke GitHub Pages.
 # Berjalan otomatis setiap kali ada perubahan yang di-push ke branch di bawah,
-# dan bisa juga dijalankan manual dari tab "Actions".
+# dan bisa juga dijalankan manual dari tab "Actions" (Run workflow).
+#
+# Catatan: langkah "configure-pages" dengan enablement: true akan MENGAKTIFKAN
+# GitHub Pages secara otomatis pada saat pertama kali berjalan, sehingga tidak
+# perlu mengaktifkannya manual dari menu Settings.
 
 on:
   push:
@@ -10,7 +14,7 @@ on:
       - claude/carbon-footprint-calculator-g50y7m
   workflow_dispatch:
 
-# Izin yang dibutuhkan agar bisa deploy ke Pages
+# Izin yang dibutuhkan agar bisa mengaktifkan & deploy ke Pages
 permissions:
   contents: read
   pages: write
@@ -24,15 +28,14 @@ concurrency:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    environment:
-      name: github-pages
-      url: ${{ steps.deployment.outputs.page_url }}
     steps:
       - name: Ambil kode
         uses: actions/checkout@v4
 
-      - name: Siapkan GitHub Pages
+      - name: Aktifkan & siapkan GitHub Pages
         uses: actions/configure-pages@v5
+        with:
+          enablement: true
 
       - name: Unggah berkas situs
         uses: actions/upload-pages-artifact@v3
