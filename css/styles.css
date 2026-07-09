@@ -426,12 +426,16 @@ button { font-family: inherit; cursor: pointer; }
 
 /* ================================ TOAST ================================== */
 .toast {
-  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 120%);
+  position: fixed; left: 50%; bottom: 24px; transform: translate(-50%, 16px);
   background: var(--tinta); color: #fff; padding: 14px 22px; border-radius: 999px;
   box-shadow: var(--bayang-lg); font-weight: 700; z-index: 200; max-width: 90vw; text-align: center;
-  transition: transform .45s cubic-bezier(.22,.61,.36,1); font-size: .95rem;
+  font-size: .95rem; opacity: 0; visibility: hidden; pointer-events: none;
+  transition: transform .45s cubic-bezier(.22,.61,.36,1), opacity .3s ease, visibility 0s linear .3s;
 }
-.toast.tampil { transform: translate(-50%, 0); }
+.toast.tampil {
+  transform: translate(-50%, 0); opacity: 1; visibility: visible; pointer-events: auto;
+  transition: transform .45s cubic-bezier(.22,.61,.36,1), opacity .3s ease, visibility 0s;
+}
 
 /* ============================== KEYFRAMES ================================ */
 @keyframes kilau { from { left: -60%; } to { left: 140%; } }
