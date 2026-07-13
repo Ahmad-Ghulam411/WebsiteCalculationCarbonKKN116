@@ -3,9 +3,9 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <meta name="description" content="Kalkulator Jejak Karbon Harian Masyarakat Kampung Baru, Kota Parepare. Ukur dampak aktivitas sehari-hari Anda terhadap lingkungan.">
+  <meta name="description" content="Kalkulator Jejak Karbon Harian Masyarakat Kampung Baru, Kota Parepare. Ukur dampak warga aktivitas sehari-hari terhadap lingkungan.">
   <meta name="theme-color" content="#1b7a43">
-  <title>Kalkulator Jejak Karbon Harian — Kampung Baru, Parepare</title>
+  <title>Kalkulator Jejak Karbon Harian — Kelurahan Kampung Baru, Kecamatan Bacukiki Barat, Kota Parepare</title>
 
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -46,7 +46,7 @@
       <ul class="nav-menu" id="navMenu">
         <li><a href="#tentang">Tentang Kami</a></li>
         <li><a href="#belajar">Mengenal Karbon</a></li>
-        <li><a href="#hitung">Hitung Sekarang</a></li>
+        <li><a href="#hitung">Hitung Karbonmu Sekarang</a></li>
       </ul>
     </nav>
 
@@ -57,8 +57,9 @@
         Yuk, cari tahu seberapa besar dampak kegiatan sehari-hari kita — seperti pakai listrik,
         gas, kendaraan, dan buang sampah — terhadap udara dan lingkungan.
         Cukup isi beberapa pertanyaan mudah, gratis, dan langsung dapat hasilnya!
+        Ketahuilah seberapa besar dampak kebiasaan kita terhadap bumi, dan dapatkan saran praktis untuk menguranginya.
       </p>
-      <a href="#hitung" class="tombol tombol-hero">Mulai Hitung Sekarang ↓</a>
+      <a href="#hitung" class="tombol tombol-hero">↓ Mulai Hitung Sekarang ↓</a>
     </div>
 
     <svg class="hero-gelombang" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
@@ -74,7 +75,7 @@
         <span class="seksi-label">Tentang Kami</span>
         <h2 class="seksi-judul">Kenapa Kalkulator Ini Dibuat?</h2>
         <p class="seksi-intro">
-          Kalkulator ini dibuat oleh mahasiswa <strong>KKN</strong> bersama
+          Kalkulator ini dibuat oleh mahasiswa <strong>KKN Gel. 116 Tematik Perubahan Iklim Kelurahan Kampung Baru</strong> bersama
           <strong>Dinas Lingkungan Hidup Kota Parepare</strong> untuk warga Kampung Baru.
           Tujuannya sederhana: membantu kita semua mengetahui dampak kebiasaan harian
           terhadap lingkungan, sekaligus belajar cara hidup yang lebih hemat dan sehat.
@@ -84,7 +85,7 @@
           <div class="kartu">
             <div class="kartu-ikon">🎯</div>
             <h3>Tujuan Kami</h3>
-            <p>Mengajak warga sadar bahwa kegiatan kecil sehari-hari punya pengaruh pada udara dan bumi kita.</p>
+            <p>Banyak warga yang pasti belum sadar dampak aktivitas yang telah dilakukan. Maka dari itu, mengajak warga sadar bahwa kegiatan kecil sehari-hari punya pengaruh pada udara dan bumi kita.</p>
           </div>
           <div class="kartu">
             <div class="kartu-ikon">🤝</div>
@@ -94,7 +95,7 @@
           <div class="kartu">
             <div class="kartu-ikon">🌱</div>
             <h3>Manfaatnya</h3>
-            <p>Anda mendapat saran praktis untuk menghemat listrik, gas, dan mengelola sampah dengan lebih baik.</p>
+            <p>Warga mendapat saran praktis untuk menghemat listrik, gas, dan mengelola sampah dengan lebih baik.</p>
           </div>
         </div>
       </div>
@@ -142,7 +143,7 @@
     <section id="hitung" class="seksi reveal">
       <div class="wadah wadah-sempit">
         <span class="seksi-label">Ayo Hitung</span>
-        <h2 class="seksi-judul">Isi Data Kegiatan Harian Anda</h2>
+        <h2 class="seksi-judul">Isi Data Kegiatan Harian Warga</h2>
         <p class="seksi-intro">Isi sebisanya. Kalau tidak tahu angka pastinya, boleh dikira-kira saja. 😊</p>
 
         <form id="formKarbon" class="form-karbon" novalidate>
@@ -173,12 +174,12 @@
           <!-- Listrik -->
           <fieldset class="grup">
             <legend><span class="grup-nomor">2</span> 💡 Pemakaian Listrik</legend>
-            <p class="grup-hint">Pilih cara yang paling Anda ketahui:</p>
+            <p class="grup-hint">Pilih cara yang paling warga ketahui:</p>
             <div class="pilihan-pill pilihan-mode">
               <input type="radio" id="modeKwh" name="modeListrik" value="kwh" checked>
-              <label for="modeKwh">Saya tahu jumlah kWh</label>
+              <label for="modeKwh">Aku tahu jumlah kWh</label>
               <input type="radio" id="modeTagihan" name="modeListrik" value="tagihan">
-              <label for="modeTagihan">Saya tahu tagihan (Rp)</label>
+              <label for="modeTagihan">Aku tahu tagihan (Rp)</label>
             </div>
 
             <div class="baris-input" id="grupKwh">
@@ -227,7 +228,7 @@
             <legend><span class="grup-nomor">5</span> 🗑️ Pengelolaan Sampah</legend>
 
             <div class="baris-input">
-              <label>Apakah Anda memilah sampah basah &amp; kering?</label>
+              <label>Apakah warga memilah sampah basah &amp; kering?</label>
               <div class="pilihan-pill">
                 <input type="radio" id="memilahYa" name="memilah" value="Ya"><label for="memilahYa">Ya</label>
                 <input type="radio" id="memilahTidak" name="memilah" value="Tidak" checked><label for="memilahTidak">Belum</label>
@@ -235,7 +236,7 @@
             </div>
 
             <div class="baris-input">
-              <label>Apakah Anda mengompos sampah sisa dapur?</label>
+              <label>Apakah warga mengompos sampah sisa dapur?</label>
               <div class="pilihan-pill">
                 <input type="radio" id="komposYa" name="mengompos" value="Ya"><label for="komposYa">Ya</label>
                 <input type="radio" id="komposTidak" name="mengompos" value="Tidak" checked><label for="komposTidak">Belum</label>
@@ -243,7 +244,7 @@
             </div>
 
             <div class="baris-input">
-              <label>Apakah Anda membakar sampah?</label>
+              <label>Apakah warga membakar sampah?</label>
               <div class="pilihan-pill">
                 <input type="radio" id="bakarYa" name="membakar" value="Ya"><label for="bakarYa">Ya</label>
                 <input type="radio" id="bakarTidak" name="membakar" value="Tidak" checked><label for="bakarTidak">Tidak</label>
@@ -281,16 +282,16 @@
           </fieldset>
 
           <button type="submit" class="tombol tombol-hitung" id="tombolHitung">
-            🌍 Hitung Jejak Karbon Saya
+            🌍 Hitung Jejak Karbon Aku
           </button>
         </form>
 
         <!-- ============================ HASIL ============================ -->
         <section id="hasil" class="hasil tersembunyi" aria-live="polite">
-          <h2 class="hasil-judul">Hasil Jejak Karbon Anda</h2>
+          <h2 class="hasil-judul">Hasil Jejak Karbon Aku</h2>
 
           <div class="hasil-total-kotak">
-            <span class="hasil-total-label">Total jejak karbon harian Anda</span>
+            <span class="hasil-total-label">Total jejak karbon harian Aku</span>
             <div class="hasil-total-angka">
               <span id="hasilTotal">0</span> <small>kg CO₂e / hari</small>
             </div>
@@ -342,7 +343,7 @@
       </div>
       <div class="footer-kolom">
         <h3>🌏 Tentang Program</h3>
-        <p>Kalkulator Jejak Karbon Harian ini adalah program kerja sama mahasiswa KKN
+        <p>Kalkulator Jejak Karbon Harian ini adalah program kerja sama mahasiswa KKN Gel. 116 Tematik Perubahan Iklim Kelurahan Kampung Baru
            dan Dinas Lingkungan Hidup untuk warga Kampung Baru, Kota Parepare.</p>
       </div>
       <div class="footer-kolom">
@@ -364,9 +365,9 @@
     <div class="modal-kotak">
       <button class="modal-tutup" id="modalTutup" aria-label="Tutup">&times;</button>
       <div class="modal-ikon" id="modalIkon">🌱</div>
-      <h3 class="modal-judul" id="modalJudul">Jejak Karbon Anda</h3>
+      <h3 class="modal-judul" id="modalJudul">Jejak Karbon Aku</h3>
       <p class="modal-ket" id="modalKet"></p>
-      <h4 class="modal-subjudul">Beberapa langkah mudah yang bisa Anda coba:</h4>
+      <h4 class="modal-subjudul">Beberapa langkah mudah yang bisa warga coba:</h4>
       <ul class="modal-saran" id="modalSaranDaftar"></ul>
       <button class="tombol tombol-penuh" id="modalTutup2" onclick="document.getElementById('modalSaran').classList.remove('tampil')">Baik, Saya Mengerti 👍</button>
     </div>
