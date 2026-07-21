@@ -91,12 +91,14 @@ const KONFIGURASI = {
    *
    *   Dari sini kita bisa memperkirakan dampak bila banyak rumah tangga
    *   berperilaku sama. Angka penduduk/rumah tangga memakai perkiraan
-   *   Indonesia — silakan ganti bila ingin memakai skala lain.
+   *   SELURUH DUNIA — silakan ganti bila ingin memakai skala lain
+   *   (mis. Indonesia: ± 70.000.000 rumah tangga & 280.000.000 jiwa).
    * ------------------------------------------------------------------ */
   PEMANASAN: {
     derajat_per_triliun_ton_co2: 0.45, // °C per 1 triliun (1e12) ton CO₂  (SRM360 / TCRE)
-    jumlah_rumah_tangga: 70000000,     // ± 70 juta rumah tangga di Indonesia
-    jumlah_jiwa: 280000000,            // ± 280 juta jiwa (untuk narasi "ratusan juta warga")
+    jumlah_rumah_tangga: 2000000000,   // ± 2 miliar rumah tangga di seluruh dunia
+    jumlah_jiwa: 8000000000,           // ± 8 miliar jiwa (hampir seluruh penduduk bumi)
+    label_wilayah: 'di seluruh dunia', // ikut narasi (mis. 'di Indonesia' bila skala nasional)
     tahun_proyeksi: 30,                // proyeksi 1 generasi (± 30 tahun)
   },
 

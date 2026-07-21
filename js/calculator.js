@@ -171,6 +171,7 @@ function hitungPemanasan(totalHari) {
     derajatPerTriliunTon: P.derajat_per_triliun_ton_co2,
     jumlahRumah: P.jumlah_rumah_tangga,
     jumlahJiwa: P.jumlah_jiwa,
+    labelWilayah: P.label_wilayah || '',
     tahunProyeksi: P.tahun_proyeksi,
     kolektifTonTahun: Math.round(kolektifTonTahun),
     kolektifTonProyeksi: Math.round(kolektifTonProyeksi),

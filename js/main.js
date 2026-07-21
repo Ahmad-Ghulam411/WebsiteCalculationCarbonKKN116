@@ -278,18 +278,25 @@
     return '0';
   }
 
+  // Format jumlah orang/rumah tangga besar → "8 miliar" / "70 juta"
+  function formatJumlah(n) {
+    if (n >= 1e9) return formatAngka(n / 1e9).replace(/,00$/, '') + ' miliar';
+    if (n >= 1e6) return formatAngka(n / 1e6).replace(/,00$/, '') + ' juta';
+    return Math.round(n).toLocaleString('id-ID');
+  }
+
   function aturPemanasan(totalHari) {
     const kotak = $('suhuMassaTahun');
     if (!kotak || typeof hitungPemanasan !== 'function') return;
     const p = hitungPemanasan(totalHari);
 
-    const jutaJiwa = Math.round(p.jumlahJiwa / 1e6);
-    const jutaRumah = Math.round(p.jumlahRumah / 1e6);
-
+    const wilayah = p.labelWilayah ? ' ' + p.labelWilayah : '';
+    const catatanBumi = p.jumlahJiwa >= 7e9 ? ' — hampir seluruh penduduk bumi' : '';
     const narasi = $('suhuNaratif');
     if (narasi) {
-      narasi.textContent = 'Bayangkan kalau ± ' + jutaRumah + ' juta rumah tangga di Indonesia ' +
-        '(sekitar ' + jutaJiwa + ' juta jiwa) punya kebiasaan seperti Anda…';
+      narasi.textContent = 'Bayangkan kalau ± ' + formatJumlah(p.jumlahRumah) + ' rumah tangga' + wilayah +
+        ' (sekitar ' + formatJumlah(p.jumlahJiwa) + ' jiwa' + catatanBumi + ') ' +
+        'punya kebiasaan seperti Anda…';
     }
 
     $('suhuMassaTahun').textContent = '± ' + formatMassa(p.kolektifTonTahun);
