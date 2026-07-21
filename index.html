@@ -46,6 +46,7 @@
       <ul class="nav-menu" id="navMenu">
         <li><a href="#tentang">Tentang Kami</a></li>
         <li><a href="#belajar">Mengenal Karbon</a></li>
+        <li><a href="#langkah">Cara Kerja</a></li>
         <li><a href="#hitung">Hitung Karbonmu Sekarang</a></li>
       </ul>
     </nav>
@@ -59,6 +60,14 @@
         Cukup isi beberapa pertanyaan mudah, gratis, dan langsung dapat hasilnya!
         Ketahuilah seberapa besar dampak kebiasaan kita terhadap bumi, dan dapatkan saran praktis untuk menguranginya.
       </p>
+
+      <ul class="hero-chip" aria-label="Keunggulan">
+        <li>⏱️ Cukup 2 menit</li>
+        <li>🆓 Gratis untuk semua warga</li>
+        <li>📱 Bisa dari HP</li>
+        <li>🔒 Data warga aman</li>
+      </ul>
+
       <a href="#hitung" class="tombol tombol-hero">↓ Mulai Hitung Sekarang ↓</a>
     </div>
 
@@ -139,12 +148,50 @@
       </div>
     </section>
 
+    <!-- ======================= CARA KERJA / 3 LANGKAH ======================= -->
+    <section id="langkah" class="seksi reveal">
+      <div class="wadah">
+        <span class="seksi-label">Gampang, Kok</span>
+        <h2 class="seksi-judul">Cukup 3 Langkah Mudah</h2>
+        <p class="seksi-intro">
+          Tidak perlu ahli atau pintar hitung-hitungan. Ikuti saja 3 langkah ini, dan dalam
+          waktu singkat Anda sudah tahu jejak karbon keluarga sendiri.
+        </p>
+
+        <div class="langkah-grid">
+          <div class="langkah-kartu">
+            <div class="langkah-nomor">1</div>
+            <div class="langkah-ikon">✍️</div>
+            <h3>Isi Data Harian</h3>
+            <p>Jawab pertanyaan sederhana soal listrik, gas, kendaraan, dan sampah rumah Anda. Tidak tahu angka pastinya? Kira-kira saja boleh.</p>
+          </div>
+          <div class="langkah-panah" aria-hidden="true">→</div>
+          <div class="langkah-kartu">
+            <div class="langkah-nomor">2</div>
+            <div class="langkah-ikon">📊</div>
+            <h3>Lihat Hasilnya</h3>
+            <p>Langsung muncul angka jejak karbon Anda, lengkap dengan warna (Rendah / Sedang / Tinggi) dan perbandingan yang mudah dibayangkan.</p>
+          </div>
+          <div class="langkah-panah" aria-hidden="true">→</div>
+          <div class="langkah-kartu">
+            <div class="langkah-nomor">3</div>
+            <div class="langkah-ikon">🌿</div>
+            <h3>Ikuti Sarannya</h3>
+            <p>Dapatkan tips praktis khusus untuk kebiasaan Anda. Pilih satu yang paling mudah, lalu mulai dari situ hari ini juga.</p>
+          </div>
+        </div>
+      </div>
+    </section>
+
     <!-- ============================ FORMULIR ============================ -->
-    <section id="hitung" class="seksi reveal">
+    <section id="hitung" class="seksi seksi-alt reveal">
       <div class="wadah wadah-sempit">
         <span class="seksi-label">Ayo Hitung</span>
         <h2 class="seksi-judul">Isi Data Kegiatan Harian Warga</h2>
-        <p class="seksi-intro">Isi sebisanya. Kalau tidak tahu angka pastinya, boleh dikira-kira saja. 😊</p>
+        <p class="seksi-intro">
+          Isi sebisanya — tidak harus semua kolom. Kalau tidak tahu angka pastinya, boleh dikira-kira saja. 😊
+          Data Anda hanya dipakai untuk program lingkungan Kampung Baru dan tidak dibagikan ke siapa pun.
+        </p>
 
         <form id="formKarbon" class="form-karbon" novalidate>
 
@@ -288,13 +335,15 @@
 
         <!-- ============================ HASIL ============================ -->
         <section id="hasil" class="hasil tersembunyi" aria-live="polite">
-          <h2 class="hasil-judul">Hasil Jejak Karbon Aku</h2>
+          <p class="hasil-sapaan" id="hasilSapaan"></p>
+          <h2 class="hasil-judul">Hasil Jejak Karbon Anda</h2>
 
           <div class="hasil-total-kotak">
-            <span class="hasil-total-label">Total jejak karbon harian Aku</span>
+            <span class="hasil-total-label">Total jejak karbon harian Anda</span>
             <div class="hasil-total-angka">
               <span id="hasilTotal">0</span> <small>kg CO₂e / hari</small>
             </div>
+            <span class="hasil-total-tahun" id="hasilTotalTahun"></span>
           </div>
 
           <div id="hasilKategori" class="kategori-badge">
@@ -314,8 +363,16 @@
             </div>
           </div>
 
+          <!-- Perbandingan yang mudah dibayangkan -->
+          <div class="hasil-blok">
+            <h3>🔎 Supaya lebih mudah dibayangkan…</h3>
+            <p class="setara-intro">Jejak karbon harian Anda kira-kira setara dengan:</p>
+            <div class="setara-grid" id="hasilSetara"></div>
+          </div>
+
           <div class="hasil-blok">
             <h3>Dari mana saja karbonnya?</h3>
+            <p class="rincian-intro">Ini bagian-bagian kegiatan Anda yang menghasilkan karbon. Bar yang paling panjang adalah yang paling besar.</p>
             <div id="hasilRincian" class="rincian"></div>
           </div>
 

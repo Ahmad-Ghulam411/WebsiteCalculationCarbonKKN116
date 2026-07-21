@@ -146,12 +146,28 @@
     void bagian.offsetWidth;
     bagian.classList.add('tampil');
 
+    // Sapaan personal dengan nama warga
+    const elSapaan = $('hasilSapaan');
+    if (elSapaan) {
+      const namaDepan = (data.nama || '').split(' ')[0];
+      elSapaan.textContent = namaDepan
+        ? '👋 Halo, ' + namaDepan + '! Ini hasil perhitungan untuk keluarga Anda.'
+        : '👋 Ini hasil perhitungan Anda.';
+    }
+
     // Total (angka menghitung naik)
     const elTotal = $('hasilTotal');
     if (kurangiGerak) {
       elTotal.textContent = formatAngka(hasil.total);
     } else {
       animasiAngka(elTotal, hasil.total, 1100);
+    }
+
+    // Perkiraan setara per tahun
+    const setara = hitungSetara(hasil.total);
+    const elTahun = $('hasilTotalTahun');
+    if (elTahun) {
+      elTahun.textContent = 'Kira-kira ' + formatAngka(setara.perTahun) + ' kg CO₂e dalam setahun';
     }
 
     // Kategori
@@ -163,6 +179,9 @@
 
     // Meteran / gauge
     aturGauge(hasil.total, kategori);
+
+    // Perbandingan yang mudah dibayangkan
+    aturSetara(setara);
 
     // Rincian per sumber
     aturRincian(hasil.rincian);
@@ -200,6 +219,43 @@
     isi.style.width = '0%';
     requestAnimationFrame(function () {
       requestAnimationFrame(function () { isi.style.width = persen + '%'; });
+    });
+  }
+
+  function aturSetara(setara) {
+    const wadah = $('hasilSetara');
+    if (!wadah) return;
+    const kartu = [
+      {
+        ikon: '🌳',
+        angka: setara.pohon.toLocaleString('id-ID'),
+        satuan: 'pohon',
+        ket: 'perlu ditanam untuk menyerap karbon Anda selama setahun',
+      },
+      {
+        ikon: '🛵',
+        angka: setara.kmMotor.toLocaleString('id-ID'),
+        satuan: 'km naik motor',
+        ket: 'sejauh itulah karbon harian Anda bila diibaratkan perjalanan motor',
+      },
+      {
+        ikon: '🔌',
+        angka: setara.ponsel.toLocaleString('id-ID'),
+        satuan: 'kali cas HP',
+        ket: 'sebanyak itu mengisi penuh baterai HP dalam sehari',
+      },
+    ];
+    wadah.innerHTML = '';
+    kartu.forEach(function (k, i) {
+      const el = document.createElement('div');
+      el.className = 'setara-kartu';
+      el.style.animationDelay = (i * 90) + 'ms';
+      el.innerHTML =
+        '<div class="setara-ikon">' + k.ikon + '</div>' +
+        '<div class="setara-angka">' + k.angka + '</div>' +
+        '<div class="setara-satuan">' + k.satuan + '</div>' +
+        '<div class="setara-ket">' + k.ket + '</div>';
+      wadah.appendChild(el);
     });
   }
 

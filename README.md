@@ -14,9 +14,11 @@ responsif (mobile-first), dan di-*hosting* gratis di **Vercel**.
 ## ✨ Fitur
 
 - 📱 **Mobile-first & responsif** — nyaman dibuka dari HP maupun laptop.
-- 🎨 **Tampilan profesional & beranimasi** — hero foto kota, kartu, gauge, count-up, pop-up saran.
+- 🎨 **Tampilan profesional & beranimasi** — hero foto kota + chip keunggulan, bagian **"3 Langkah Mudah"**, kartu, gauge, count-up, pop-up saran.
 - 🧮 **Kalkulator lengkap** — listrik (kWh **atau** tagihan Rp), gas elpiji, bensin, pengelolaan sampah, dan kegiatan lain.
-- 🟢 **Kategori otomatis** — Rendah / Sedang / Tinggi + saran yang menyesuaikan jawaban warga.
+- 🟢 **Kategori otomatis** — Rendah / Sedang / Tinggi + **keterangan yang hangat & detail** dan saran yang menyesuaikan jawaban warga.
+- 🔎 **Perbandingan "setara dengan"** — angka kg CO₂ diubah jadi hal yang mudah dibayangkan warga (jumlah pohon, km naik motor, kali cas HP) + total per tahun.
+- 👋 **Sapaan personal** — hasil menyapa warga dengan namanya sendiri.
 - 💾 **Simpan ke Google Sheets** (via Google Apps Script) + **cadangan otomatis** di perangkat (localStorage).
 - 🔒 **Dashboard admin** — lihat semua data warga, **edit** & **hapus** tiap data, serta **unduh ke Excel (.xlsx)** atau **CSV** (tanpa pustaka pihak ketiga).
 - 🌐 **Bahasa Indonesia yang sangat awam** — mudah dimengerti semua warga.

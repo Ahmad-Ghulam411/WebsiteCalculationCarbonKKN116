@@ -85,7 +85,9 @@ function tentukanKategori(total) {
       nama: 'Rendah',
       ikon: '🌱',
       kelas: 'rendah',
-      keterangan: 'Bagus sekali! Gaya hidup Anda sudah ramah lingkungan. Pertahankan, ya!',
+      keterangan: 'Bagus sekali! Kegiatan sehari-hari Anda sudah cukup ramah lingkungan. ' +
+        'Jejak karbon Anda masih di bawah rata-rata warga pada umumnya. ' +
+        'Pertahankan kebiasaan baik ini, dan ajak tetangga ikut serta, ya! 🌿',
     };
   }
   if (total <= A.sedang_maks) {
@@ -93,14 +95,48 @@ function tentukanKategori(total) {
       nama: 'Sedang',
       ikon: '🌤️',
       kelas: 'sedang',
-      keterangan: 'Lumayan baik. Masih ada beberapa kebiasaan yang bisa diperbaiki agar lebih hemat dan sehat.',
+      keterangan: 'Jejak karbon Anda masih tergolong wajar, kira-kira setara rata-rata rumah tangga. ' +
+        'Kabar baiknya, masih ada beberapa kebiasaan kecil yang bisa diperbaiki. ' +
+        'Dengan sedikit perubahan, tagihan bisa lebih hemat dan udara lebih bersih. 💪',
     };
   }
   return {
     nama: 'Tinggi',
     ikon: '🔥',
     kelas: 'tinggi',
-    keterangan: 'Jejak karbon Anda cukup besar. Yuk, coba ubah beberapa kebiasaan agar lebih ramah lingkungan.',
+    keterangan: 'Jejak karbon Anda cukup besar — di atas rata-rata rumah tangga. ' +
+      'Jangan khawatir, ini bukan berarti buruk, tapi tanda bahwa ada banyak peluang untuk berhemat. ' +
+      'Coba mulai dari 1–2 saran di bawah ini dulu. Setiap langkah kecil sangat berarti. 🙌',
+  };
+}
+
+/**
+ * Mengubah angka jejak karbon (kg CO₂e/hari) menjadi perbandingan yang
+ * MUDAH DIBAYANGKAN oleh warga — supaya angka terasa nyata, bukan sekadar
+ * angka. Semua faktor sengaja dibuat sederhana & dapat diperkirakan.
+ * @param {number} totalHari - kg CO₂e per hari
+ * @returns {Object} { perTahun, pohon, kmMotor, ponsel }
+ */
+function hitungSetara(totalHari) {
+  const perTahun = totalHari * 365;
+
+  // 1 pohon dewasa menyerap ± 21,77 kg CO₂ per tahun (rata-rata acuan umum).
+  // Kita hitung: berapa pohon yang perlu ditanam agar emisi SETAHUN terserap.
+  const pohon = Math.max(1, Math.round(perTahun / 21.77));
+
+  // 1 km motor ≈ 0,1 kg CO₂ (± 2,31 kg/L bensin ÷ ± 40 km/L).
+  // Jadi total harian setara jarak sekian km berkendara motor.
+  const kmMotor = Math.round(totalHari / 0.1);
+
+  // 1 kali mengisi penuh baterai HP ≈ 0,005 kg CO₂. Angka ringan untuk
+  // menggambarkan bahwa emisi harian setara mengecas HP ratusan kali.
+  const ponsel = Math.round(totalHari / 0.005);
+
+  return {
+    perTahun: bulatkan(perTahun),
+    pohon: pohon,
+    kmMotor: kmMotor,
+    ponsel: ponsel,
   };
 }
 
@@ -115,52 +151,90 @@ function buatSaran(data, hasil) {
   const saran = [];
   const r = hasil.rincian;
 
+  // Cari sumber emisi terbesar agar saran utama menyasar yang paling berdampak
+  const sumber = [
+    { kunci: 'listrik', nilai: r.listrik },
+    { kunci: 'gas', nilai: r.gas },
+    { kunci: 'kendaraan', nilai: r.kendaraan },
+    { kunci: 'sampah', nilai: r.sampah },
+    { kunci: 'lain', nilai: r.lain },
+  ].sort(function (a, b) { return b.nilai - a.nilai; });
+  const terbesar = sumber[0];
+
+  const namaSumber = {
+    listrik: 'listrik', gas: 'gas dapur', kendaraan: 'kendaraan',
+    sampah: 'sampah', lain: 'kegiatan lain',
+  };
+  if (terbesar && terbesar.nilai > 0) {
+    saran.push('📌 Penyumbang karbon terbesar Anda adalah ' + namaSumber[terbesar.kunci] +
+      '. Kalau ingin cepat berdampak, fokuslah memperbaiki bagian ini lebih dulu.');
+  }
+
   // --- Listrik ---
   if (r.listrik >= 3) {
-    saran.push('💡 Pemakaian listrik Anda cukup besar. Cabut colokan alat yang tidak dipakai, dan ganti lampu biasa dengan lampu LED yang lebih hemat.');
+    saran.push('💡 Pemakaian listrik Anda cukup besar. Cabut colokan charger, TV, dan alat lain saat tidak dipakai — ' +
+      'walau mati, alat yang masih tercolok tetap "mencuri" listrik. Ganti lampu biasa dengan lampu LED: lebih terang, ' +
+      'tahan lama, dan bisa menghemat tagihan hingga sepertiganya.');
   } else if (r.listrik > 0) {
-    saran.push('💡 Matikan lampu dan kipas saat ruangan kosong. Kebiasaan kecil ini menghemat listrik dan uang.');
+    saran.push('💡 Sudah cukup hemat listrik. Biar makin baik: matikan lampu dan kipas saat ruangan kosong, ' +
+      'dan manfaatkan cahaya matahari di siang hari agar lampu tak perlu menyala.');
   }
   if ((data.acJam || 0) >= 4) {
-    saran.push('❄️ AC Anda menyala cukup lama. Setel suhu di 24–25°C dan bersihkan filternya rutin agar lebih hemat listrik.');
+    saran.push('❄️ AC Anda menyala cukup lama. Setel suhu di 24–25°C (bukan paling dingin), tutup pintu & jendela saat AC hidup, ' +
+      'dan bersihkan filternya sebulan sekali. Setiap 1°C lebih hangat bisa menghemat listrik yang lumayan.');
   }
 
   // --- Gas ---
   if (r.gas >= 1.5) {
-    saran.push('🍳 Saat memasak, tutup panci agar lebih cepat matang dan gas lebih irit. Matikan kompor tepat waktu.');
+    saran.push('🍳 Saat memasak, tutup panci agar panas tidak terbuang — masakan lebih cepat matang dan gas lebih irit. ' +
+      'Kecilkan api saat air sudah mendidih, dan siapkan semua bahan sebelum kompor dinyalakan.');
   }
 
   // --- Kendaraan ---
   if (r.kendaraan >= 2) {
-    saran.push('🛵 Untuk jarak dekat, coba jalan kaki atau bersepeda. Selain hemat bensin, badan jadi lebih sehat.');
-    saran.push('🚌 Sesekali gunakan transportasi umum atau berangkat bersama (nebeng) untuk mengurangi asap kendaraan.');
+    saran.push('🛵 Untuk jarak dekat (ke warung, masjid, atau rumah tetangga), coba jalan kaki atau bersepeda. ' +
+      'Hemat bensin, tidak macet, dan badan jadi lebih sehat.');
+    saran.push('🚌 Sesekali berangkat bersama tetangga (nebeng bergantian) atau naik angkot/bus. ' +
+      'Satu kendaraan untuk beberapa orang jauh lebih hemat daripada masing-masing membawa motor.');
   } else if (r.kendaraan > 0) {
-    saran.push('🛵 Rawat kendaraan (servis rutin, cek tekanan ban) agar bensin lebih irit dan asap lebih sedikit.');
+    saran.push('🛵 Rawat kendaraan secara rutin: servis berkala, ganti oli tepat waktu, dan cek tekanan angin ban. ' +
+      'Mesin yang sehat membuat bensin lebih irit dan asapnya lebih sedikit.');
   }
 
   // --- Sampah ---
   if (data.membakar) {
-    saran.push('🚫🔥 Sebaiknya JANGAN membakar sampah. Asapnya berbahaya untuk pernapasan dan menambah polusi. Kumpulkan lalu buang ke TPS/petugas kebersihan.');
+    saran.push('🚫🔥 Mohon JANGAN membakar sampah. Asapnya mengandung racun yang berbahaya bagi pernapasan — ' +
+      'terutama anak-anak dan orang tua — serta menambah polusi. Lebih baik kumpulkan dan serahkan ke petugas ' +
+      'kebersihan atau buang ke TPS terdekat.');
   }
   if (!data.memilah) {
-    saran.push('♻️ Mulai pisahkan sampah basah (sisa makanan) dan sampah kering (plastik, kertas). Sampah kering bisa dijual ke bank sampah.');
+    saran.push('♻️ Mulai pisahkan sampah menjadi dua: sampah basah (sisa makanan, kulit buah) dan sampah kering ' +
+      '(plastik, kertas, kaleng, botol). Sampah kering yang bersih bisa dijual ke bank sampah dan menambah penghasilan.');
+  } else {
+    saran.push('👏 Terima kasih sudah memilah sampah! Kebiasaan ini sangat membantu petugas dan lingkungan. Teruskan, ya.');
   }
   if (!data.mengompos) {
-    saran.push('🌱 Sampah sisa dapur bisa dijadikan kompos (pupuk alami) untuk tanaman. Mudah dan mengurangi sampah ke TPA.');
+    saran.push('🌱 Sampah sisa dapur (sayur, nasi, kulit buah) bisa diubah menjadi kompos — pupuk alami gratis untuk ' +
+      'tanaman di halaman. Caranya mudah: kumpulkan di ember/lubang tanah, tutup, dan biarkan menjadi tanah subur.');
   }
-  saran.push('🛍️ Bawa tas belanja sendiri dan hindari kantong plastik sekali pakai saat ke pasar atau warung.');
+  saran.push('🛍️ Bawa tas belanja sendiri dari rumah saat ke pasar atau warung, dan tolak kantong plastik sekali pakai. ' +
+    'Satu tas kain bisa dipakai ratusan kali menggantikan plastik.');
 
   // --- Aktivitas lain ---
   if ((data.barangBaruBulan || 0) >= 3) {
-    saran.push('👕 Beli barang secukupnya. Perbaiki barang yang masih bisa dipakai sebelum membeli yang baru.');
+    saran.push('👕 Beli barang seperlunya saja. Perbaiki dulu barang yang masih bisa dipakai sebelum membeli baru — ' +
+      'lebih hemat uang dan mengurangi sampah.');
   }
   if ((data.dagingMinggu || 0) >= 5) {
-    saran.push('🥗 Perbanyak sayur dan lauk lokal seperti tempe/tahu. Selain sehat, produksinya lebih ramah lingkungan.');
+    saran.push('🥗 Coba selingi menu dengan lauk nabati seperti tempe, tahu, dan sayur lokal. Selain lebih murah dan sehat, ' +
+      'produksinya jauh lebih ramah lingkungan dibanding daging.');
   }
 
   // --- Umum ---
-  saran.push('🌳 Tanam pohon atau tanaman di sekitar rumah. Tanaman membantu menyerap karbon dan membuat udara lebih segar.');
-  saran.push('💧 Hemat air bersih. Matikan keran saat tidak dipakai — menghemat air juga menghemat energi.');
+  saran.push('🌳 Tanam pohon atau tanaman di sekitar rumah. Selain membuat udara lebih segar dan halaman lebih teduh, ' +
+    'tanaman ikut menyerap karbon setiap hari.');
+  saran.push('💧 Hemat air bersih: matikan keran saat menggosok gigi atau menyabun, dan perbaiki keran yang bocor. ' +
+    'Menghemat air juga menghemat energi untuk memompanya.');
 
   return saran;
 }
