@@ -80,6 +80,29 @@ const KONFIGURASI = {
   },
 
   /* ------------------------------------------------------------------
+   * 5b) DAMPAK PADA SUHU BUMI  (untuk pesan "bayangkan jika bersama-sama")
+   *
+   *   Ilmuwan iklim memakai hubungan LINEAR: setiap tambahan CO₂ menaikkan
+   *   suhu bumi dengan takaran tetap. Menurut SRM360
+   *   ("Every tonne of CO₂ adds to global warming", srm360.org) dan sejalan
+   *   dengan angka TCRE IPCC:
+   *
+   *      setiap 1 TRILIUN ton CO₂  →  suhu bumi naik ± 0,45 °C
+   *
+   *   Dari sini kita bisa memperkirakan dampak bila banyak rumah tangga
+   *   berperilaku sama. Angka penduduk/rumah tangga memakai perkiraan
+   *   SELURUH DUNIA — silakan ganti bila ingin memakai skala lain
+   *   (mis. Indonesia: ± 70.000.000 rumah tangga & 280.000.000 jiwa).
+   * ------------------------------------------------------------------ */
+  PEMANASAN: {
+    derajat_per_triliun_ton_co2: 0.45, // °C per 1 triliun (1e12) ton CO₂  (SRM360 / TCRE)
+    jumlah_rumah_tangga: 2000000000,   // ± 2 miliar rumah tangga di seluruh dunia
+    jumlah_jiwa: 8000000000,           // ± 8 miliar jiwa (hampir seluruh penduduk bumi)
+    label_wilayah: 'di seluruh dunia', // ikut narasi (mis. 'di Indonesia' bila skala nasional)
+    tahun_proyeksi: 30,                // proyeksi 1 generasi (± 30 tahun)
+  },
+
+  /* ------------------------------------------------------------------
    * 6) PENYIMPANAN DATA (Google Sheets lewat Google Apps Script)
    *    Tempel URL "Web App" hasil deploy Apps Script Anda di sini.
    *    Panduan lengkap ada di README.md.
