@@ -183,6 +183,9 @@
     // Perbandingan yang mudah dibayangkan
     aturSetara(setara);
 
+    // Dampak pada suhu bumi bila dilakukan bersama-sama
+    aturPemanasan(hasil.total);
+
     // Rincian per sumber
     aturRincian(hasil.rincian);
 
@@ -257,6 +260,50 @@
         '<div class="setara-ket">' + k.ket + '</div>';
       wadah.appendChild(el);
     });
+  }
+
+  // Format massa CO₂ besar menjadi "juta ton" / "miliar ton" yang mudah dibaca
+  function formatMassa(ton) {
+    if (ton >= 1e9) return formatAngka(ton / 1e9) + ' miliar ton';
+    if (ton >= 1e6) return formatAngka(ton / 1e6) + ' juta ton';
+    if (ton >= 1e3) return formatAngka(ton / 1e3) + ' ribu ton';
+    return Math.round(ton).toLocaleString('id-ID') + ' ton';
+  }
+
+  // Format kenaikan suhu (bisa sangat kecil) dengan jumlah desimal yang pas
+  function formatSuhu(nilai) {
+    if (nilai >= 0.01) return nilai.toLocaleString('id-ID', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (nilai >= 0.001) return nilai.toLocaleString('id-ID', { minimumFractionDigits: 3, maximumFractionDigits: 3 });
+    if (nilai > 0) return nilai.toLocaleString('id-ID', { minimumFractionDigits: 4, maximumFractionDigits: 4 });
+    return '0';
+  }
+
+  function aturPemanasan(totalHari) {
+    const kotak = $('suhuMassaTahun');
+    if (!kotak || typeof hitungPemanasan !== 'function') return;
+    const p = hitungPemanasan(totalHari);
+
+    const jutaJiwa = Math.round(p.jumlahJiwa / 1e6);
+    const jutaRumah = Math.round(p.jumlahRumah / 1e6);
+
+    const narasi = $('suhuNaratif');
+    if (narasi) {
+      narasi.textContent = 'Bayangkan kalau ± ' + jutaRumah + ' juta rumah tangga di Indonesia ' +
+        '(sekitar ' + jutaJiwa + ' juta jiwa) punya kebiasaan seperti Anda…';
+    }
+
+    $('suhuMassaTahun').textContent = '± ' + formatMassa(p.kolektifTonTahun);
+
+    const tahunLabel = $('suhuTahunLabel');
+    if (tahunLabel) tahunLabel.textContent = p.tahunProyeksi;
+    $('suhuNaikProyeksi').textContent = '± ' + formatSuhu(p.naikProyeksi) + '°C';
+
+    const pesan = $('suhuPesan');
+    if (pesan) {
+      pesan.textContent = '💚 Kabar baiknya: karena pemanasan ini kita buat bersama, kita juga bisa ' +
+        'menahannya bersama. Setiap keluarga yang berhemat ikut memperlambat naiknya suhu bumi. ' +
+        'Perubahan besar selalu dimulai dari satu rumah — mulai dari rumah Anda, hari ini. 🌏';
+    }
   }
 
   function aturRincian(rincian) {

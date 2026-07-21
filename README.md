@@ -18,6 +18,7 @@ responsif (mobile-first), dan di-*hosting* gratis di **Vercel**.
 - 🧮 **Kalkulator lengkap** — listrik (kWh **atau** tagihan Rp), gas elpiji, bensin, pengelolaan sampah, dan kegiatan lain.
 - 🟢 **Kategori otomatis** — Rendah / Sedang / Tinggi + **keterangan yang hangat & detail** dan saran yang menyesuaikan jawaban warga.
 - 🔎 **Perbandingan "setara dengan"** — angka kg CO₂ diubah jadi hal yang mudah dibayangkan warga (jumlah pohon, km naik motor, kali cas HP) + total per tahun.
+- 🌡️ **Dampak pada suhu bumi (bila dilakukan bersama-sama)** — memperkirakan kenaikan suhu bumi bila jutaan rumah tangga berkebiasaan sama, memakai acuan ilmiah **0,45°C per 1 triliun ton CO₂** ([SRM360](https://srm360.org/article/every-tonne-of-co2-adds-to-global-warming/), sejalan dengan IPCC).
 - 👋 **Sapaan personal** — hasil menyapa warga dengan namanya sendiri.
 - 💾 **Simpan ke Google Sheets** (via Google Apps Script) + **cadangan otomatis** di perangkat (localStorage).
 - 🔒 **Dashboard admin** — lihat semua data warga, **edit** & **hapus** tiap data, serta **unduh ke Excel (.xlsx)** atau **CSV** (tanpa pustaka pihak ketiga).
@@ -141,6 +142,10 @@ Semua angka ada di **`js/config.js`** dan diberi penjelasan. Contoh yang sering 
 | `TARIF_LISTRIK_PER_KWH` | Rp per kWh (untuk konversi tagihan) | `1444.70` |
 | `AMBANG_KATEGORI.rendah_maks` | batas atas kategori "Rendah" (kg/hari) | `5` |
 | `AMBANG_KATEGORI.sedang_maks` | batas atas kategori "Sedang" (kg/hari) | `12` |
+| `PEMANASAN.derajat_per_triliun_ton_co2` | °C kenaikan suhu bumi per 1 triliun ton CO₂ | `0.45` |
+| `PEMANASAN.jumlah_rumah_tangga` | jumlah rumah tangga untuk skenario "bersama-sama" | `70000000` |
+| `PEMANASAN.jumlah_jiwa` | jumlah jiwa (untuk narasi "ratusan juta warga") | `280000000` |
+| `PEMANASAN.tahun_proyeksi` | rentang tahun proyeksi kenaikan suhu | `30` |
 
 Cukup ubah angkanya, simpan, lalu muat ulang halaman.
 

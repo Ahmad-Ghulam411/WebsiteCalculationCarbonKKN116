@@ -141,6 +141,45 @@ function hitungSetara(totalHari) {
 }
 
 /**
+ * Memperkirakan dampak pada SUHU BUMI — terutama untuk pesan
+ * "bayangkan kalau jutaan warga melakukannya bersama-sama".
+ *
+ * Dasar ilmiah (linear): setiap 1 triliun ton CO₂ menaikkan suhu bumi
+ * ± 0,45 °C (SRM360 / TCRE IPCC). 1 triliun ton = 1e12 ton = 1e15 kg,
+ * jadi 1 kg CO₂ ≈ 0,45 / 1e15 °C.
+ *
+ * @param {number} totalHari - kg CO₂e per hari untuk SATU rumah tangga
+ * @returns {Object} rincian dampak individu & kolektif
+ */
+function hitungPemanasan(totalHari) {
+  const P = KONFIGURASI.PEMANASAN;
+  const derajatPerKg = P.derajat_per_triliun_ton_co2 / 1e15; // °C per 1 kg CO₂
+
+  // Emisi satu rumah tangga dalam setahun
+  const rumahTahunKg = totalHari * 365;
+
+  // Kalau SEMUA rumah tangga (mis. seluruh Indonesia) berbuat sama
+  const kolektifKgTahun = rumahTahunKg * P.jumlah_rumah_tangga;
+  const kolektifTonTahun = kolektifKgTahun / 1000;
+
+  // Kenaikan suhu bumi akibat karbon kolektif itu
+  const naikPerTahun = kolektifKgTahun * derajatPerKg;          // °C per tahun
+  const naikProyeksi = naikPerTahun * P.tahun_proyeksi;         // °C selama N tahun
+  const kolektifTonProyeksi = kolektifTonTahun * P.tahun_proyeksi;
+
+  return {
+    derajatPerTriliunTon: P.derajat_per_triliun_ton_co2,
+    jumlahRumah: P.jumlah_rumah_tangga,
+    jumlahJiwa: P.jumlah_jiwa,
+    tahunProyeksi: P.tahun_proyeksi,
+    kolektifTonTahun: Math.round(kolektifTonTahun),
+    kolektifTonProyeksi: Math.round(kolektifTonProyeksi),
+    naikPerTahun: naikPerTahun,
+    naikProyeksi: naikProyeksi,
+  };
+}
+
+/**
  * Membuat daftar saran praktis yang mudah dipahami warga,
  * disesuaikan dengan jawaban mereka.
  * @param {Object} data   - data formulir
