@@ -265,6 +265,28 @@ button { font-family: inherit; cursor: pointer; }
   .langkah-panah { transform: none; }
 }
 
+/* ====================== AJAKAN CEK BANK SAMPAH =========================== */
+.seksi-rapat { padding: 0 0 34px; }
+.cta-bank {
+  display: grid; grid-template-columns: 1fr; gap: 16px; align-items: center; text-align: center;
+  background: linear-gradient(135deg, #0e5e33, #0a4f5e); color: #fff;
+  border-radius: var(--radius); padding: 28px 24px; box-shadow: var(--bayang);
+  position: relative; overflow: hidden;
+}
+.cta-bank::before {
+  content: ""; position: absolute; top: 0; left: 0; width: 100%; height: 5px;
+  background: linear-gradient(90deg, var(--kuning), var(--hijau-terang), var(--biru-terang));
+}
+.cta-bank-ikon { font-size: 3rem; line-height: 1; }
+.cta-bank-teks h2 { font-size: clamp(1.25rem, 4vw, 1.7rem); color: #fff; margin-bottom: 8px; }
+.cta-bank-teks p { color: #d3ecdd; font-size: .98rem; }
+.cta-bank-teks strong { color: var(--kuning); }
+.cta-bank-tombol { white-space: nowrap; }
+
+@media (min-width: 820px) {
+  .cta-bank { grid-template-columns: auto 1fr auto; text-align: left; gap: 24px; padding: 30px 34px; }
+}
+
 /* ================================ FORM =================================== */
 .form-karbon {
   background: var(--putih); border-radius: var(--radius); box-shadow: var(--bayang);
@@ -294,7 +316,10 @@ button { font-family: inherit; cursor: pointer; }
   outline: none; border-color: var(--hijau-terang); box-shadow: 0 0 0 4px rgba(46,158,91,.15); background: #fff;
 }
 .input-salah { border-color: var(--merah) !important; box-shadow: 0 0 0 4px rgba(229,85,46,.15) !important; animation: goyang .4s; }
-.petunjuk { display: block; margin-top: 6px; color: var(--tinta-lembut); font-size: .85rem; }
+.petunjuk { display: block; margin-top: 6px; color: var(--tinta-lembut); font-size: .85rem; line-height: 1.55; }
+.petunjuk strong { color: var(--tinta); }
+.petunjuk em { color: var(--hijau-tua); font-style: normal; font-weight: 600; }
+.grup-hint strong { color: var(--tinta); }
 .dua-kolom { display: grid; grid-template-columns: 1fr; gap: 0; }
 
 /* Pilihan pill (Ya/Tidak, mode) */

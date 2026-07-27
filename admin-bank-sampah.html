@@ -1,0 +1,548 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="theme-color" content="#0e5e33">
+  <title>Dashboard Admin Bank Sampah — Kampung Baru, Kota Parepare</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/bank-sampah.css">
+</head>
+<body>
+
+  <!-- ============================ LAYAR MASUK ============================ -->
+  <div class="adm-masuk-layar" id="layarMasuk">
+    <div class="adm-masuk-kotak">
+      <div class="adm-masuk-ikon">♻️</div>
+      <h1>Dashboard Bank Sampah</h1>
+      <p class="adm-masuk-ket">
+        Halaman khusus <strong>petugas bank sampah</strong> Kelurahan Kampung Baru.
+        Akun ini <strong>berbeda</strong> dengan akun admin data jejak karbon.
+      </p>
+
+      <form id="formMasuk" novalidate>
+        <div class="adm-masuk-field">
+          <label for="inputUser">Nama Pengguna (Username)</label>
+          <input type="text" id="inputUser" autocomplete="username" placeholder="Contoh: petugasbanksampah">
+        </div>
+        <div class="adm-masuk-field">
+          <label for="inputSandi">Kata Sandi</label>
+          <input type="password" id="inputSandi" autocomplete="current-password" placeholder="Kata sandi petugas">
+        </div>
+        <p class="adm-masuk-pesan" id="pesanMasuk"></p>
+        <button type="submit" class="tombol tombol-penuh">🔓 Masuk Dashboard</button>
+      </form>
+
+      <p class="adm-masuk-bawah">
+        <a href="index.html">← Kembali ke Beranda</a> ·
+        <a href="bank-sampah.html">Halaman Warga</a>
+      </p>
+    </div>
+  </div>
+
+  <!-- ============================ DASHBOARD ============================ -->
+  <div class="adm-halaman tersembunyi" id="layarDashboard">
+
+    <header class="adm-atas">
+      <div class="wadah adm-atas-isi">
+        <h1>♻️ Dashboard Bank Sampah
+          <small>Kelurahan Kampung Baru, Kota Parepare</small>
+        </h1>
+        <div class="adm-atas-aksi">
+          <button type="button" class="tombol tombol-kecil tombol-putih" id="btnMuat">↻ Muat Ulang</button>
+          <a href="bank-sampah.html" class="tombol tombol-kecil tombol-putih" target="_blank" rel="noopener">👁️ Halaman Warga</a>
+          <button type="button" class="tombol tombol-kecil tombol-putih" id="btnKeluar">🚪 Keluar</button>
+        </div>
+      </div>
+    </header>
+
+    <main class="adm-badan">
+      <div class="wadah">
+
+        <div class="adm-pita adm-pita-info" id="pitaSumber">Memuat data…</div>
+
+        <!-- Ringkasan angka -->
+        <div class="adm-stat-grid">
+          <div class="adm-stat">
+            <span class="adm-stat-ikon">👥</span>
+            <span class="adm-stat-angka" id="statNasabah">0</span>
+            <span class="adm-stat-label">Warga Terdaftar</span>
+          </div>
+          <div class="adm-stat adm-stat-2">
+            <span class="adm-stat-ikon">⚖️</span>
+            <span class="adm-stat-angka" id="statBerat">0 kg</span>
+            <span class="adm-stat-label">Sampah Terkumpul</span>
+          </div>
+          <div class="adm-stat adm-stat-3">
+            <span class="adm-stat-ikon">💰</span>
+            <span class="adm-stat-angka" id="statBelum">Rp 0</span>
+            <span class="adm-stat-label">Belum Dicairkan</span>
+          </div>
+          <div class="adm-stat adm-stat-4">
+            <span class="adm-stat-ikon">📨</span>
+            <span class="adm-stat-angka" id="statPengajuan">0</span>
+            <span class="adm-stat-label">Pengajuan Menunggu</span>
+          </div>
+        </div>
+
+        <!-- Tab -->
+        <div class="adm-tab-baris" role="tablist">
+          <button type="button" class="adm-tab aktif" data-tab="warga">👥 Data Warga</button>
+          <button type="button" class="adm-tab" data-tab="setoran">⚖️ Setoran Sampah</button>
+          <button type="button" class="adm-tab" data-tab="pencairan">💵 Pencairan <span class="bs-badge bs-badge-merah tersembunyi" id="lencanaPengajuan">0</span></button>
+          <button type="button" class="adm-tab" data-tab="panduan">📖 Cara Pakai</button>
+        </div>
+
+        <!-- =================== TAB 1: DATA WARGA =================== -->
+        <section class="adm-panel aktif" id="panelWarga">
+
+          <div class="adm-kotak">
+            <h2 class="adm-kotak-judul" id="judulFormWarga">➕ Tambah Warga Bank Sampah Baru</h2>
+            <p class="adm-kotak-ket" id="ketFormWarga">
+              Isi data warga yang mendaftar jadi nasabah. Yang bertanda <span class="wajib">*</span> wajib diisi.
+              ID Nasabah akan dibuat otomatis kalau dikosongkan.
+            </p>
+
+            <form id="formWarga" novalidate>
+              <div class="adm-form-grid adm-form-grid-3">
+                <div class="adm-field">
+                  <label for="wId">ID Nasabah</label>
+                  <input type="text" id="wId" placeholder="Kosongkan = otomatis">
+                  <small>Nomor ini yang dipakai warga untuk mengecek tabungannya. Contoh: <strong>BS-0001</strong>.</small>
+                </div>
+                <div class="adm-field">
+                  <label for="wNama">Nama Lengkap <span class="wajib">*</span></label>
+                  <input type="text" id="wNama" placeholder="Contoh: Budi Santoso">
+                  <small>Tulis sesuai KTP agar mudah dicocokkan.</small>
+                </div>
+                <div class="adm-field">
+                  <label for="wNik">NIK (16 digit)</label>
+                  <input type="text" id="wNik" inputmode="numeric" maxlength="16" placeholder="Contoh: 7372010101900001">
+                  <small>Boleh dikosongkan, tapi sangat membantu bila warga lupa ID.</small>
+                </div>
+                <div class="adm-field adm-field-lebar">
+                  <label for="wAlamat">Alamat</label>
+                  <input type="text" id="wAlamat" placeholder="Contoh: Jl. Bau Massepe No. 12, Kampung Baru">
+                </div>
+                <div class="adm-field">
+                  <label for="wRt">RT</label>
+                  <input type="text" id="wRt" inputmode="numeric" placeholder="Contoh: 02">
+                  <small>Dipakai untuk menyaring data per RT.</small>
+                </div>
+                <div class="adm-field">
+                  <label for="wRw">RW</label>
+                  <input type="text" id="wRw" inputmode="numeric" placeholder="Contoh: 05">
+                </div>
+                <div class="adm-field">
+                  <label for="wHp">No. HP / WA</label>
+                  <input type="tel" id="wHp" inputmode="tel" placeholder="Contoh: 0812xxxxxxx">
+                  <small>Untuk menghubungi warga saat pencairan siap diambil.</small>
+                </div>
+                <div class="adm-field">
+                  <label for="wTanggal">Tanggal Daftar</label>
+                  <input type="date" id="wTanggal">
+                </div>
+                <div class="adm-field">
+                  <label for="wStatus">Status Nasabah</label>
+                  <select id="wStatus">
+                    <option value="Aktif">Aktif — masih menabung</option>
+                    <option value="Nonaktif">Nonaktif — berhenti/pindah</option>
+                  </select>
+                </div>
+                <div class="adm-field adm-field-lebar">
+                  <label for="wCatatan">Catatan</label>
+                  <input type="text" id="wCatatan" placeholder="Contoh: ketua RT, pengurus bank sampah, dll.">
+                </div>
+              </div>
+
+              <div class="adm-form-aksi">
+                <button type="submit" class="tombol" id="btnSimpanWarga">💾 Simpan Data Warga</button>
+                <button type="button" class="tombol tombol-kecil tombol-batal tersembunyi" id="btnBatalWarga">Batal Ubah</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="adm-kotak">
+            <h2 class="adm-kotak-judul">📋 Daftar Warga Bank Sampah</h2>
+            <p class="adm-kotak-ket">Gunakan penyaring di bawah untuk mencari warga dengan cepat.</p>
+
+            <div class="adm-filter">
+              <div class="adm-filter-judul">🔎 Penyaring Data Warga</div>
+              <div class="adm-filter-grid">
+                <div class="adm-field">
+                  <label for="fwCari">Cari</label>
+                  <input type="search" id="fwCari" placeholder="Nama / ID / NIK / No. HP">
+                </div>
+                <div class="adm-field">
+                  <label for="fwRt">RT</label>
+                  <select id="fwRt"><option value="">Semua RT</option></select>
+                </div>
+                <div class="adm-field">
+                  <label for="fwRw">RW</label>
+                  <select id="fwRw"><option value="">Semua RW</option></select>
+                </div>
+                <div class="adm-field">
+                  <label for="fwStatus">Status</label>
+                  <select id="fwStatus">
+                    <option value="">Semua Status</option>
+                    <option value="Aktif">Aktif</option>
+                    <option value="Nonaktif">Nonaktif</option>
+                  </select>
+                </div>
+                <div class="adm-field">
+                  <label for="fwSaldo">Tabungan</label>
+                  <select id="fwSaldo">
+                    <option value="">Semua</option>
+                    <option value="ada">Masih ada yang belum dicairkan</option>
+                    <option value="kosong">Sudah cair / belum pernah setor</option>
+                  </select>
+                </div>
+                <div class="adm-field">
+                  <label for="fwSetor">Keaktifan Menyetor</label>
+                  <select id="fwSetor">
+                    <option value="">Semua</option>
+                    <option value="pernah">Pernah menyetor</option>
+                    <option value="belum">Belum pernah menyetor</option>
+                  </select>
+                </div>
+                <div class="adm-field">
+                  <label for="fwUrut">Urutkan</label>
+                  <select id="fwUrut">
+                    <option value="nama">Nama (A → Z)</option>
+                    <option value="id">ID Nasabah</option>
+                    <option value="berat">Sampah terbanyak</option>
+                    <option value="belum">Tabungan belum cair terbanyak</option>
+                    <option value="baru">Terbaru mendaftar</option>
+                  </select>
+                </div>
+              </div>
+              <div class="adm-filter-aksi">
+                <button type="button" class="tombol tombol-kecil tombol-batal" id="btnResetWarga">↺ Bersihkan Penyaring</button>
+                <button type="button" class="tombol tombol-kecil tombol-excel" id="btnUnduhWarga">⬇️ Unduh Excel</button>
+                <span class="adm-filter-info" id="infoJumlahWarga"></span>
+              </div>
+            </div>
+
+            <div id="tabelWarga"></div>
+          </div>
+        </section>
+
+        <!-- =================== TAB 2: SETORAN =================== -->
+        <section class="adm-panel" id="panelSetoran">
+
+          <div class="adm-kotak">
+            <h2 class="adm-kotak-judul" id="judulFormSetoran">➕ Catat Setoran Sampah</h2>
+            <p class="adm-kotak-ket" id="ketFormSetoran">
+              Isi setiap kali warga menyetor sampah. Pendapatan warga dihitung otomatis
+              dari <strong>berat × harga per kg</strong>.
+            </p>
+
+            <form id="formSetoran" novalidate>
+              <div class="adm-form-grid adm-form-grid-3">
+                <div class="adm-field adm-field-lebar">
+                  <label for="sWarga">Warga Penyetor <span class="wajib">*</span></label>
+                  <select id="sWarga"><option value="">— Pilih warga —</option></select>
+                  <small>Belum ada namanya? Daftarkan dulu di tab <strong>👥 Data Warga</strong>.</small>
+                </div>
+                <div class="adm-field">
+                  <label for="sTanggal">Tanggal Setor</label>
+                  <input type="date" id="sTanggal">
+                </div>
+                <div class="adm-field">
+                  <label for="sJenis">Jenis Sampah <span class="wajib">*</span></label>
+                  <select id="sJenis">
+                    <option value="Kering">Kering — plastik, kertas, kaleng, botol</option>
+                    <option value="Basah">Basah — sisa dapur, sayur, daun</option>
+                  </select>
+                </div>
+                <div class="adm-field">
+                  <label for="sHarga">Harga per kg (Rp)</label>
+                  <input type="number" id="sHarga" min="0" step="100" inputmode="numeric">
+                  <small>Terisi otomatis sesuai jenis sampah. Boleh diubah kalau harga pengepul berbeda.</small>
+                </div>
+                <div class="adm-field">
+                  <label for="sBerat">Berat (kg)</label>
+                  <input type="number" id="sBerat" min="0" step="0.1" inputmode="decimal" placeholder="Contoh: 4.5">
+                  <small>Isi hasil timbangan. Kalau tidak ditimbang, kosongkan saja dan isi jumlah kantong.</small>
+                </div>
+                <div class="adm-field">
+                  <label for="sKantong">Jumlah Kantong</label>
+                  <input type="number" id="sKantong" min="0" step="1" inputmode="numeric" placeholder="Contoh: 2">
+                  <small>Bila berat dikosongkan, 1 kantong dihitung <strong><span id="ketKgKantong">3</span> kg</strong>.</small>
+                </div>
+                <div class="adm-field adm-field-lebar">
+                  <label for="sCatatan">Catatan</label>
+                  <input type="text" id="sCatatan" placeholder="Contoh: botol plastik bersih, kardus basah, dll.">
+                </div>
+              </div>
+
+              <div class="adm-hitung">
+                <div>
+                  <div class="adm-hitung-label">Berat yang dipakai untuk menghitung</div>
+                  <div class="adm-hitung-nilai" id="hitungBerat">0 kg</div>
+                </div>
+                <div>
+                  <div class="adm-hitung-label">Pendapatan warga dari setoran ini</div>
+                  <div class="adm-hitung-nilai" id="hitungRp">Rp 0</div>
+                </div>
+              </div>
+
+              <div class="adm-form-aksi">
+                <button type="submit" class="tombol" id="btnSimpanSetoran">💾 Simpan Setoran</button>
+                <button type="button" class="tombol tombol-kecil tombol-batal tersembunyi" id="btnBatalSetoran">Batal Ubah</button>
+              </div>
+            </form>
+          </div>
+
+          <div class="adm-kotak">
+            <h2 class="adm-kotak-judul">📋 Riwayat Semua Setoran</h2>
+            <p class="adm-kotak-ket">
+              Tandai <strong>“Sudah Dicairkan”</strong> setelah uang benar-benar diserahkan ke warga.
+            </p>
+
+            <div class="adm-filter">
+              <div class="adm-filter-judul">🔎 Penyaring Setoran</div>
+              <div class="adm-filter-grid">
+                <div class="adm-field">
+                  <label for="fsCari">Cari</label>
+                  <input type="search" id="fsCari" placeholder="Nama warga / ID Nasabah">
+                </div>
+                <div class="adm-field">
+                  <label for="fsJenis">Jenis Sampah</label>
+                  <select id="fsJenis">
+                    <option value="">Semua Jenis</option>
+                    <option value="Kering">Kering</option>
+                    <option value="Basah">Basah</option>
+                  </select>
+                </div>
+                <div class="adm-field">
+                  <label for="fsStatus">Status Pencairan</label>
+                  <select id="fsStatus">
+                    <option value="">Semua Status</option>
+                    <option value="Belum Dicairkan">Belum Dicairkan</option>
+                    <option value="Sudah Dicairkan">Sudah Dicairkan</option>
+                  </select>
+                </div>
+                <div class="adm-field">
+                  <label for="fsRt">RT</label>
+                  <select id="fsRt"><option value="">Semua RT</option></select>
+                </div>
+                <div class="adm-field">
+                  <label for="fsDari">Tanggal Dari</label>
+                  <input type="date" id="fsDari">
+                </div>
+                <div class="adm-field">
+                  <label for="fsSampai">Tanggal Sampai</label>
+                  <input type="date" id="fsSampai">
+                </div>
+                <div class="adm-field">
+                  <label for="fsUrut">Urutkan</label>
+                  <select id="fsUrut">
+                    <option value="baru">Tanggal terbaru</option>
+                    <option value="lama">Tanggal terlama</option>
+                    <option value="besar">Pendapatan terbesar</option>
+                    <option value="berat">Berat terbesar</option>
+                    <option value="nama">Nama warga (A → Z)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="adm-filter-aksi">
+                <button type="button" class="tombol tombol-kecil tombol-batal" id="btnResetSetoran">↺ Bersihkan Penyaring</button>
+                <button type="button" class="tombol tombol-kecil tombol-excel" id="btnUnduhSetoran">⬇️ Unduh Excel</button>
+                <span class="adm-filter-info" id="infoJumlahSetoran"></span>
+              </div>
+            </div>
+
+            <div id="tabelSetoran"></div>
+          </div>
+        </section>
+
+        <!-- =================== TAB 3: PENCAIRAN =================== -->
+        <section class="adm-panel" id="panelPencairan">
+          <div class="adm-kotak">
+            <h2 class="adm-kotak-judul">💵 Pengajuan Pencairan dari Warga</h2>
+            <p class="adm-kotak-ket">
+              Daftar warga yang meminta uang tabungannya dicairkan. Setelah uang diserahkan,
+              klik <strong>“✅ Setujui &amp; Tandai Cair”</strong> — seluruh setoran warga tersebut
+              otomatis berubah menjadi <em>Sudah Dicairkan</em>.
+            </p>
+
+            <div class="adm-filter">
+              <div class="adm-filter-judul">🔎 Penyaring Pengajuan</div>
+              <div class="adm-filter-grid">
+                <div class="adm-field">
+                  <label for="fpCari">Cari</label>
+                  <input type="search" id="fpCari" placeholder="Nama warga / ID Nasabah">
+                </div>
+                <div class="adm-field">
+                  <label for="fpStatus">Status</label>
+                  <select id="fpStatus">
+                    <option value="Diajukan">Menunggu Diproses</option>
+                    <option value="">Semua Status</option>
+                    <option value="Disetujui">Disetujui</option>
+                    <option value="Ditolak">Ditolak</option>
+                  </select>
+                </div>
+                <div class="adm-field">
+                  <label for="fpUrut">Urutkan</label>
+                  <select id="fpUrut">
+                    <option value="baru">Pengajuan terbaru</option>
+                    <option value="lama">Pengajuan terlama</option>
+                    <option value="besar">Jumlah terbesar</option>
+                  </select>
+                </div>
+              </div>
+              <div class="adm-filter-aksi">
+                <button type="button" class="tombol tombol-kecil tombol-batal" id="btnResetPengajuan">↺ Bersihkan Penyaring</button>
+                <button type="button" class="tombol tombol-kecil tombol-excel" id="btnUnduhPengajuan">⬇️ Unduh Excel</button>
+                <span class="adm-filter-info" id="infoJumlahPengajuan"></span>
+              </div>
+            </div>
+
+            <div id="tabelPengajuan"></div>
+          </div>
+
+          <div class="adm-kotak">
+            <h2 class="adm-kotak-judul">⚡ Pencairan Langsung (Tanpa Pengajuan)</h2>
+            <p class="adm-kotak-ket">
+              Kalau warga datang langsung ke sekretariat dan uangnya diserahkan saat itu juga,
+              petugas bisa menandai seluruh tabungannya sebagai sudah dicairkan dari sini.
+            </p>
+            <div class="adm-form-grid">
+              <div class="adm-field">
+                <label for="cairWarga">Pilih Warga</label>
+                <select id="cairWarga"><option value="">— Pilih warga —</option></select>
+                <small id="cairInfo">Pilih nama warga untuk melihat sisa tabungannya.</small>
+              </div>
+              <div class="adm-field" style="justify-content:flex-end">
+                <button type="button" class="tombol" id="btnCairLangsung">💵 Tandai Seluruh Tabungan Sudah Dicairkan</button>
+              </div>
+            </div>
+          </div>
+        </section>
+
+        <!-- =================== TAB 4: PANDUAN =================== -->
+        <section class="adm-panel" id="panelPanduan">
+          <div class="adm-panduan-kotak">
+            <h3>📖 Panduan Singkat untuk Petugas</h3>
+            <p>
+              Dashboard ini dipakai untuk mencatat tabungan sampah warga Kampung Baru.
+              Semua yang dicatat di sini <strong>langsung terlihat oleh warga</strong> di halaman
+              <a href="bank-sampah.html" target="_blank" rel="noopener">Cek Bank Sampah</a> saat mereka
+              memasukkan ID Nasabahnya. Jadi mohon isi dengan teliti, ya. 🙏
+            </p>
+
+            <h3>🚀 Alur Kerja Sehari-hari</h3>
+            <ol class="adm-langkah">
+              <li><strong>Warga baru mendaftar?</strong> Buka tab <strong>👥 Data Warga</strong>, isi nama
+                  (wajib), NIK, alamat, RT/RW, dan No. HP, lalu klik <em>Simpan Data Warga</em>.
+                  Sistem membuatkan ID Nasabah otomatis, misalnya <strong>BS-0001</strong>.</li>
+              <li><strong>Catat ID Nasabah di buku tabungan warga.</strong> ID inilah yang mereka
+                  pakai untuk mengecek tabungannya sendiri dari HP.</li>
+              <li><strong>Warga menyetor sampah?</strong> Buka tab <strong>⚖️ Setoran Sampah</strong>,
+                  pilih namanya, pilih jenis sampah (kering/basah), isi berat hasil timbangan,
+                  lalu <em>Simpan Setoran</em>. Pendapatan warga dihitung otomatis.</li>
+              <li><strong>Warga mengajukan pencairan?</strong> Pengajuannya masuk ke tab
+                  <strong>💵 Pencairan</strong>. Serahkan uangnya, lalu klik
+                  <em>✅ Setujui &amp; Tandai Cair</em>.</li>
+              <li><strong>Ingin laporan?</strong> Klik <em>⬇️ Unduh Excel</em> di setiap tabel.
+                  Yang terunduh adalah data <strong>sesuai penyaring yang sedang aktif</strong>.</li>
+            </ol>
+
+            <h3>🧾 Cara Mengisi Setoran dengan Benar</h3>
+            <p>
+              Pendapatan warga dihitung dengan rumus sederhana:
+              <strong>Berat (kg) × Harga per kg = Pendapatan</strong>.
+            </p>
+            <ul class="adm-langkah">
+              <li><strong>Kalau sampah ditimbang:</strong> isi kolom <em>Berat (kg)</em>.
+                  Kolom <em>Jumlah Kantong</em> boleh ikut diisi sebagai catatan.</li>
+              <li><strong>Kalau tidak ditimbang:</strong> kosongkan <em>Berat</em>, cukup isi
+                  <em>Jumlah Kantong</em>. Sistem memperkirakan 1 kantong =
+                  <strong><span id="panduanKgKantong">3</span> kg</strong>.</li>
+              <li><strong>Kalau harga pengepul berubah:</strong> ubah saja kolom
+                  <em>Harga per kg</em> sebelum menyimpan. Perubahan hanya berlaku untuk
+                  setoran yang sedang diisi.</li>
+            </ul>
+
+            <div class="adm-catatan">
+              <strong>⚠️ Perhatian:</strong> tombol <strong>🗑️ Hapus</strong> pada data warga akan
+              menghapus warga <strong>beserta seluruh riwayat setoran dan pengajuannya</strong>, dan
+              tidak bisa dibatalkan. Kalau warga hanya berhenti menabung, lebih baik ubah
+              <em>Status Nasabah</em> menjadi <strong>Nonaktif</strong> — datanya tetap tersimpan.
+            </div>
+
+            <h3>🏷️ Arti Istilah di Dashboard</h3>
+            <div class="adm-tanya">
+              <details>
+                <summary>Belum Dicairkan</summary>
+                <p>Uang hasil sampah yang <strong>masih disimpan bank sampah</strong> dan belum
+                   diserahkan ke warga. Inilah angka yang bisa diajukan warga untuk dicairkan.</p>
+              </details>
+            </div>
+            <div class="adm-tanya">
+              <details>
+                <summary>Sudah Dicairkan</summary>
+                <p>Uang yang <strong>sudah diterima warga</strong>. Setoran yang sudah bertanda ini
+                   tidak lagi dihitung sebagai tabungan berjalan.</p>
+              </details>
+            </div>
+            <div class="adm-tanya">
+              <details>
+                <summary>Sampah Kering vs Sampah Basah</summary>
+                <p><strong>Kering</strong> = plastik, kertas, kardus, kaleng, botol — bisa dijual ke
+                   pengepul dengan harga lebih tinggi. <strong>Basah</strong> = sisa dapur, sayur,
+                   kulit buah, daun — diolah menjadi kompos.</p>
+              </details>
+            </div>
+            <div class="adm-tanya">
+              <details>
+                <summary>Kenapa data saya hilang setelah ganti HP/laptop?</summary>
+                <p id="panduanSumber">
+                  Kemungkinan penyimpanan Google Sheets belum diaktifkan, sehingga data hanya
+                  tersimpan di perangkat yang dipakai mengisi. Minta bantuan pengelola website
+                  untuk mengisi <strong>BANK_SAMPAH.APPS_SCRIPT_URL</strong> di berkas
+                  <strong>js/config.js</strong>.
+                </p>
+              </details>
+            </div>
+
+            <h3>🔐 Keamanan Akun</h3>
+            <p>
+              Akun dashboard ini <strong>terpisah</strong> dari akun admin data jejak karbon —
+              petugas bank sampah tidak bisa membuka data karbon, dan sebaliknya.
+              Ganti nama pengguna &amp; kata sandi secara berkala lewat berkas
+              <strong>js/config.js</strong> bagian <strong>BANK_SAMPAH.ADMIN</strong>.
+              Selalu klik <strong>🚪 Keluar</strong> bila memakai perangkat bersama.
+            </p>
+          </div>
+        </section>
+
+      </div>
+    </main>
+  </div>
+
+  <!-- ======================= MODAL RINCIAN WARGA ======================= -->
+  <div id="modalWarga" class="modal" aria-hidden="true" role="dialog" aria-modal="true">
+    <div class="modal-latar" id="modalWargaLatar"></div>
+    <div class="modal-kotak adm-modal-kotak">
+      <button class="modal-tutup" id="modalWargaTutup" aria-label="Tutup">&times;</button>
+      <h3 class="modal-judul" id="modalWargaJudul">Rincian Warga</h3>
+      <div id="modalWargaIsi"></div>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/xlsx-export.js"></script>
+  <script src="js/bank-sampah-storage.js"></script>
+  <script src="js/admin-bank-sampah.js"></script>
+</body>
+</html>
