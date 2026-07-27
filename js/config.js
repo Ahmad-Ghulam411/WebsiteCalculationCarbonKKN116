@@ -151,8 +151,8 @@ const KONFIGURASI = {
 
     /* Akun admin bank sampah (GANTI!) — beda dari admin data karbon */
     ADMIN: {
-      username: 'petugasbanksampah',
-      password: 'banksampah116',
+      username: 'petugasbanksampah116',
+      password: 'banksampahkampung',
     },
 
     /* Awalan ID nasabah yang dibuat otomatis → BS-0001, BS-0002, … */
