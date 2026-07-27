@@ -130,6 +130,48 @@ const KONFIGURASI = {
     telepon: '081280933445',
     alamat: 'Jl. Jend. Ahmad Yani Km. 6, Parepare',
   },
+
+  /* ------------------------------------------------------------------
+   * 9) BANK SAMPAH  (halaman "Cek Bank Sampah" & dashboard adminnya)
+   *
+   *    ⚠️ SENGAJA DIPISAH dari data karbon di atas:
+   *       - Spreadsheet & Apps Script-nya BERBEDA (URL sendiri).
+   *       - Username & password adminnya BERBEDA.
+   *    Jadi petugas bank sampah tidak bisa membuka data karbon,
+   *    dan sebaliknya.
+   * ------------------------------------------------------------------ */
+  BANK_SAMPAH: {
+    /* URL "Web App" hasil deploy apps-script/CodeBankSampah.gs.
+     * Bila dikosongkan, seluruh data bank sampah tersimpan di perangkat
+     * (localStorage) sehingga fitur tetap bisa dicoba tanpa internet. */
+    APPS_SCRIPT_URL: '',
+
+    /* Kata sandi rahasia — HARUS SAMA dengan TOKEN_RAHASIA di CodeBankSampah.gs */
+    token: 'rahasia-bank-sampah-116',
+
+    /* Akun admin bank sampah (GANTI!) — beda dari admin data karbon */
+    ADMIN: {
+      username: 'petugasbanksampah',
+      password: 'banksampah116',
+    },
+
+    /* Awalan ID nasabah yang dibuat otomatis → BS-0001, BS-0002, … */
+    PREFIX_ID: 'BS',
+
+    /* Harga beli sampah per kg (Rp). Dipakai untuk menghitung
+     * pendapatan warga secara otomatis saat petugas menimbang. */
+    HARGA_PER_KG: {
+      kering: 2000, // plastik, kertas, kaleng, botol
+      basah: 500,   // sisa dapur/organik untuk kompos
+    },
+
+    /* Perkiraan berat 1 kantong (kg) — dipakai bila petugas hanya
+     * menghitung jumlah kantong, bukan menimbang. */
+    KG_PER_KANTONG: 3,
+
+    /* Pendapatan minimal (Rp) yang boleh diajukan warga untuk dicairkan */
+    MIN_PENCAIRAN: 10000,
+  },
 };
 
 // Nama "kunci" penyimpanan cadangan di perangkat (localStorage)

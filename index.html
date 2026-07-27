@@ -48,6 +48,7 @@
         <li><a href="#belajar">Mengenal Karbon</a></li>
         <li><a href="#langkah">Cara Kerja</a></li>
         <li><a href="#hitung">Hitung Karbonmu Sekarang</a></li>
+        <li><a href="bank-sampah.html">♻️ Cek Bank Sampah</a></li>
       </ul>
     </nav>
 
@@ -144,6 +145,24 @@
             <h3>Solusinya</h3>
             <p>Hemat energi, kurangi sampah plastik, memilah &amp; mengompos, serta menanam pohon.</p>
           </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ===================== AJAKAN CEK BANK SAMPAH ===================== -->
+    <section class="seksi seksi-rapat reveal">
+      <div class="wadah">
+        <div class="cta-bank">
+          <div class="cta-bank-ikon">♻️</div>
+          <div class="cta-bank-teks">
+            <h2>Sudah Menabung di Bank Sampah?</h2>
+            <p>
+              Warga yang menyetor sampah ke Bank Sampah Kampung Baru bisa mengecek sendiri berapa
+              kilogram sampah yang sudah dikumpulkan dan berapa rupiah tabungan yang sudah terkumpul —
+              cukup masukkan <strong>ID Nasabah</strong> dari buku tabungan Anda.
+            </p>
+          </div>
+          <a href="bank-sampah.html" class="tombol cta-bank-tombol">Cek Tabungan Saya →</a>
         </div>
       </div>
     </section>
@@ -308,22 +327,54 @@
           <!-- Aktivitas lain -->
           <fieldset class="grup">
             <legend><span class="grup-nomor">6</span> 🏠 Kegiatan Lain <span class="opsional">(opsional)</span></legend>
+            <p class="grup-hint">
+              Bagian ini boleh dilewati. Kalau tidak pernah melakukannya, isi saja <strong>0</strong>.
+              Setiap kolom sudah ada penjelasan dan contohnya di bawahnya. 👇
+            </p>
             <div class="dua-kolom">
               <div class="baris-input">
                 <label for="acJam">Pemakaian AC per hari (jam)</label>
                 <input type="number" id="acJam" min="0" step="1" inputmode="decimal" placeholder="Contoh: 6">
+                <small class="petunjuk">
+                  Berapa jam AC menyala dalam sehari. Kalau di rumah tidak ada AC, isi 0.
+                  <em>Contoh: AC kamar menyala dari jam 9 malam sampai jam 6 pagi = 9 jam.</em>
+                </small>
               </div>
               <div class="baris-input">
                 <label for="transUmumMinggu">Naik angkot/bus per minggu (kali)</label>
                 <input type="number" id="transUmumMinggu" min="0" step="1" inputmode="decimal" placeholder="Contoh: 4">
+                <small class="petunjuk">
+                  Berapa kali naik angkot, pete-pete, bus, atau ojek/becak dalam seminggu.
+                  Sekali pergi + sekali pulang dihitung <strong>2 kali</strong>.
+                </small>
               </div>
               <div class="baris-input">
-                <label for="barangBaruBulan">Beli barang baru per bulan (buah)</label>
+                <label for="barangBaruBulan">Beli barang baru per bulan (berapa buah?)</label>
                 <input type="number" id="barangBaruBulan" min="0" step="1" inputmode="decimal" placeholder="Contoh: 2">
+                <small class="petunjuk">
+                  <strong>Maksudnya barang yang dipakai berkali-kali / tahan lama</strong> — bukan belanja
+                  makanan, sembako, atau sabun sehari-hari.
+                  <br>✅ <strong>Termasuk:</strong> baju, celana, jilbab, sandal/sepatu, tas, HP, kipas angin,
+                  rice cooker, TV, panci/piring/gelas, ember, lemari, kasur, mainan anak, ban/oli baru.
+                  <br>❌ <strong>Tidak termasuk:</strong> beras, sayur, lauk, minyak goreng, gas, pulsa,
+                  bensin, sabun, atau barang bekas/lungsuran.
+                  <br><em>Contoh: bulan ini beli 1 baju dan 1 sandal → isi <strong>2</strong>.
+                  Kalau bulan ini tidak beli apa-apa → isi <strong>0</strong>.</em>
+                </small>
               </div>
               <div class="baris-input">
-                <label for="dagingMinggu">Makan daging per minggu (porsi)</label>
+                <label for="dagingMinggu">Makan daging per minggu (berapa kali makan?)</label>
                 <input type="number" id="dagingMinggu" min="0" step="1" inputmode="decimal" placeholder="Contoh: 3">
+                <small class="petunjuk">
+                  <strong>1 porsi = 1 kali makan yang lauknya daging</strong>, kira-kira sebesar telapak
+                  tangan (± 1 potong / 100 gram).
+                  <br>✅ <strong>Termasuk:</strong> daging sapi, kerbau, kambing, ayam, bebek —
+                  baik digulai, disate, digoreng, dibakar, maupun jadi bakso/sosis/nugget.
+                  <br>❌ <strong>Tidak termasuk:</strong> ikan, telur, tempe, tahu, dan sayur.
+                  <br><em>Contoh: seminggu makan ayam goreng 2 kali dan coto/bakso 1 kali → isi
+                  <strong>3</strong>. Kalau dalam sehari makan daging pagi dan malam, itu dihitung
+                  <strong>2 porsi</strong>.</em>
+                </small>
               </div>
             </div>
           </fieldset>
@@ -441,7 +492,9 @@
         <p><a href="#tentang">Tentang Kami</a></p>
         <p><a href="#belajar">Mengenal Karbon</a></p>
         <p><a href="#hitung">Hitung Jejak Karbon</a></p>
-        <p><a href="#" id="bukaAdmin" class="tautan-admin">🔒 Masuk Admin</a></p>
+        <p><a href="bank-sampah.html">♻️ Cek Bank Sampah</a></p>
+        <p><a href="#" id="bukaAdmin" class="tautan-admin">🔒 Admin Data Karbon</a></p>
+        <p><a href="admin-bank-sampah.html" class="tautan-admin">🔒 Admin Bank Sampah</a></p>
       </div>
     </div>
     <div class="footer-bawah">

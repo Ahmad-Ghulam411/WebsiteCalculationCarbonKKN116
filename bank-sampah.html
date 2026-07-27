@@ -1,0 +1,282 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Cek tabungan Bank Sampah warga Kampung Baru, Kota Parepare. Masukkan ID nasabah untuk melihat berat sampah yang disetor dan pendapatan yang bisa dicairkan.">
+  <meta name="theme-color" content="#1b7a43">
+  <title>Cek Bank Sampah — Kelurahan Kampung Baru, Kota Parepare</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/bank-sampah.css">
+</head>
+<body>
+
+  <!-- ============================ HEADER ============================ -->
+  <header class="hero hero-mini">
+    <div class="hero-bg" aria-hidden="true"></div>
+
+    <nav class="nav">
+      <a class="nav-merek" href="index.html">
+        <span class="logo-wrap">
+          <img class="logo" src="assets/logo-parepare.png" alt="Logo Kota Parepare"
+               onerror="this.style.display='none';">
+        </span>
+        <span class="nav-judul">Kampung Baru<small>Kota Parepare</small></span>
+      </a>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Buka menu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="index.html">Beranda</a></li>
+        <li><a href="index.html#hitung">Hitung Jejak Karbon</a></li>
+        <li><a href="bank-sampah.html" class="aktif">Cek Bank Sampah</a></li>
+      </ul>
+    </nav>
+
+    <div class="hero-isi">
+      <span class="hero-lencana">♻️ Layanan Bank Sampah Kampung Baru</span>
+      <h1>Cek Tabungan Bank Sampah Anda</h1>
+      <p class="hero-teks">
+        Sudah menyetor sampah ke bank sampah? Lihat berapa kilogram sampah yang sudah Anda kumpulkan
+        dan berapa rupiah tabungan yang sudah terkumpul — cukup masukkan <strong>ID Nasabah</strong> Anda.
+      </p>
+    </div>
+
+    <svg class="hero-gelombang" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,64 C240,120 480,0 720,32 C960,64 1200,120 1440,72 L1440,120 L0,120 Z"></path>
+    </svg>
+  </header>
+
+  <main>
+
+    <!-- ======================= KOTAK PENCARIAN ======================= -->
+    <section class="seksi" id="cek">
+      <div class="wadah wadah-sempit">
+
+        <div class="bs-cari-kotak">
+          <h2 class="bs-cari-judul">🔎 Masukkan ID Nasabah Anda</h2>
+          <p class="bs-cari-ket">
+            ID Nasabah ada di <strong>buku tabungan / kartu bank sampah</strong> Anda, bentuknya seperti
+            <strong>BS-0001</strong>. Belum punya? Daftar dulu ke petugas bank sampah Kampung Baru.
+          </p>
+
+          <form class="bs-cari-form" id="formCek" novalidate>
+            <input type="text" id="inputId" class="bs-cari-input"
+                   placeholder="Contoh: BS-0001" autocomplete="off"
+                   aria-label="ID Nasabah Bank Sampah">
+            <button type="submit" class="tombol bs-cari-tombol" id="tombolCek">Cek Sekarang</button>
+          </form>
+
+          <p class="bs-cari-bantu">
+            💡 Lupa ID? Anda juga bisa memasukkan <strong>nomor NIK</strong> (16 digit) yang terdaftar.
+          </p>
+
+          <p class="bs-pesan" id="pesanCek" role="status" aria-live="polite"></p>
+        </div>
+
+        <!-- ============================ HASIL ============================ -->
+        <section id="hasilBs" class="bs-hasil tersembunyi" aria-live="polite">
+
+          <!-- Identitas warga -->
+          <div class="bs-kartu bs-identitas">
+            <div class="bs-identitas-atas">
+              <div class="bs-avatar" id="bsAvatar">👤</div>
+              <div class="bs-identitas-teks">
+                <span class="bs-label-kecil">Nama Warga</span>
+                <h3 id="bsNama">—</h3>
+                <span class="bs-badge" id="bsStatusNasabah">Aktif</span>
+              </div>
+            </div>
+            <div class="bs-identitas-rincian">
+              <div><span class="bs-label-kecil">ID Nasabah</span><strong id="bsId">—</strong></div>
+              <div><span class="bs-label-kecil">NIK</span><strong id="bsNik">—</strong></div>
+              <div><span class="bs-label-kecil">Alamat</span><strong id="bsAlamat">—</strong></div>
+              <div><span class="bs-label-kecil">Terdaftar Sejak</span><strong id="bsTanggalDaftar">—</strong></div>
+            </div>
+          </div>
+
+          <!-- Setoran terakhir -->
+          <div class="bs-kartu bs-kartu-terakhir">
+            <h3 class="bs-kartu-judul">🆕 Setoran yang Baru Saja Dimasukkan</h3>
+            <p class="bs-kartu-ket">Ini catatan setoran Anda yang paling akhir dicatat petugas.</p>
+            <div id="bsSetoranTerakhir" class="bs-terakhir-isi"></div>
+          </div>
+
+          <!-- Total berat / kantong -->
+          <div class="bs-kartu">
+            <h3 class="bs-kartu-judul">⚖️ Berat &amp; Jumlah Kantong Keseluruhan</h3>
+            <p class="bs-kartu-ket">Seluruh sampah yang pernah Anda setorkan, dipisah menurut jenisnya.</p>
+
+            <div class="bs-total-utama">
+              <div>
+                <span class="bs-label-kecil">Total Berat</span>
+                <div class="bs-total-angka" id="bsTotalBerat">0 kg</div>
+              </div>
+              <div>
+                <span class="bs-label-kecil">Total Kantong</span>
+                <div class="bs-total-angka" id="bsTotalKantong">0 kantong</div>
+              </div>
+              <div>
+                <span class="bs-label-kecil">Jumlah Setoran</span>
+                <div class="bs-total-angka" id="bsJumlahSetoran">0 kali</div>
+              </div>
+            </div>
+
+            <div class="bs-jenis-grid">
+              <div class="bs-jenis bs-jenis-kering">
+                <div class="bs-jenis-ikon">🧴</div>
+                <div class="bs-jenis-nama">Sampah Kering</div>
+                <div class="bs-jenis-ket">Plastik, kertas, kardus, kaleng, botol</div>
+                <div class="bs-jenis-baris"><span>Berat</span><strong id="bsKeringBerat">0 kg</strong></div>
+                <div class="bs-jenis-baris"><span>Kantong</span><strong id="bsKeringKantong">0</strong></div>
+                <div class="bs-jenis-baris"><span>Pendapatan</span><strong id="bsKeringRp">Rp 0</strong></div>
+              </div>
+              <div class="bs-jenis bs-jenis-basah">
+                <div class="bs-jenis-ikon">🍂</div>
+                <div class="bs-jenis-nama">Sampah Basah</div>
+                <div class="bs-jenis-ket">Sisa dapur, sayur, kulit buah, daun</div>
+                <div class="bs-jenis-baris"><span>Berat</span><strong id="bsBasahBerat">0 kg</strong></div>
+                <div class="bs-jenis-baris"><span>Kantong</span><strong id="bsBasahKantong">0</strong></div>
+                <div class="bs-jenis-baris"><span>Pendapatan</span><strong id="bsBasahRp">Rp 0</strong></div>
+              </div>
+            </div>
+          </div>
+
+          <!-- Pendapatan -->
+          <div class="bs-kartu">
+            <h3 class="bs-kartu-judul">💰 Pendapatan Anda</h3>
+            <p class="bs-kartu-ket">Uang hasil menabung sampah. Yang belum dicairkan masih tersimpan di bank sampah.</p>
+
+            <div class="bs-uang-grid">
+              <div class="bs-uang bs-uang-total">
+                <span class="bs-uang-label">Pendapatan Keseluruhan</span>
+                <div class="bs-uang-angka" id="bsUangTotal">Rp 0</div>
+                <span class="bs-uang-ket">Sejak pertama kali menabung</span>
+              </div>
+              <div class="bs-uang bs-uang-belum">
+                <span class="bs-uang-label">Belum Dicairkan</span>
+                <div class="bs-uang-angka" id="bsUangBelum">Rp 0</div>
+                <span class="bs-uang-ket">Bisa Anda ajukan pencairannya</span>
+              </div>
+              <div class="bs-uang bs-uang-sudah">
+                <span class="bs-uang-label">Sudah Dicairkan</span>
+                <div class="bs-uang-angka" id="bsUangSudah">Rp 0</div>
+                <span class="bs-uang-ket">Sudah Anda terima</span>
+              </div>
+            </div>
+
+            <div class="bs-cair-kotak">
+              <p class="bs-cair-info" id="bsCairInfo"></p>
+              <button type="button" class="tombol tombol-penuh bs-tombol-cair" id="tombolCair">
+                💵 Ajukan Pencairan Pendapatan
+              </button>
+              <p class="bs-cair-catatan">
+                Setelah diajukan, petugas bank sampah akan memeriksa dan menghubungi Anda.
+                Uang diserahkan langsung di sekretariat bank sampah.
+              </p>
+            </div>
+          </div>
+
+          <!-- Riwayat -->
+          <div class="bs-kartu">
+            <h3 class="bs-kartu-judul">📜 Riwayat Setoran Anda</h3>
+            <p class="bs-kartu-ket">Daftar semua setoran, dari yang terbaru.</p>
+            <div class="bs-tabel-wadah" id="bsRiwayat"></div>
+          </div>
+
+          <div class="bs-hasil-aksi">
+            <button type="button" class="tombol tombol-kecil" id="tombolCekLagi">↻ Cek ID Lain</button>
+          </div>
+        </section>
+
+      </div>
+    </section>
+
+    <!-- ======================= PENJELASAN ======================= -->
+    <section class="seksi seksi-alt">
+      <div class="wadah">
+        <span class="seksi-label">Serba-serbi</span>
+        <h2 class="seksi-judul">Apa Itu Bank Sampah?</h2>
+        <p class="seksi-intro">
+          Bank sampah adalah tempat menabung — tapi yang ditabung bukan uang, melainkan
+          <strong>sampah yang masih bernilai</strong>. Sampah Anda ditimbang petugas, dicatat di buku
+          tabungan, lalu diubah menjadi rupiah yang bisa diambil kapan saja.
+          Sampah berkurang, lingkungan bersih, dan warga dapat penghasilan tambahan.
+        </p>
+
+        <div class="kartu-grid">
+          <div class="kartu">
+            <div class="kartu-ikon">1️⃣</div>
+            <h3>Pilah di Rumah</h3>
+            <p>Pisahkan sampah <strong>kering</strong> (plastik, kertas, kardus, kaleng, botol) dari
+               sampah <strong>basah</strong> (sisa dapur, sayur, kulit buah). Bersihkan dan keringkan
+               dulu agar harganya lebih baik.</p>
+          </div>
+          <div class="kartu">
+            <div class="kartu-ikon">2️⃣</div>
+            <h3>Setor &amp; Ditimbang</h3>
+            <p>Bawa ke sekretariat bank sampah pada hari layanan. Petugas menimbang, mencatat, dan
+               memasukkan hasilnya ke data Anda memakai <strong>ID Nasabah</strong>.</p>
+          </div>
+          <div class="kartu">
+            <div class="kartu-ikon">3️⃣</div>
+            <h3>Cek &amp; Cairkan</h3>
+            <p>Buka halaman ini kapan saja untuk melihat tabungan Anda. Kalau sudah cukup, tekan
+               <strong>“Ajukan Pencairan Pendapatan”</strong> dan uang bisa diambil ke petugas.</p>
+          </div>
+        </div>
+
+        <div class="bs-harga-kotak">
+          <h3>💵 Perkiraan Harga Sampah</h3>
+          <p class="bs-harga-ket">
+            Harga ini adalah acuan bank sampah Kampung Baru dan bisa berubah sewaktu-waktu
+            mengikuti harga pengepul.
+          </p>
+          <div class="bs-harga-grid" id="bsDaftarHarga"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <!-- ============================ FOOTER ============================ -->
+  <footer class="footer">
+    <div class="wadah footer-isi">
+      <div class="footer-kolom">
+        <h3>📞 Hubungi Kami</h3>
+        <p id="kontakInstansi">Dinas Lingkungan Hidup Kota Parepare</p>
+        <p>Telepon / WA: <a id="kontakTelepon" href="tel:081280933445">081280933445</a></p>
+        <p>Alamat: <span id="kontakAlamat">Jl. Jend. Ahmad Yani Km. 6, Parepare</span></p>
+      </div>
+      <div class="footer-kolom">
+        <h3>♻️ Tentang Bank Sampah</h3>
+        <p>Layanan Bank Sampah Kelurahan Kampung Baru — program mahasiswa KKN Gel. 116 Tematik
+           Perubahan Iklim bersama Dinas Lingkungan Hidup Kota Parepare.</p>
+      </div>
+      <div class="footer-kolom">
+        <h3>🔗 Tautan</h3>
+        <p><a href="index.html">Beranda</a></p>
+        <p><a href="index.html#hitung">Hitung Jejak Karbon</a></p>
+        <p><a href="bank-sampah.html">Cek Bank Sampah</a></p>
+        <p><a href="admin-bank-sampah.html" class="tautan-admin">🔒 Admin Bank Sampah</a></p>
+      </div>
+    </div>
+    <div class="footer-bawah">
+      <p>&copy; <span id="tahunFooter">2026</span> Kampung Baru, Kota Parepare · Dibuat dengan 💚 untuk lingkungan yang lebih sehat.</p>
+    </div>
+  </footer>
+
+  <!-- ============================ TOAST ============================ -->
+  <div id="toast" class="toast" role="status" aria-live="polite"></div>
+
+  <script src="js/config.js"></script>
+  <script src="js/bank-sampah-storage.js"></script>
+  <script src="js/bank-sampah.js"></script>
+</body>
+</html>
