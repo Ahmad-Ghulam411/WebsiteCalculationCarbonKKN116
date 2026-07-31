@@ -166,6 +166,56 @@
 }
 .tombol-nonaktif:hover { transform: none; filter: none; }
 .bs-cair-catatan { font-size: .84rem; color: var(--tinta-lembut); margin-top: 12px; }
+.bs-cair-catatan strong { color: var(--tinta); }
+
+/* ---------- Modal pengajuan pencairan lewat WhatsApp (warga) ---------- */
+.bs-cair-modal { max-width: 560px; }
+.bs-cair-modal .modal-ikon { animation: none; }
+
+.bs-cair-tujuan {
+  display: flex; align-items: center; gap: 14px; text-align: left;
+  background: #f2fbf5; border: 1px solid #b9e6cb; border-radius: var(--radius-sm);
+  padding: 13px 15px; margin-bottom: 12px;
+}
+.bs-cair-tujuan-ikon {
+  width: 46px; height: 46px; flex-shrink: 0; border-radius: 50%; font-size: 1.35rem;
+  background: linear-gradient(135deg, #37d16a, #128c4b); color: #fff;
+  display: flex; align-items: center; justify-content: center;
+}
+.bs-cair-tujuan strong { display: block; font-size: 1rem; color: var(--tinta); line-height: 1.35; }
+.bs-cair-tujuan-no { font-weight: 800; color: #128c4b; letter-spacing: .4px; }
+
+.bs-cair-nominal {
+  background: linear-gradient(135deg, #f4a300, #e5552e); color: #fff; text-align: center;
+  border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 14px;
+  box-shadow: 0 10px 24px rgba(229,85,46,.24);
+}
+.bs-cair-nominal .bs-label-kecil { color: rgba(255,255,255,.9); }
+.bs-cair-nominal strong {
+  font-family: 'Poppins', sans-serif; font-weight: 800;
+  font-size: clamp(1.5rem, 7vw, 1.9rem); line-height: 1.25;
+}
+
+.bs-cair-pratinjau {
+  text-align: left; background: #fbfefc; border: 1px solid var(--garis);
+  border-radius: var(--radius-sm); margin-bottom: 16px; overflow: hidden;
+}
+.bs-cair-pratinjau summary {
+  cursor: pointer; padding: 12px 15px; font-weight: 700; font-size: .92rem; color: var(--hijau-tua);
+}
+.bs-cair-pratinjau summary:hover { background: var(--hijau-muda); }
+.bs-cair-pratinjau[open] summary { border-bottom: 1px dashed var(--garis); }
+.bs-cair-pratinjau pre {
+  margin: 0; padding: 14px 15px; max-height: 260px; overflow: auto;
+  font-family: inherit; font-size: .86rem; line-height: 1.65; color: var(--tinta-lembut);
+  white-space: pre-wrap; word-break: break-word; -webkit-overflow-scrolling: touch;
+}
+
+.tombol-salin {
+  background: linear-gradient(135deg, #8a97a0, #6c7a83); box-shadow: var(--bayang-sm);
+  font-size: .95rem; padding: 11px 22px; margin-top: 10px;
+}
+.bs-cair-modal-catatan { font-size: .84rem; color: var(--tinta-lembut); margin-top: 14px; }
 
 /* -------------------------------- Tabel ---------------------------------- */
 .bs-tabel-wadah {
