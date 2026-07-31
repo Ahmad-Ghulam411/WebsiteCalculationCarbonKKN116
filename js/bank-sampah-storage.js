@@ -103,9 +103,39 @@ const BankSampah = (function () {
    *  (GET + callback, supaya balasan server { ok, pesan, … } bisa dibaca
    *   browser — beda dengan POST "no-cors" yang balasannya tak terbaca)
    * ===================================================================== */
+
+  /* Lama browser menunggu balasan server sebelum menyerah.
+   * HARUS lebih lama dari LockService.waitLock(20 detik) di
+   * apps-script/CodeBankSampah.gs. Kalau lebih pendek, penyimpanan yang
+   * sebenarnya BERHASIL bisa terlihat "gagal" di layar petugas — sebab
+   * Apps Script tetap menuntaskan pekerjaannya walau browser sudah pergi. */
+  const BATAS_TUNGGU_MS = 30000;
+
+  /* Balasan yang telat masih dibiarkan lewat selama tenggang ini, supaya
+   * tidak memunculkan error "… is not defined" di konsol browser. */
+  const TENGGANG_TELAT_MS = 60000;
+
+  /** Balasan semu saat server tidak menjawab (BEDA dengan server menolak). */
+  function balasanKosong() {
+    return {
+      ok: false,
+      tanpaBalasan: true,
+      pesan: 'Balasan dari server bank sampah tidak sampai ke perangkat ini.',
+    };
+  }
+
+  /**
+   * Memanggil Apps Script. SELALU menghasilkan objek:
+   *   - balasan asli server (punya .ok), atau
+   *   - { ok:false, tanpaBalasan:true } bila server tak menjawab tepat waktu.
+   *
+   * Catatan penting: "tanpaBalasan" TIDAK sama dengan "gagal". Permintaan
+   * tulis yang balasannya hilang di jalan tetap sering tersimpan di Sheets,
+   * jadi pemanggilnya wajib memeriksa ulang keadaan sebenarnya.
+   */
   function jsonp(params) {
     const url = urlServer();
-    if (!url) return Promise.resolve(null);
+    if (!url) return Promise.resolve(balasanKosong());
 
     return new Promise(function (resolve) {
       const cbName = 'jsonp_bs_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
@@ -113,22 +143,25 @@ const BankSampah = (function () {
       let selesai = false;
 
       function bersihkan() {
-        selesai = true;
         try { delete window[cbName]; } catch (e) { window[cbName] = undefined; }
         if (script.parentNode) script.parentNode.removeChild(script);
       }
 
-      function gagal() {
-        if (selesai) return;
-        bersihkan();
-        resolve(null);
-      }
-
       window[cbName] = function (resp) {
-        if (selesai) return;
+        if (selesai) { bersihkan(); return; } // balasan telat — cukup dibereskan
+        selesai = true;
         bersihkan();
-        resolve(resp || null);
+        resolve((resp && typeof resp === 'object') ? resp : balasanKosong());
       };
+
+      function menyerah() {
+        if (selesai) return;
+        selesai = true;
+        // Skrip & callback-nya sengaja TIDAK langsung dibuang: balasan yang
+        // telat masih boleh memanggilnya tanpa menimbulkan error di konsol.
+        setTimeout(bersihkan, TENGGANG_TELAT_MS);
+        resolve(balasanKosong());
+      }
 
       const query = new URLSearchParams();
       Object.keys(params).forEach(function (k) {
@@ -139,22 +172,38 @@ const BankSampah = (function () {
 
       const pemisah = url.indexOf('?') >= 0 ? '&' : '?';
       script.src = url + pemisah + query.toString();
-      script.onerror = gagal;
+      script.onerror = menyerah;
       document.body.appendChild(script);
 
-      // Bila server tidak menjawab dalam 15 detik → anggap gagal
-      setTimeout(gagal, 15000);
+      setTimeout(menyerah, BATAS_TUNGGU_MS);
+    });
+  }
+
+  /** Khusus aksi BACA (list/cek): boleh dicoba sekali lagi bila balasannya
+   *  hilang, karena membaca tidak mengubah apa pun di Google Sheets. */
+  function jsonpBaca(params) {
+    return jsonp(params).then(function (resp) {
+      return (resp && resp.tanpaBalasan) ? jsonp(params) : resp;
     });
   }
 
   /** Membungkus jsonp() menjadi balasan { ok, pesan } yang selalu terisi.
-   *  Isi balasan lain dari server (mis. "id" nasabah baru) ikut diteruskan. */
+   *  Isi balasan lain dari server (mis. "id" nasabah baru) ikut diteruskan.
+   *  Aksi TULIS sengaja tidak diulang otomatis agar data tidak dobel. */
   function kirimAksi(params) {
     return jsonp(params).then(function (resp) {
       if (resp && resp.ok) {
         return Object.assign({}, resp, { ok: true, pesan: resp.pesan || 'Berhasil.' });
       }
-      return { ok: false, pesan: (resp && resp.pesan) || 'Tidak ada balasan dari server bank sampah.' };
+      if (resp && resp.tanpaBalasan) {
+        return {
+          ok: false,
+          tanpaBalasan: true,
+          pesan: 'Server bank sampah belum menjawab. Perubahannya bisa jadi TETAP ' +
+            'tersimpan — periksa daftarnya setelah dimuat ulang.',
+        };
+      }
+      return { ok: false, pesan: (resp && resp.pesan) || 'Server bank sampah menolak permintaan ini.' };
     });
   }
 
@@ -232,7 +281,7 @@ const BankSampah = (function () {
       });
     }
 
-    return jsonp({ action: 'list', token: cfg().token }).then(function (resp) {
+    return jsonpBaca({ action: 'list', token: cfg().token }).then(function (resp) {
       if (resp && resp.ok) {
         return {
           ok: true,
@@ -246,6 +295,7 @@ const BankSampah = (function () {
       return {
         ok: false,
         sumber: 'sheet',
+        tanpaBalasan: !!(resp && resp.tanpaBalasan),
         pesan: (resp && resp.pesan) || 'Tidak bisa menghubungi server bank sampah.',
         nasabah: [], setoran: [], pengajuan: [],
       };
@@ -283,7 +333,7 @@ const BankSampah = (function () {
       });
     }
 
-    return jsonp({ action: 'cek', id: kunci }).then(function (resp) {
+    return jsonpBaca({ action: 'cek', id: kunci }).then(function (resp) {
       if (resp && resp.ok && resp.nasabah) {
         return {
           ok: true,
@@ -295,6 +345,7 @@ const BankSampah = (function () {
       }
       return {
         ok: false,
+        tanpaBalasan: !!(resp && resp.tanpaBalasan),
         pesan: (resp && resp.pesan) || 'Tidak bisa menghubungi server bank sampah. Coba lagi sebentar.',
         nasabah: null, setoran: [], pengajuan: [],
       };

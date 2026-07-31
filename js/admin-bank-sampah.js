@@ -93,6 +93,18 @@
     return cocok ? cocok[1] : '';
   }
 
+  /** Membandingkan isi formulir dengan isi Google Sheets.
+   *  Angka dibandingkan sebagai angka, karena Sheets menyimpan "02" jadi 2. */
+  function samaNilai(a, b) {
+    const teksA = String(a === null || a === undefined ? '' : a).trim();
+    const teksB = String(b === null || b === undefined ? '' : b).trim();
+    if (teksA.toLowerCase() === teksB.toLowerCase()) return true;
+    if (!teksA || !teksB) return false;
+    const angkaA = Number(teksA);
+    const angkaB = Number(teksB);
+    return !isNaN(angkaA) && !isNaN(angkaB) && angkaA === angkaB;
+  }
+
   function isiNilaiKonfigurasi() {
     const bs = KONFIGURASI.BANK_SAMPAH;
     const kg = bs.KG_PER_KANTONG || 3;
@@ -157,24 +169,30 @@
   /* =======================================================================
    *  MEMUAT DATA
    * ===================================================================== */
+  /** Memuat ulang seluruh data dari server. Promise-nya berisi hasil
+   *  pemuatan { ok, tanpaBalasan, … } supaya pemanggilnya tahu apakah data
+   *  di layar sudah boleh dipercaya untuk diperiksa. */
   function muatData() {
     const pita = $('pitaSumber');
     pita.className = 'adm-pita adm-pita-info';
     pita.textContent = '⏳ Memuat data bank sampah…';
     $('btnMuat').disabled = true;
 
-    BankSampah.muatSemua().then(function (hasil) {
+    return BankSampah.muatSemua().then(function (hasil) {
       $('btnMuat').disabled = false;
       sumber = hasil.sumber;
 
       if (!hasil.ok) {
         pita.className = 'adm-pita adm-pita-salah';
-        pita.textContent = '❌ Gagal menghubungi Google Sheets: ' + hasil.pesan +
-          ' — periksa BANK_SAMPAH.APPS_SCRIPT_URL & token di js/config.js, ' +
-          'lalu pastikan Apps Script sudah di-deploy versi terbaru.';
+        pita.textContent = hasil.tanpaBalasan
+          ? '❌ Google Sheets belum menjawab (koneksi lambat atau Apps Script sedang sibuk). ' +
+            'Data di layar mungkin belum yang terbaru — klik "↻ Muat Ulang" untuk mencoba lagi.'
+          : '❌ Gagal menghubungi Google Sheets: ' + hasil.pesan +
+            ' — periksa BANK_SAMPAH.APPS_SCRIPT_URL & token di js/config.js, ' +
+            'lalu pastikan Apps Script sudah di-deploy versi terbaru.';
         hitungUlang();
         renderSemua();
-        return;
+        return hasil;
       }
 
       data = { nasabah: hasil.nasabah, setoran: hasil.setoran, pengajuan: hasil.pengajuan };
@@ -191,6 +209,33 @@
 
       hitungUlang();
       renderSemua();
+      return hasil;
+    });
+  }
+
+  /* =======================================================================
+   *  MENGIRIM PERUBAHAN KE SERVER
+   *  ---------------------------------------------------------------------
+   *  Google Apps Script kadang selesai menyimpan TAPI balasannya tidak
+   *  sampai ke browser (koneksi lambat / server sedang antre). Dulu keadaan
+   *  ini dianggap "gagal": pesan merah muncul dan daftar tidak dimuat ulang,
+   *  padahal datanya sudah masuk — makanya baru terlihat setelah halaman
+   *  di-refresh. Sekarang daftar SELALU dimuat ulang lebih dulu, baru
+   *  kesimpulannya disampaikan ke petugas.
+   * ===================================================================== */
+
+  /** Aksi sederhana (hapus / tandai cair / proses pengajuan). */
+  function tanganiAksi(janji, ikon, saatBeres) {
+    return janji.then(function (hasil) {
+      if (hasil.ok) {
+        toast(ikon + ' ' + hasil.pesan);
+        if (saatBeres) saatBeres();
+        return muatData();
+      }
+      if (!hasil.tanpaBalasan) { toast('❌ ' + hasil.pesan); return; }
+
+      toast('⏳ Balasan server lambat — daftar dimuat ulang. Mohon periksa hasilnya di tabel.');
+      return muatData();
     });
   }
 
@@ -315,19 +360,100 @@
       return;
     }
 
-    $('btnSimpanWarga').disabled = true;
-    const janji = ubahWargaId
-      ? BankSampah.ubahNasabah(ubahWargaId, record)
+    const tombol = $('btnSimpanWarga');
+    const labelTombol = tombol.textContent;
+    tombol.disabled = true;
+    tombol.textContent = '⏳ Menyimpan…';
+
+    // Disimpan dulu: formulir akan direset sebelum balasan dipakai.
+    const idDiubah = ubahWargaId;
+    const idSebelum = data.nasabah.map(function (n) { return BankSampah.normalId(n.id); });
+
+    const janji = idDiubah
+      ? BankSampah.ubahNasabah(idDiubah, record)
       : BankSampah.simpanNasabah(record);
 
     janji.then(function (hasil) {
-      $('btnSimpanWarga').disabled = false;
-      if (!hasil.ok) { toast('❌ ' + hasil.pesan); return; }
-      toast('✅ ' + (ubahWargaId ? 'Data warga diperbarui.' : 'Warga baru tersimpan.' +
-        (hasil.id ? ' ID Nasabahnya: ' + hasil.id : '')));
-      resetFormWarga();
-      muatData();
+      tombol.disabled = false;
+      tombol.textContent = labelTombol;
+
+      if (hasil.ok) {
+        // Langsung tampilkan di tabel, tanpa menunggu pemuatan ulang selesai.
+        catatWargaLokal(Object.assign({}, record, { id: hasil.id || record.id || idDiubah }));
+        beresSimpanWarga(idDiubah, hasil.id || record.id || idDiubah);
+        muatData();
+        return;
+      }
+
+      if (!hasil.tanpaBalasan) { toast('❌ ' + hasil.pesan); return; }
+
+      // Balasan hilang di jalan — datanya sering TETAP tersimpan di Sheets.
+      // Muat ulang dulu, baru simpulkan berhasil atau tidak.
+      toast('⏳ Balasan server lambat. Memeriksa apakah data warga sudah masuk…');
+      muatData().then(function (muat) {
+        if (!muat.ok) {
+          // Daftar pun gagal dimuat → belum bisa disimpulkan. JANGAN suruh
+          // menyimpan ulang, nanti datanya malah dobel.
+          toast('⚠️ Server bank sampah sedang tidak bisa dihubungi, jadi belum ketahuan ' +
+            'apakah datanya masuk. Klik "↻ Muat Ulang" dulu sebelum menyimpan lagi.');
+          return;
+        }
+
+        const tersimpan = idDiubah
+          ? (ubahanWargaMasuk(idDiubah, record) ? cariNasabah(idDiubah) : null)
+          : cariWargaBaru(record, idSebelum);
+
+        if (tersimpan) {
+          beresSimpanWarga(idDiubah, tersimpan.id);
+        } else {
+          toast('❌ Server bank sampah tidak menjawab dan datanya belum masuk. ' +
+            'Periksa koneksi internet, lalu simpan sekali lagi.');
+        }
+      });
     });
+  }
+
+  /** Dipanggil saat data warga sudah dipastikan tersimpan di server. */
+  function beresSimpanWarga(idDiubah, id) {
+    toast('✅ ' + (idDiubah
+      ? 'Data warga diperbarui.'
+      : 'Warga baru tersimpan.' + (id ? ' ID Nasabahnya: ' + id : '')));
+    resetFormWarga();
+  }
+
+  /** Menaruh warga yang baru disimpan ke daftar di layar SEKARANG JUGA,
+   *  supaya petugas tidak perlu menunggu pemuatan ulang dari Google Sheets
+   *  (yang butuh beberapa detik) untuk melihat hasilnya. */
+  function catatWargaLokal(warga) {
+    const id = BankSampah.normalId(warga.id);
+    if (!id) return;
+    const i = data.nasabah.findIndex(function (n) { return BankSampah.normalId(n.id) === id; });
+    if (i < 0) data.nasabah.push(warga);
+    else data.nasabah[i] = Object.assign({}, data.nasabah[i], warga);
+    hitungUlang();
+    renderSemua();
+  }
+
+  /** Mencari warga yang ternyata sudah masuk walau balasan server hilang.
+   *  Bila ID diisi petugas, cukup dicocokkan dengan ID itu; bila ID dibuat
+   *  otomatis oleh server, dicari baris baru yang namanya sama. */
+  function cariWargaBaru(record, idSebelum) {
+    const diminta = BankSampah.normalId(record.id);
+    if (diminta) {
+      const n = cariNasabah(diminta);
+      return (n && samaNilai(n.nama, record.nama)) ? n : null;
+    }
+    return data.nasabah.filter(function (n) {
+      return idSebelum.indexOf(BankSampah.normalId(n.id)) < 0 && samaNilai(n.nama, record.nama);
+    })[0] || null;
+  }
+
+  /** Memastikan perubahan data warga benar-benar tercatat di Google Sheets. */
+  function ubahanWargaMasuk(id, record) {
+    const n = cariNasabah(id);
+    if (!n) return false;
+    return ['nama', 'nik', 'alamat', 'rt', 'rw', 'noHp', 'status', 'catatan']
+      .every(function (k) { return samaNilai(n[k], record[k]); });
   }
 
   function resetFormWarga() {
@@ -378,9 +504,8 @@
       'Kalau warga hanya berhenti menabung, sebaiknya ubah statusnya jadi "Nonaktif" saja.';
     if (!window.confirm(pesan)) return;
 
-    BankSampah.hapusNasabah(id).then(function (hasil) {
-      toast(hasil.ok ? '🗑️ ' + hasil.pesan : '❌ ' + hasil.pesan);
-      if (hasil.ok) { if (ubahWargaId === id) resetFormWarga(); muatData(); }
+    tanganiAksi(BankSampah.hapusNasabah(id), '🗑️', function () {
+      if (ubahWargaId === id) resetFormWarga();
     });
   }
 
@@ -656,21 +781,91 @@
       catatan: nilai('sCatatan'),
     };
 
-    $('btnSimpanSetoran').disabled = true;
-    const janji = ubahSetoranId
-      ? BankSampah.ubahSetoran(ubahSetoranId, record)
+    const tombol = $('btnSimpanSetoran');
+    const labelTombol = tombol.textContent;
+    tombol.disabled = true;
+    tombol.textContent = '⏳ Menyimpan…';
+
+    const idDiubah = ubahSetoranId;
+    const idSebelum = data.setoran.map(function (s) { return String(s.id); });
+
+    const janji = idDiubah
+      ? BankSampah.ubahSetoran(idDiubah, record)
       : BankSampah.simpanSetoran(record);
 
     janji.then(function (hasil) {
-      $('btnSimpanSetoran').disabled = false;
-      if (!hasil.ok) { toast('❌ ' + hasil.pesan); return; }
-      const n = cariNasabah(idWarga);
-      toast('✅ ' + (ubahSetoranId ? 'Setoran diperbarui.' :
-        'Setoran ' + angkaRamah(record.berat) + ' kg tersimpan untuk ' + ((n && n.nama) || idWarga) +
-        ' (' + BankSampah.rupiah(record.pendapatan) + ').'));
-      resetFormSetoran();
-      muatData();
+      tombol.disabled = false;
+      tombol.textContent = labelTombol;
+
+      if (hasil.ok) {
+        catatSetoranLokal(Object.assign({}, record, { id: hasil.id || idDiubah }));
+        beresSimpanSetoran(idDiubah, record);
+        muatData();
+        return;
+      }
+
+      if (!hasil.tanpaBalasan) { toast('❌ ' + hasil.pesan); return; }
+
+      toast('⏳ Balasan server lambat. Memeriksa apakah setoran sudah masuk…');
+      muatData().then(function (muat) {
+        if (!muat.ok) {
+          toast('⚠️ Server bank sampah sedang tidak bisa dihubungi, jadi belum ketahuan ' +
+            'apakah setorannya masuk. Klik "↻ Muat Ulang" dulu sebelum menyimpan lagi.');
+          return;
+        }
+
+        const tersimpan = idDiubah
+          ? cocokSetoran(data.setoran.filter(function (s) { return String(s.id) === String(idDiubah); })[0], record)
+          : !!cariSetoranBaru(record, idSebelum);
+
+        if (tersimpan) {
+          beresSimpanSetoran(idDiubah, record);
+        } else {
+          toast('❌ Server bank sampah tidak menjawab dan setorannya belum masuk. ' +
+            'Periksa koneksi internet, lalu simpan sekali lagi.');
+        }
+      });
     });
+  }
+
+  /** Dipanggil saat setoran sudah dipastikan tersimpan di server. */
+  function beresSimpanSetoran(idDiubah, record) {
+    const n = cariNasabah(record.idWarga);
+    toast('✅ ' + (idDiubah ? 'Setoran diperbarui.' :
+      'Setoran ' + angkaRamah(record.berat) + ' kg tersimpan untuk ' + ((n && n.nama) || record.idWarga) +
+      ' (' + BankSampah.rupiah(record.pendapatan) + ').'));
+    resetFormSetoran();
+  }
+
+  /** Menampilkan setoran yang baru disimpan tanpa menunggu pemuatan ulang. */
+  function catatSetoranLokal(setoran) {
+    if (!setoran.id) return;
+    const lengkap = Object.assign({ status: BS_STATUS_CAIR.BELUM, tanggalCair: '' }, setoran);
+    const i = data.setoran.findIndex(function (s) { return String(s.id) === String(lengkap.id); });
+    if (i < 0) data.setoran.push(lengkap);
+    else data.setoran[i] = Object.assign({}, data.setoran[i], setoran);
+    hitungUlang();
+    renderSemua();
+  }
+
+  /** Mencari setoran yang ternyata sudah masuk walau balasan server hilang.
+   *  ID setoran dibuat server, jadi dicocokkan dari isinya. */
+  function cariSetoranBaru(record, idSebelum) {
+    return data.setoran.filter(function (s) {
+      return idSebelum.indexOf(String(s.id)) < 0 && cocokSetoran(s, record);
+    })[0] || null;
+  }
+
+  function cocokSetoran(s, record) {
+    if (!s) return false;
+    return BankSampah.normalId(s.idWarga) === BankSampah.normalId(record.idWarga) &&
+      kunciTanggal(s.tanggal) === kunciTanggal(record.tanggal) &&
+      samaNilai(s.jenis, record.jenis) &&
+      samaNilai(s.catatan, record.catatan) &&
+      BankSampah.keAngka(s.berat) === BankSampah.keAngka(record.berat) &&
+      BankSampah.keAngka(s.kantong) === BankSampah.keAngka(record.kantong) &&
+      BankSampah.keAngka(s.hargaPerKg) === BankSampah.keAngka(record.hargaPerKg) &&
+      BankSampah.keAngka(s.pendapatan) === BankSampah.keAngka(record.pendapatan);
   }
 
   function resetFormSetoran() {
@@ -727,25 +922,18 @@
       BankSampah.rupiah(s.pendapatan) + ') milik ' + ((n && n.nama) || s.idWarga) + ' tanggal ' +
       tanggalRamah(s.tanggal) + '?\n\nTindakan ini tidak bisa dibatalkan.')) return;
 
-    BankSampah.hapusSetoran(id).then(function (hasil) {
-      toast(hasil.ok ? '🗑️ ' + hasil.pesan : '❌ ' + hasil.pesan);
-      if (hasil.ok) { if (ubahSetoranId === id) resetFormSetoran(); muatData(); }
+    tanganiAksi(BankSampah.hapusSetoran(id), '🗑️', function () {
+      if (ubahSetoranId === id) resetFormSetoran();
     });
   }
 
   function tandaiCairSetoran(id) {
-    BankSampah.tandaiCair({ idSetoran: id }).then(function (hasil) {
-      toast(hasil.ok ? '💵 ' + hasil.pesan : '❌ ' + hasil.pesan);
-      if (hasil.ok) muatData();
-    });
+    tanganiAksi(BankSampah.tandaiCair({ idSetoran: id }), '💵');
   }
 
   function batalkanCairSetoran(id) {
     if (!window.confirm('Kembalikan setoran ini menjadi "Belum Dicairkan"?')) return;
-    BankSampah.batalCair(id).then(function (hasil) {
-      toast(hasil.ok ? '↺ ' + hasil.pesan : '❌ ' + hasil.pesan);
-      if (hasil.ok) muatData();
-    });
+    tanganiAksi(BankSampah.batalCair(id), '↺');
   }
 
   function wiringFilterSetoran() {
@@ -924,21 +1112,25 @@
       'Lakukan ini hanya setelah uangnya benar-benar diserahkan ke warga.')) return;
 
     BankSampah.tandaiCair({ idWarga: id }).then(function (hasil) {
-      if (!hasil.ok) { toast('❌ ' + hasil.pesan); return; }
+      if (!hasil.ok && !hasil.tanpaBalasan) { toast('❌ ' + hasil.pesan); return; }
+
+      const ikon = hasil.ok ? '💵' : '⏳';
+      const pesan = hasil.ok ? hasil.pesan
+        : 'Balasan server lambat — daftar dimuat ulang. Mohon periksa status pencairannya di tabel.';
 
       // Bila warga punya pengajuan yang masih menunggu, sekalian ditutup.
       const menunggu = r.pengajuanMenunggu;
       if (menunggu) {
         BankSampah.prosesPengajuan(menunggu.id, BS_STATUS_AJU.DISETUJUI, 'Dicairkan langsung oleh petugas')
-          .then(function () { selesaiCair(hasil.pesan); });
+          .then(function () { selesaiCair(ikon, pesan); });
       } else {
-        selesaiCair(hasil.pesan);
+        selesaiCair(ikon, pesan);
       }
     });
   }
 
-  function selesaiCair(pesan) {
-    toast('💵 ' + pesan);
+  function selesaiCair(ikon, pesan) {
+    toast(ikon + ' ' + pesan);
     $('cairWarga').value = '';
     $('cairInfo').textContent = 'Pilih nama warga untuk melihat sisa tabungannya.';
     muatData();
@@ -961,18 +1153,12 @@
       catatan = window.prompt('Alasan penolakan (boleh dikosongkan) — akan tersimpan sebagai catatan:', '') || '';
     }
 
-    BankSampah.prosesPengajuan(id, status, catatan).then(function (hasil) {
-      toast(hasil.ok ? '✅ ' + hasil.pesan : '❌ ' + hasil.pesan);
-      if (hasil.ok) muatData();
-    });
+    tanganiAksi(BankSampah.prosesPengajuan(id, status, catatan), '✅');
   }
 
   function hapusPengajuan(id) {
     if (!window.confirm('Hapus catatan pengajuan ini? Tabungan warga tidak ikut berubah.')) return;
-    BankSampah.hapusPengajuan(id).then(function (hasil) {
-      toast(hasil.ok ? '🗑️ ' + hasil.pesan : '❌ ' + hasil.pesan);
-      if (hasil.ok) muatData();
-    });
+    tanganiAksi(BankSampah.hapusPengajuan(id), '🗑️');
   }
 
   function saringPengajuan() {
