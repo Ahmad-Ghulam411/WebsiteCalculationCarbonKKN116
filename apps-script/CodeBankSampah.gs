@@ -34,8 +34,10 @@
 var TOKEN_RAHASIA = 'rahasia-bank-sampah-116';
 
 // Pendapatan minimal (Rp) yang boleh diajukan warga untuk dicairkan.
+// Diisi 0 = TIDAK ADA batas minimal, jadi warga boleh mengajukan pencairan
+// begitu setorannya dicatat petugas — berapa pun jumlahnya.
 // Samakan dengan KONFIGURASI.BANK_SAMPAH.MIN_PENCAIRAN di js/config.js.
-var MIN_PENCAIRAN = 10000;
+var MIN_PENCAIRAN = 0;
 
 /* Nama tab/sheet */
 var SHEET_NASABAH   = 'Nasabah';
@@ -274,7 +276,16 @@ function aksiTandaiCair(p, jadikanSudah) {
  * ======================================================================== */
 /* Dipanggil warga dari halaman "Cek Bank Sampah" (tanpa token).
  * Jumlah yang dicatat dihitung ULANG di sini dari isi Sheet — nilai yang
- * dikirim browser tidak dipercaya begitu saja. */
+ * dikirim browser tidak dipercaya begitu saja.
+ *
+ * Aturannya sama dengan yang dipakai halaman warga:
+ *   - Boleh mengajukan begitu ada setoran yang belum dicairkan (tanpa
+ *     batas minimal, kecuali MIN_PENCAIRAN di atas sengaja diisi).
+ *   - Hanya SATU pengajuan yang boleh menggantung. Selama pengajuan
+ *     sebelumnya masih berstatus "Diajukan", pengajuan baru ditolak.
+ *   - Setelah petugas menyetujui, seluruh setoran ditandai "Sudah
+ *     Dicairkan" sehingga warga bisa mengajukan lagi begitu menyetor
+ *     sampah berikutnya. */
 function aksiAjukan(p) {
   var id = normalId(p.id);
   if (!id) return { ok: false, pesan: 'ID nasabah belum diisi.' };
@@ -297,7 +308,14 @@ function aksiAjukan(p) {
     }
   });
 
-  if (belum < MIN_PENCAIRAN) {
+  if (belum <= 0) {
+    return {
+      ok: false,
+      pesan: 'Belum ada pendapatan baru yang bisa dicairkan. Setor sampah lagi, ya.',
+    };
+  }
+
+  if (MIN_PENCAIRAN > 0 && belum < MIN_PENCAIRAN) {
     return {
       ok: false,
       pesan: 'Pendapatan yang bisa dicairkan baru Rp ' + Math.round(belum).toLocaleString('id-ID') +

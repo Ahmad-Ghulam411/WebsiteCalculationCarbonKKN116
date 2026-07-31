@@ -57,8 +57,10 @@ responsif (mobile-first), dan di-*hosting* gratis di **Vercel**.
   dikirim ke **WhatsApp pengelola bank sampah** dalam bentuk pesan siap kirim
   (Nama, NIK, ID Nasabah, rincian sampah, ringkasan pendapatan, dan jumlah yang
   ingin dicairkan). Pengajuannya **tetap tercatat** di dashboard petugas.
-  Tombolnya otomatis nonaktif bila tabungan belum mencapai batas minimal atau
-  masih ada pengajuan yang diproses.
+  Tombolnya **hidup setiap kali warga menyetor sampah** — begitu ada setoran
+  yang belum dicairkan, berapa pun jumlahnya. Warga **cukup mengajukan sekali**:
+  selama pengajuannya masih diproses petugas, tombolnya nonaktif; setelah uang
+  dicairkan, tombolnya hidup lagi begitu warga menyetor sampah berikutnya.
 - 📍 **Peta lokasi bank sampah** di beranda & halaman warga — lengkap dengan
   patokan **"tepat di belakang Posyandu"**, tombol **petunjuk arah**, dan
   **nomor WA pengelola**.
@@ -274,7 +276,7 @@ Sheet-nya akan otomatis membuat 3 tab: **Nasabah**, **Setoran**, dan **Pengajuan
 | `BANK_SAMPAH.HARGA_PER_KG.kering` | Harga beli sampah kering per kg (Rp) | `2000` |
 | `BANK_SAMPAH.HARGA_PER_KG.basah` | Harga beli sampah basah per kg (Rp) | `500` |
 | `BANK_SAMPAH.KG_PER_KANTONG` | Perkiraan berat 1 kantong bila tidak ditimbang (kg) | `3` |
-| `BANK_SAMPAH.MIN_PENCAIRAN` | Tabungan minimal yang boleh diajukan warga (Rp) | `10000` |
+| `BANK_SAMPAH.MIN_PENCAIRAN` | Tabungan minimal yang boleh diajukan warga (Rp). **`0` = tanpa batas minimal** — tombol pengajuan hidup begitu ada setoran yang belum dicairkan | `0` |
 | `BANK_SAMPAH.PENGELOLA.nama` | Nama pengelola yang menerima chat WhatsApp | `Pengelola Bank Sampah Kampung Baru` |
 | `BANK_SAMPAH.PENGELOLA.wa` | Nomor WA untuk tautan `wa.me` — **format internasional**, tanpa `+` & spasi (`0813…` → `62813…`) | `6281355210234` |
 | `BANK_SAMPAH.PENGELOLA.waTampil` | Nomor WA yang ditampilkan di layar | `+62 813-5521-0234` |
@@ -283,8 +285,12 @@ Sheet-nya akan otomatis membuat 3 tab: **Nasabah**, **Setoran**, dan **Pengajuan
 | `BANK_SAMPAH.LOKASI.alamat` | Alamat lengkap | `Kelurahan Kampung Baru, Kec. Bacukiki Barat, Kota Parepare` |
 | `BANK_SAMPAH.LOKASI.lat` / `.lng` | Titik koordinat untuk tombol **petunjuk arah** | `-4.020724` / `119.625485` |
 
-> Bila `MIN_PENCAIRAN` diubah, ubah juga `var MIN_PENCAIRAN` di
-> `apps-script/CodeBankSampah.gs` agar pemeriksaan di server ikut menyesuaikan.
+> **Batas minimal pencairan.** Nilai bawaannya `0`, artinya warga boleh
+> mengajukan pencairan begitu setorannya dicatat petugas — tidak perlu menunggu
+> tabungannya mencapai jumlah tertentu. Bila pengelola ingin memberlakukan batas
+> lagi, isi `MIN_PENCAIRAN` di `js/config.js` **dan** `var MIN_PENCAIRAN` di
+> `apps-script/CodeBankSampah.gs` dengan angka yang sama, lalu deploy ulang Web
+> App-nya agar pemeriksaan di server ikut menyesuaikan.
 
 > **Mengganti peta.** Gambar petanya sendiri adalah `<iframe>` Google Maps yang
 > ditulis langsung di `index.html` & `bank-sampah.html` (cari komentar

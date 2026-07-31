@@ -169,8 +169,16 @@ const KONFIGURASI = {
      * menghitung jumlah kantong, bukan menimbang. */
     KG_PER_KANTONG: 3,
 
-    /* Pendapatan minimal (Rp) yang boleh diajukan warga untuk dicairkan */
-    MIN_PENCAIRAN: 10000,
+    /* Pendapatan minimal (Rp) yang boleh diajukan warga untuk dicairkan.
+     *
+     * Diisi 0 = TIDAK ADA batas minimal. Jadi begitu warga menyetor
+     * sampahnya dan pendapatannya masuk, tombol "Ajukan Pencairan lewat
+     * WhatsApp" langsung hidup — berapa pun jumlah tabungannya.
+     *
+     * Bila suatu saat pengelola ingin memberlakukan batas lagi, isi
+     * angkanya di sini (mis. 10000) DAN samakan dengan var MIN_PENCAIRAN
+     * di apps-script/CodeBankSampah.gs. */
+    MIN_PENCAIRAN: 0,
 
     /* ----------------------------------------------------------------
      * PENGELOLA BANK SAMPAH  (dihubungi warga lewat WhatsApp)

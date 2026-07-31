@@ -23,6 +23,7 @@
   let wargaAktif = null;    // data nasabah yang sedang ditampilkan
   let ringkasanAktif = null;
   let pesanWaAktif = '';    // isi chat pengajuan yang sedang disiapkan
+  let sedangMencatat = false; // penjaga agar satu pengajuan tidak tercatat dobel
 
   document.addEventListener('DOMContentLoaded', init);
 
@@ -306,6 +307,19 @@
       '<strong>' + nilai + '</strong></div>';
   }
 
+  /**
+   * Menyalakan / mematikan tombol "Ajukan Pencairan lewat WhatsApp".
+   *
+   * Aturannya sederhana, mengikuti kesepakatan bank sampah:
+   *   1. Ada pengajuan yang belum diproses petugas  → tombol MATI.
+   *      Satu warga hanya boleh mengajukan SEKALI, sampai uangnya benar-benar
+   *      dicairkan (atau pengajuannya ditolak) oleh petugas.
+   *   2. Tidak ada tabungan yang belum dicairkan     → tombol MATI.
+   *      Warga tinggal menyetor sampah lagi supaya tombolnya hidup kembali.
+   *   3. Selain itu (ada tabungan, tidak ada pengajuan tertunda) → tombol HIDUP,
+   *      berapa pun jumlah tabungannya. Tidak ada batas minimal, kecuali
+   *      pengelola sengaja mengisi MIN_PENCAIRAN di js/config.js.
+   */
   function aturTombolCair(r) {
     const tombol = $('tombolCair');
     const info = $('bsCairInfo');
@@ -315,6 +329,7 @@
     tombol.disabled = false;
     tombol.textContent = '💬 Ajukan Pencairan lewat WhatsApp';
 
+    /* 1. Sudah pernah mengajukan & belum diproses petugas. */
     if (r.pengajuanMenunggu) {
       tombol.disabled = true;
       tombol.classList.add('tombol-nonaktif');
@@ -323,20 +338,24 @@
       info.textContent = 'Anda sudah mengajukan pencairan sebesar ' +
         BankSampah.rupiah(r.pengajuanMenunggu.jumlah) + ' pada ' +
         tanggalRamah(r.pengajuanMenunggu.tanggal) +
-        '. Mohon tunggu petugas memprosesnya, ya. 🙏';
+        '. Cukup sekali mengajukan — mohon tunggu petugas memprosesnya, ya. 🙏 ' +
+        'Setelah uangnya Anda terima, tombol ini hidup lagi begitu Anda menyetor sampah berikutnya.';
       return;
     }
 
+    /* 2. Belum ada tabungan baru — semuanya sudah dicairkan. */
     if (r.belumCair <= 0) {
       tombol.disabled = true;
       tombol.classList.add('tombol-nonaktif');
       info.className = 'bs-cair-info';
       info.textContent = 'Belum ada pendapatan baru yang bisa dicairkan. ' +
-        'Setor sampah lagi untuk menambah tabungan Anda. 🌱';
+        'Setor sampah lagi — begitu setoran Anda dicatat petugas, tombol pengajuan ' +
+        'langsung hidup kembali. 🌱';
       return;
     }
 
-    if (r.belumCair < minimal) {
+    /* 3. Batas minimal — hanya berlaku bila pengelola sengaja mengisinya. */
+    if (minimal > 0 && r.belumCair < minimal) {
       tombol.disabled = true;
       tombol.classList.add('tombol-nonaktif');
       info.className = 'bs-cair-info';
@@ -347,10 +366,11 @@
       return;
     }
 
+    /* 4. Siap diajukan. */
     info.className = 'bs-cair-info bs-cair-siap';
     info.textContent = '✅ Tabungan Anda sebesar ' + BankSampah.rupiah(r.belumCair) +
-      ' sudah bisa dicairkan. Tekan tombol di bawah — pengajuannya langsung dikirim ke ' +
-      'WhatsApp pengelola bank sampah.';
+      ' sudah bisa dicairkan sekarang. Tekan tombol di bawah — pengajuannya langsung ' +
+      'dikirim ke WhatsApp pengelola bank sampah. Cukup ajukan sekali, ya.';
   }
 
   function aturRiwayat(daftar) {
@@ -394,6 +414,16 @@
    * ------------------------------------------------------------------- */
   function ajukanPencairan() {
     if (!wargaAktif || !ringkasanAktif) return;
+
+    /* Pengaman tambahan — satu pengajuan saja sampai petugas memprosesnya. */
+    if (ringkasanAktif.pengajuanMenunggu) {
+      toast('⏳ Pengajuan Anda sebelumnya masih diproses petugas. Mohon ditunggu, ya.');
+      return;
+    }
+    if (ringkasanAktif.belumCair <= 0) {
+      toast('ℹ️ Belum ada tabungan baru yang bisa dicairkan. Setor sampah lagi, ya. 🌱');
+      return;
+    }
 
     pesanWaAktif = susunPesanWa(wargaAktif, ringkasanAktif);
 
@@ -524,11 +554,17 @@
     if (salin) salin.addEventListener('click', salinPesanWa);
   }
 
-  /** Mencatat pengajuan ke buku petugas agar muncul di dashboard admin. */
+  /**
+   * Mencatat pengajuan ke buku petugas agar muncul di dashboard admin.
+   * Dijaga supaya SATU pengajuan hanya tercatat sekali, walau tombol
+   * "Kirim lewat WhatsApp" tidak sengaja ditekan berkali-kali.
+   */
   function catatPengajuan() {
     if (!wargaAktif || !ringkasanAktif) return;
+    if (sedangMencatat) return;
     const id = wargaAktif.id;
 
+    sedangMencatat = true;
     BankSampah.ajukanPencairan(id, wargaAktif.nama, ringkasanAktif.belumCair)
       .then(function (hasil) {
         if (hasil.ok || hasil.tanpaBalasan) {
@@ -537,7 +573,9 @@
           toast('ℹ️ ' + hasil.pesan + ' Pengajuan lewat WhatsApp tetap bisa diteruskan.');
         }
         cari(id); // muat ulang agar status terbaru terlihat
-      });
+      })
+      .then(function () { sedangMencatat = false; },
+            function () { sedangMencatat = false; });
   }
 
   /** Menyalin isi pesan — untuk warga yang tidak memakai WhatsApp. */

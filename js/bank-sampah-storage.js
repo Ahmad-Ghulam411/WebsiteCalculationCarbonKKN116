@@ -561,9 +561,24 @@ const BankSampah = (function () {
   /* =======================================================================
    *  MENGUBAH DATA — PENGAJUAN PENCAIRAN
    * ===================================================================== */
-  /** Dipanggil warga dari halaman "Cek Bank Sampah" (tanpa token). */
+  /**
+   * Dipanggil warga dari halaman "Cek Bank Sampah" (tanpa token).
+   *
+   * Satu warga hanya boleh punya SATU pengajuan yang menggantung. Selama
+   * pengajuan sebelumnya masih berstatus "Diajukan", pengajuan baru ditolak.
+   * Begitu petugas menyetujuinya, seluruh setoran ditandai "Sudah Dicairkan"
+   * sehingga warga bisa mengajukan lagi setelah menyetor sampah berikutnya.
+   */
   function ajukanPencairan(idWarga, nama, jumlah) {
     const kunci = normalId(idWarga);
+    const nilai = Math.round(keAngka(jumlah));
+
+    if (nilai <= 0) {
+      return Promise.resolve({
+        ok: false,
+        pesan: 'Belum ada pendapatan baru yang bisa dicairkan. Setor sampah lagi, ya.',
+      });
+    }
 
     if (!pakaiServer()) {
       const daftar = ambilLokal(KUNCI_BS_PENGAJUAN);
@@ -578,7 +593,7 @@ const BankSampah = (function () {
         idWarga: kunci,
         nama: nama || '',
         tanggal: waktuSekarang(),
-        jumlah: Math.round(keAngka(jumlah)),
+        jumlah: nilai,
         status: BS_STATUS_AJU.DIAJUKAN,
         tanggalProses: '',
         catatan: '',
@@ -587,7 +602,7 @@ const BankSampah = (function () {
       return Promise.resolve({ ok: true, pesan: 'Pengajuan pencairan terkirim.' });
     }
 
-    return kirimAksi({ action: 'ajukan', id: kunci, nama: nama || '', jumlah: Math.round(keAngka(jumlah)) });
+    return kirimAksi({ action: 'ajukan', id: kunci, nama: nama || '', jumlah: nilai });
   }
 
   /**
