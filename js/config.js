@@ -171,6 +171,40 @@ const KONFIGURASI = {
 
     /* Pendapatan minimal (Rp) yang boleh diajukan warga untuk dicairkan */
     MIN_PENCAIRAN: 10000,
+
+    /* ----------------------------------------------------------------
+     * PENGELOLA BANK SAMPAH  (dihubungi warga lewat WhatsApp)
+     *
+     * Saat warga menekan "Ajukan Pencairan Pendapatan", halaman warga
+     * langsung membuka WhatsApp ke nomor ini dengan pesan yang sudah
+     * berisi Nama, NIK, ID Nasabah, rincian sampah, dan jumlah yang
+     * ingin dicairkan.
+     * ---------------------------------------------------------------- */
+    PENGELOLA: {
+      nama: 'Pengelola Bank Sampah Kampung Baru',
+
+      /* Nomor untuk tautan wa.me — WAJIB format internasional:
+       * tanpa tanda "+", tanpa spasi, dan angka 0 di depan diganti 62.
+       * Contoh: 0813 5521 0234  →  6281355210234 */
+      wa: '6281355210234',
+
+      /* Nomor yang ditampilkan di layar (boleh pakai spasi/strip) */
+      waTampil: '+62 813-5521-0234',
+    },
+
+    /* ----------------------------------------------------------------
+     * LOKASI SEKRETARIAT BANK SAMPAH
+     * Dipakai untuk peta, keterangan patokan, & tombol petunjuk arah.
+     * Titik koordinat diambil dari peta Google Maps "Bank Sampah
+     * Kampung Baru".
+     * ---------------------------------------------------------------- */
+    LOKASI: {
+      nama: 'Bank Sampah Kampung Baru',
+      patokan: 'Tepat di belakang Posyandu',
+      alamat: 'Kelurahan Kampung Baru, Kec. Bacukiki Barat, Kota Parepare',
+      lat: -4.020724,
+      lng: 119.625485,
+    },
   },
 };
 

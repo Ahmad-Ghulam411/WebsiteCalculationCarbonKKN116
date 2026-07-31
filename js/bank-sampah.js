@@ -6,7 +6,9 @@
  *    - Berat / jumlah kantong keseluruhan (dipisah sampah kering & basah)
  *    - Setoran yang baru saja dimasukkan petugas
  *    - Pendapatan keseluruhan, yang belum dicairkan, & yang sudah dicairkan
- *    - Tombol untuk mengajukan pencairan pendapatan
+ *    - Tombol untuk mengajukan pencairan pendapatan — pengajuannya langsung
+ *      dikirim ke WhatsApp pengelola bank sampah dalam bentuk pesan yang
+ *      sudah lengkap (nama, NIK, ID nasabah, rincian sampah, & jumlah).
  * ========================================================================== */
 
 (function () {
@@ -14,8 +16,13 @@
 
   const KUNCI_ID_TERAKHIR = 'bankSampahIdTerakhir';
 
+  /* Banyaknya setoran yang dirinci satu per satu di pesan WhatsApp.
+   * Dibatasi supaya pesannya tidak kepanjangan di layar HP. */
+  const BATAS_RINCIAN_WA = 15;
+
   let wargaAktif = null;    // data nasabah yang sedang ditampilkan
   let ringkasanAktif = null;
+  let pesanWaAktif = '';    // isi chat pengajuan yang sedang disiapkan
 
   document.addEventListener('DOMContentLoaded', init);
 
@@ -24,6 +31,7 @@
     isiDaftarHarga();
     wiringNavigasi();
     wiringForm();
+    wiringModalCair();
     setTahunFooter();
     isiIdAwal();
   }
@@ -69,6 +77,24 @@
 
   function angkaRamah(n) {
     return BankSampah.keAngka(n).toLocaleString('id-ID', { maximumFractionDigits: 2 });
+  }
+
+  /** Tanggal & jam sekarang, mis. "31 Juli 2026, pukul 14.05". */
+  function waktuRamahSekarang() {
+    const d = new Date();
+    const p = function (n) { return String(n).padStart(2, '0'); };
+    const tanggal = d.getFullYear() + '-' + p(d.getMonth() + 1) + '-' + p(d.getDate());
+    return tanggalRamah(tanggal) + ', pukul ' + p(d.getHours()) + '.' + p(d.getMinutes());
+  }
+
+  /** Tautan chat WhatsApp ke pengelola bank sampah (berisi pesan pengajuan). */
+  function tautanWa(pesan) {
+    if (window.BankSampahKontak) return BankSampahKontak.tautanWa(pesan);
+    // Cadangan bila js/bank-sampah-lokasi.js belum termuat
+    const pengelola = KONFIGURASI.BANK_SAMPAH.PENGELOLA || {};
+    let nomor = String(pengelola.wa || '').replace(/[^0-9]/g, '');
+    if (nomor.indexOf('0') === 0) nomor = '62' + nomor.slice(1);
+    return 'https://wa.me/' + nomor + (pesan ? '?text=' + encodeURIComponent(pesan) : '');
   }
 
   /* ---------------------------------------------------------------------
@@ -287,7 +313,7 @@
 
     tombol.classList.remove('tombol-nonaktif');
     tombol.disabled = false;
-    tombol.textContent = '💵 Ajukan Pencairan Pendapatan';
+    tombol.textContent = '💬 Ajukan Pencairan lewat WhatsApp';
 
     if (r.pengajuanMenunggu) {
       tombol.disabled = true;
@@ -323,7 +349,8 @@
 
     info.className = 'bs-cair-info bs-cair-siap';
     info.textContent = '✅ Tabungan Anda sebesar ' + BankSampah.rupiah(r.belumCair) +
-      ' sudah bisa dicairkan. Tekan tombol di bawah untuk mengajukannya.';
+      ' sudah bisa dicairkan. Tekan tombol di bawah — pengajuannya langsung dikirim ke ' +
+      'WhatsApp pengelola bank sampah.';
   }
 
   function aturRiwayat(daftar) {
@@ -354,41 +381,201 @@
   }
 
   /* ---------------------------------------------------------------------
-   *  Mengajukan pencairan
+   *  Mengajukan pencairan — lewat WhatsApp pengelola bank sampah
+   *
+   *  Alurnya:
+   *    1. Warga menekan "Ajukan Pencairan lewat WhatsApp".
+   *    2. Muncul kotak berisi nomor WA pengelola, jumlah yang diajukan,
+   *       dan pratinjau isi pesannya.
+   *    3. Warga menekan tombol hijau → WhatsApp terbuka dengan pesan yang
+   *       sudah lengkap, tinggal ditekan "kirim".
+   *    4. Di belakang layar, pengajuan tetap dicatat ke buku pengajuan
+   *       petugas (Google Sheets) supaya terlihat juga di dashboard admin.
    * ------------------------------------------------------------------- */
   function ajukanPencairan() {
     if (!wargaAktif || !ringkasanAktif) return;
 
-    const jumlah = ringkasanAktif.belumCair;
-    const setuju = window.confirm(
-      'Ajukan pencairan pendapatan sebesar ' + BankSampah.rupiah(jumlah) + '?\n\n' +
-      'Pengajuan ini akan dikirim ke petugas bank sampah untuk diperiksa. ' +
-      'Uang diserahkan langsung di sekretariat bank sampah.'
-    );
-    if (!setuju) return;
+    pesanWaAktif = susunPesanWa(wargaAktif, ringkasanAktif);
 
-    const tombol = $('tombolCair');
-    tombol.disabled = true;
-    tombol.textContent = '⏳ Mengirim pengajuan…';
+    const modal = $('modalCair');
+    if (!modal) {
+      // Cadangan bila kotak pengajuan tidak ada di halaman
+      window.open(tautanWa(pesanWaAktif), '_blank', 'noopener');
+      catatPengajuan();
+      return;
+    }
 
-    BankSampah.ajukanPencairan(wargaAktif.id, wargaAktif.nama, jumlah).then(function (hasil) {
-      if (hasil.ok) {
-        toast('✅ Pengajuan terkirim. Petugas akan segera memprosesnya.');
-        cari(wargaAktif.id); // muat ulang agar status terbaru terlihat
-        return;
-      }
+    const nominal = $('cairNominal');
+    const pratinjau = $('cairPratinjau');
+    const kirim = $('cairKirim');
+    if (nominal) nominal.textContent = BankSampah.rupiah(ringkasanAktif.belumCair);
+    if (pratinjau) pratinjau.textContent = pesanWaAktif;
+    if (kirim) kirim.href = tautanWa(pesanWaAktif);
 
-      if (hasil.tanpaBalasan) {
-        // Balasan server hilang di jalan — pengajuannya sering TETAP terkirim.
-        // Data dimuat ulang supaya warga melihat keadaan yang sebenarnya.
-        toast('⏳ Balasan server lambat. Data Anda dimuat ulang untuk memastikan.');
-        cari(wargaAktif.id);
-        return;
-      }
+    modal.classList.add('tampil');
+    modal.setAttribute('aria-hidden', 'false');
+  }
 
-      toast('❌ ' + hasil.pesan);
-      aturTombolCair(ringkasanAktif);
+  /** Menyusun isi chat WhatsApp: data diri, rincian sampah, & jumlah. */
+  function susunPesanWa(warga, r) {
+    const lokasi = KONFIGURASI.BANK_SAMPAH.LOKASI || {};
+    const namaTempat = lokasi.nama || 'Bank Sampah Kampung Baru';
+    const patokan = lokasi.patokan || 'Tepat di belakang Posyandu';
+
+    const alamat = [warga.alamat, warga.rt ? 'RT ' + warga.rt : '', warga.rw ? 'RW ' + warga.rw : '']
+      .filter(function (x) { return String(x || '').trim(); }).join(' · ');
+
+    const baris = [];
+    baris.push('*PENGAJUAN PENCAIRAN TABUNGAN BANK SAMPAH*');
+    baris.push(namaTempat + ' — Kota Parepare');
+    baris.push('');
+    baris.push('Assalamu alaikum, Pak/Bu. Saya ingin mengajukan pencairan tabungan bank sampah saya. Berikut datanya:');
+    baris.push('');
+
+    baris.push('*A. DATA NASABAH*');
+    baris.push('• Nama: ' + (warga.nama || '-'));
+    baris.push('• NIK: ' + (warga.nik || '-'));
+    baris.push('• ID Nasabah: ' + (warga.id || '-'));
+    baris.push('• Alamat: ' + (alamat || '-'));
+    if (String(warga.noHp || '').trim()) baris.push('• No. HP: ' + warga.noHp);
+    baris.push('• Terdaftar sejak: ' + tanggalRamah(warga.tanggalDaftar));
+    baris.push('');
+
+    baris.push('*B. RINCIAN SAMPAH YANG SUDAH DISETOR*');
+    baris.push('• Jumlah setoran: ' + r.jumlahSetoran + ' kali');
+    baris.push('• Total berat: ' + angkaRamah(r.totalBerat) + ' kg (' + angkaRamah(r.totalKantong) + ' kantong)');
+    baris.push('• Sampah kering: ' + angkaRamah(r.kering.berat) + ' kg · ' +
+      angkaRamah(r.kering.kantong) + ' kantong · ' + BankSampah.rupiah(r.kering.pendapatan));
+    baris.push('• Sampah basah: ' + angkaRamah(r.basah.berat) + ' kg · ' +
+      angkaRamah(r.basah.kantong) + ' kantong · ' + BankSampah.rupiah(r.basah.pendapatan));
+    if (r.setoranTerakhir) {
+      const s = r.setoranTerakhir;
+      baris.push('• Setoran terakhir: ' + tanggalRamah(s.tanggal) + ' — ' + (s.jenis || '-') +
+        ', ' + angkaRamah(s.berat) + ' kg (' + BankSampah.rupiah(s.pendapatan) + ')');
+    }
+    baris.push('');
+
+    const belum = (r.setoran || []).filter(function (s) {
+      return String(s.status || '') !== BS_STATUS_CAIR.SUDAH;
     });
+    if (belum.length) {
+      baris.push('*C. SETORAN YANG BELUM DICAIRKAN*');
+      belum.slice(0, BATAS_RINCIAN_WA).forEach(function (s, i) {
+        baris.push((i + 1) + '. ' + tanggalRamah(s.tanggal) + ' — ' + (s.jenis || '-') + ', ' +
+          angkaRamah(s.berat) + ' kg, ' + angkaRamah(s.kantong) + ' kantong, ' +
+          BankSampah.rupiah(s.pendapatan));
+      });
+      if (belum.length > BATAS_RINCIAN_WA) {
+        baris.push('…dan ' + (belum.length - BATAS_RINCIAN_WA) + ' setoran lainnya.');
+      }
+      baris.push('');
+    }
+
+    baris.push('*D. RINGKASAN PENDAPATAN*');
+    baris.push('• Pendapatan keseluruhan: ' + BankSampah.rupiah(r.pendapatanTotal));
+    baris.push('• Sudah dicairkan: ' + BankSampah.rupiah(r.sudahCair));
+    baris.push('• Belum dicairkan: ' + BankSampah.rupiah(r.belumCair));
+    baris.push('');
+    baris.push('*JUMLAH YANG INGIN DICAIRKAN: ' + BankSampah.rupiah(r.belumCair) + '*');
+    baris.push('');
+    baris.push('Tanggal pengajuan: ' + waktuRamahSekarang());
+    baris.push('Mohon informasinya kapan saya bisa mengambil uangnya di sekretariat bank sampah (' +
+      patokan + '). Terima kasih banyak 🙏');
+    baris.push('');
+    baris.push('_Pesan ini dibuat otomatis dari halaman Cek Bank Sampah Kampung Baru._');
+
+    return baris.join('\n');
+  }
+
+  /* ---------------------------------------------------------------------
+   *  Kotak pengajuan (modal WhatsApp)
+   * ------------------------------------------------------------------- */
+  function tutupModalCair() {
+    const modal = $('modalCair');
+    if (!modal) return;
+    modal.classList.remove('tampil');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function wiringModalCair() {
+    const modal = $('modalCair');
+    if (!modal) return;
+
+    const tutup = $('cairTutup');
+    const latar = $('cairLatar');
+    if (tutup) tutup.addEventListener('click', tutupModalCair);
+    if (latar) latar.addEventListener('click', tutupModalCair);
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && modal.classList.contains('tampil')) tutupModalCair();
+    });
+
+    const kirim = $('cairKirim');
+    if (kirim) {
+      kirim.addEventListener('click', function () {
+        // WhatsApp dibuka oleh tautan ini sendiri — BUKAN lewat JavaScript —
+        // supaya tidak diblokir peramban HP. Pencatatan pengajuan ke buku
+        // petugas dikerjakan di belakang layar.
+        catatPengajuan();
+        setTimeout(tutupModalCair, 800);
+      });
+    }
+
+    const salin = $('cairSalin');
+    if (salin) salin.addEventListener('click', salinPesanWa);
+  }
+
+  /** Mencatat pengajuan ke buku petugas agar muncul di dashboard admin. */
+  function catatPengajuan() {
+    if (!wargaAktif || !ringkasanAktif) return;
+    const id = wargaAktif.id;
+
+    BankSampah.ajukanPencairan(id, wargaAktif.nama, ringkasanAktif.belumCair)
+      .then(function (hasil) {
+        if (hasil.ok || hasil.tanpaBalasan) {
+          toast('✅ Pengajuan dicatat. Jangan lupa tekan "kirim" di WhatsApp, ya.');
+        } else {
+          toast('ℹ️ ' + hasil.pesan + ' Pengajuan lewat WhatsApp tetap bisa diteruskan.');
+        }
+        cari(id); // muat ulang agar status terbaru terlihat
+      });
+  }
+
+  /** Menyalin isi pesan — untuk warga yang tidak memakai WhatsApp. */
+  function salinPesanWa() {
+    if (!pesanWaAktif) return;
+
+    const beritahu = function (berhasil) {
+      toast(berhasil
+        ? '📋 Isi pesan sudah disalin.'
+        : '❌ Tidak bisa menyalin otomatis. Silakan salin dari kotak pratinjau.');
+    };
+
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(pesanWaAktif).then(
+        function () { beritahu(true); },
+        function () { beritahu(salinCaraLama(pesanWaAktif)); }
+      );
+      return;
+    }
+    beritahu(salinCaraLama(pesanWaAktif));
+  }
+
+  function salinCaraLama(teks) {
+    try {
+      const kotak = document.createElement('textarea');
+      kotak.value = teks;
+      kotak.setAttribute('readonly', '');
+      kotak.style.position = 'fixed';
+      kotak.style.top = '-1000px';
+      kotak.style.opacity = '0';
+      document.body.appendChild(kotak);
+      kotak.select();
+      const berhasil = document.execCommand('copy');
+      document.body.removeChild(kotak);
+      return berhasil;
+    } catch (e) {
+      return false;
+    }
   }
 
 })();

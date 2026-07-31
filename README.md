@@ -53,8 +53,15 @@ responsif (mobile-first), dan di-*hosting* gratis di **Vercel**.
   sampah basah**, plus **setoran yang baru saja dimasukkan** petugas.
 - 💰 **Rincian pendapatan** — Pendapatan Keseluruhan, **Belum Dicairkan**, dan
   **Sudah Dicairkan**, lengkap dengan riwayat setoran.
-- 💵 **Tombol "Ajukan Pencairan Pendapatan"** — otomatis nonaktif bila tabungan
-  belum mencapai batas minimal atau masih ada pengajuan yang diproses.
+- 💬 **Tombol "Ajukan Pencairan lewat WhatsApp"** — pengajuan warga langsung
+  dikirim ke **WhatsApp pengelola bank sampah** dalam bentuk pesan siap kirim
+  (Nama, NIK, ID Nasabah, rincian sampah, ringkasan pendapatan, dan jumlah yang
+  ingin dicairkan). Pengajuannya **tetap tercatat** di dashboard petugas.
+  Tombolnya otomatis nonaktif bila tabungan belum mencapai batas minimal atau
+  masih ada pengajuan yang diproses.
+- 📍 **Peta lokasi bank sampah** di beranda & halaman warga — lengkap dengan
+  patokan **"tepat di belakang Posyandu"**, tombol **petunjuk arah**, dan
+  **nomor WA pengelola**.
 - 🧮 **Hitung otomatis untuk petugas** — pendapatan = `berat × harga per kg`;
   bila sampah tidak ditimbang, berat diperkirakan dari **jumlah kantong**.
 - 🗂️ **Dashboard admin bank sampah** dengan 4 tab: Data Warga, Setoran Sampah,
@@ -85,6 +92,7 @@ js/xlsx-export.js               Pembuat berkas Excel (.xlsx) & CSV mandiri
 js/admin.js                     Logika dashboard admin data karbon
 js/main.js                      Penghubung semua bagian + animasi (halaman utama)
 js/bank-sampah-storage.js       Lapisan data bank sampah (nasabah, setoran, pengajuan)
+js/bank-sampah-lokasi.js        Peta lokasi & nomor WA pengelola (beranda + halaman warga)
 js/bank-sampah.js               Logika halaman warga "Cek Bank Sampah"
 js/admin-bank-sampah.js         Logika dashboard admin bank sampah
 
@@ -194,8 +202,13 @@ berbeda dari data karbon) supaya akses petugasnya benar-benar terpisah.
    (dipisah *sampah kering* dan *sampah basah*), **setoran yang baru saja
    dimasukkan**, **Pendapatan Keseluruhan**, **Belum Dicairkan**,
    **Sudah Dicairkan**, dan riwayat setoran.
-4. Bila tabungannya sudah cukup, tombol **💵 Ajukan Pencairan Pendapatan** bisa
-   ditekan — pengajuannya langsung masuk ke dashboard petugas.
+4. Bila tabungannya sudah cukup, tombol **💬 Ajukan Pencairan lewat WhatsApp**
+   bisa ditekan. Muncul kotak berisi nomor WA pengelola, jumlah yang diajukan,
+   dan **pratinjau isi pesannya**. Setelah tombol hijau ditekan, WhatsApp
+   terbuka dengan pesan yang sudah lengkap — warga tinggal menekan *kirim*.
+   Pengajuannya juga **tercatat otomatis** di dashboard petugas.
+5. Di bagian bawah halaman ada **peta lokasi bank sampah** (tepat di belakang
+   Posyandu) beserta tombol **petunjuk arah** dan **chat pengelola**.
 
 > Halaman ini juga bisa dibuka lewat tautan langsung berisi ID, mis.
 > `bank-sampah.html?id=BS-0001` — praktis untuk dibagikan lewat WhatsApp.
@@ -262,9 +275,23 @@ Sheet-nya akan otomatis membuat 3 tab: **Nasabah**, **Setoran**, dan **Pengajuan
 | `BANK_SAMPAH.HARGA_PER_KG.basah` | Harga beli sampah basah per kg (Rp) | `500` |
 | `BANK_SAMPAH.KG_PER_KANTONG` | Perkiraan berat 1 kantong bila tidak ditimbang (kg) | `3` |
 | `BANK_SAMPAH.MIN_PENCAIRAN` | Tabungan minimal yang boleh diajukan warga (Rp) | `10000` |
+| `BANK_SAMPAH.PENGELOLA.nama` | Nama pengelola yang menerima chat WhatsApp | `Pengelola Bank Sampah Kampung Baru` |
+| `BANK_SAMPAH.PENGELOLA.wa` | Nomor WA untuk tautan `wa.me` — **format internasional**, tanpa `+` & spasi (`0813…` → `62813…`) | `6281355210234` |
+| `BANK_SAMPAH.PENGELOLA.waTampil` | Nomor WA yang ditampilkan di layar | `+62 813-5521-0234` |
+| `BANK_SAMPAH.LOKASI.nama` | Nama tempat pada kartu peta | `Bank Sampah Kampung Baru` |
+| `BANK_SAMPAH.LOKASI.patokan` | Patokan lokasi | `Tepat di belakang Posyandu` |
+| `BANK_SAMPAH.LOKASI.alamat` | Alamat lengkap | `Kelurahan Kampung Baru, Kec. Bacukiki Barat, Kota Parepare` |
+| `BANK_SAMPAH.LOKASI.lat` / `.lng` | Titik koordinat untuk tombol **petunjuk arah** | `-4.020724` / `119.625485` |
 
 > Bila `MIN_PENCAIRAN` diubah, ubah juga `var MIN_PENCAIRAN` di
 > `apps-script/CodeBankSampah.gs` agar pemeriksaan di server ikut menyesuaikan.
+
+> **Mengganti peta.** Gambar petanya sendiri adalah `<iframe>` Google Maps yang
+> ditulis langsung di `index.html` & `bank-sampah.html` (cari komentar
+> `LOKASI & PETA BANK SAMPAH`). Untuk memindahkan titiknya: buka Google Maps ▸
+> **Bagikan ▸ Sematkan peta**, salin `src` iframe-nya ke kedua halaman, lalu
+> samakan juga `LOKASI.lat` & `LOKASI.lng` di `js/config.js` supaya tombol
+> petunjuk arahnya ikut menunjuk ke tempat yang sama.
 
 ---
 
