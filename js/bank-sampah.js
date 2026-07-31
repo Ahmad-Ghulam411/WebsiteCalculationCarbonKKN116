@@ -186,8 +186,11 @@
       .then(function (hasil) {
         if (!hasil.ok || !hasil.nasabah) {
           $('hasilBs').classList.add('tersembunyi');
-          pesanCek('❌ ' + (hasil.pesan || 'Data tidak ditemukan.') +
-            ' Periksa kembali ID Nasabah Anda, atau tanyakan ke petugas bank sampah.', 'salah');
+          pesanCek(hasil.tanpaBalasan
+            ? '❌ Server bank sampah belum menjawab. Periksa koneksi internet Anda, ' +
+              'lalu tekan "Cek Sekarang" sekali lagi.'
+            : '❌ ' + (hasil.pesan || 'Data tidak ditemukan.') +
+              ' Periksa kembali ID Nasabah Anda, atau tanyakan ke petugas bank sampah.', 'salah');
           return;
         }
 
@@ -372,10 +375,19 @@
       if (hasil.ok) {
         toast('✅ Pengajuan terkirim. Petugas akan segera memprosesnya.');
         cari(wargaAktif.id); // muat ulang agar status terbaru terlihat
-      } else {
-        toast('❌ ' + hasil.pesan);
-        aturTombolCair(ringkasanAktif);
+        return;
       }
+
+      if (hasil.tanpaBalasan) {
+        // Balasan server hilang di jalan — pengajuannya sering TETAP terkirim.
+        // Data dimuat ulang supaya warga melihat keadaan yang sebenarnya.
+        toast('⏳ Balasan server lambat. Data Anda dimuat ulang untuk memastikan.');
+        cari(wargaAktif.id);
+        return;
+      }
+
+      toast('❌ ' + hasil.pesan);
+      aturTombolCair(ringkasanAktif);
     });
   }
 
