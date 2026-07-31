@@ -144,7 +144,7 @@ const KONFIGURASI = {
     /* URL "Web App" hasil deploy apps-script/CodeBankSampah.gs.
      * Bila dikosongkan, seluruh data bank sampah tersimpan di perangkat
      * (localStorage) sehingga fitur tetap bisa dicoba tanpa internet. */
-    APPS_SCRIPT_URL: '',
+    APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwWq3ECb3T-Sww_VT8X06M0hcehX3zylYflJd0QIzu1IHq_h6_EHlrpEcgMPHwZVJoB/exec',
 
     /* Kata sandi rahasia — HARUS SAMA dengan TOKEN_RAHASIA di CodeBankSampah.gs */
     token: 'rahasia-bank-sampah-116',
