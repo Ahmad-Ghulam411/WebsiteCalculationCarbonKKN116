@@ -109,7 +109,7 @@ const KONFIGURASI = {
    *    Bila dikosongkan, data tetap tersimpan sementara di perangkat
    *    (localStorage) sebagai cadangan.
    * ------------------------------------------------------------------ */
-  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbx36VZMNVjiZjTKEwSjmaSXkcZ_X4tQ5Qxjk1cvBy3DCxblTUo6s12GGp_mP6-8Qa_o0w/exec', // contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
+  APPS_SCRIPT_URL: 'https://script.google.com/macros/s/AKfycbwBrb-oacuz1HMd3_rthuRxbuY7wFGNpUf4s4Nhylae2nG1hWh0noWOmQqGst0jEzgj6Q/exec', // contoh: 'https://script.google.com/macros/s/AKfycb.../exec'
 
   /* ------------------------------------------------------------------
    * 7) DASHBOARD ADMIN
