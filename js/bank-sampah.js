@@ -991,14 +991,17 @@
       rw: data.rw,
       noHp: data.noHp,
     }).then(function (hasil) {
-      if (!hasil.ok || !hasil.id) {
-        return {
-          ok: false,
-          pesan: (hasil.pesan || 'Pendaftaran gagal.') +
+      if (hasil.ok && hasil.id) return { ok: true, id: hasil.id, nik: '', baru: !hasil.lama };
+
+      return {
+        ok: false,
+        pesan: hasil.tanpaBalasan
+          ? 'Server bank sampah belum sempat menjawab, jadi ID Nasabah Anda belum bisa ' +
+            'dipastikan. Tunggu sebentar lalu tekan "Kirim Setoran" sekali lagi — data Anda ' +
+            'TIDAK akan terdaftar dua kali. Kalau masih gagal juga, hubungi petugas lewat WhatsApp.'
+          : (hasil.pesan || 'Pendaftaran gagal.') +
             ' Setoran belum bisa dicatat. Coba lagi sebentar, atau hubungi petugas lewat WhatsApp.',
-        };
-      }
-      return { ok: true, id: hasil.id, nik: '', baru: !hasil.lama };
+      };
     });
   }
 
