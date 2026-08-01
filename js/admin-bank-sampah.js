@@ -5,10 +5,12 @@
  *  (nama pengguna & kata sandinya sendiri, di KONFIGURASI.BANK_SAMPAH.ADMIN).
  *
  *  Isi dashboard:
- *    Tab 1 — Data Warga     : tambah / ubah / hapus nasabah + penyaring
- *    Tab 2 — Setoran Sampah : catat timbangan sampah + penyaring + tandai cair
- *    Tab 3 — Pencairan      : proses pengajuan warga & pencairan langsung
- *    Tab 4 — Cara Pakai     : panduan penggunaan untuk petugas
+ *    Tab 1 — Data Warga        : tambah / ubah / hapus nasabah + penyaring
+ *    Tab 2 — Setoran dari Warga: catatan setoran + FOTO yang dikirim warga
+ *                                sendiri dari HP-nya → disetujui / ditolak
+ *    Tab 3 — Setoran Sampah    : catat timbangan sampah + penyaring + tandai cair
+ *    Tab 4 — Pencairan         : proses pengajuan warga & pencairan langsung
+ *    Tab 5 — Cara Pakai        : panduan penggunaan untuk petugas
  *
  *  Catatan keamanan: kata sandi di config.js bersifat client-side, jadi ini
  *  hanya PENGHALANG DASAR — sama seperti dashboard admin jejak karbon.
@@ -20,7 +22,7 @@
   const KUNCI_SESI = 'bankSampahSesiPetugas';
 
   /* Data mentah hasil pemuatan terakhir */
-  let data = { nasabah: [], setoran: [], pengajuan: [] };
+  let data = { nasabah: [], setoran: [], pengajuan: [], setoranWarga: [] };
   let sumber = 'lokal';
 
   /* Ringkasan per warga: { 'BS-0001': {…hasil BankSampah.ringkas} } */
@@ -30,10 +32,14 @@
   let tampilWarga = [];
   let tampilSetoran = [];
   let tampilPengajuan = [];
+  let tampilMasuk = [];
 
   /* Mode ubah — null berarti sedang menambah data baru */
   let ubahWargaId = null;
   let ubahSetoranId = null;
+
+  /* Catatan setoran warga yang sedang diperiksa di kotak "Periksa Setoran" */
+  let masukDiperiksa = null;
 
   document.addEventListener('DOMContentLoaded', init);
 
@@ -45,6 +51,7 @@
     wiringFilterWarga();
     wiringFormSetoran();
     wiringFilterSetoran();
+    wiringSetoranWarga();
     wiringPencairan();
     wiringModal();
 
@@ -111,9 +118,47 @@
     const set = function (id, v) { const e = $(id); if (e) e.textContent = v; };
     set('ketKgKantong', kg);
     set('panduanKgKantong', kg);
-    $('sHarga').value = bs.HARGA_PER_KG.kering;
+
+    isiPilihanJenis();
+    $('sHarga').value = hargaJenisTerpilih();
     $('sTanggal').value = BankSampah.tanggalHariIni();
     $('wTanggal').value = BankSampah.tanggalHariIni();
+  }
+
+  /** Mengisi seluruh pilihan "Jenis Sampah" dari KONFIGURASI.BANK_SAMPAH.JENIS. */
+  function isiPilihanJenis() {
+    const jenis = BankSampah.daftarJenis();
+
+    const sel = $('sJenis');
+    if (sel) {
+      const terpilih = sel.value; // jangan sampai isian petugas berpindah sendiri
+      sel.innerHTML = jenis.map(function (j) {
+        const ket = j.ket ? ' — ' + ringkasKet(j.ket) : '';
+        return '<option value="' + escHtml(j.nama) + '">' +
+          escHtml((j.ikon ? j.ikon + ' ' : '') + j.nama + ket) + '</option>';
+      }).join('');
+      if (terpilih) pilihJenisSetoran(terpilih);
+    }
+
+    // Penyaring boleh memuat jenis lama yang masih ada di riwayat, supaya
+    // setoran "Kering"/"Basah" dari sebelumnya tetap bisa dicari.
+    const nama = jenis.map(function (j) { return j.nama; });
+    data.setoran.forEach(function (s) {
+      const v = String(s.jenis || '').trim();
+      if (v && nama.indexOf(v) < 0) nama.push(v);
+    });
+    isiSelect('fsJenis', nama, 'Semua Jenis');
+    isiSelect('fmJenis', jenis.map(function (j) { return j.nama; }), 'Semua Jenis');
+  }
+
+  /** Memendekkan keterangan panjang agar muat di dalam <option>. */
+  function ringkasKet(teks) {
+    const bersih = String(teks || '').trim();
+    return bersih.length > 46 ? bersih.slice(0, 45).replace(/[\s.,]+$/, '') + '…' : bersih;
+  }
+
+  function hargaJenisTerpilih() {
+    return BankSampah.hargaJenis(nilai('sJenis') || (BankSampah.daftarJenis()[0] || {}).nama);
   }
 
   /* =======================================================================
@@ -195,7 +240,12 @@
         return hasil;
       }
 
-      data = { nasabah: hasil.nasabah, setoran: hasil.setoran, pengajuan: hasil.pengajuan };
+      data = {
+        nasabah: hasil.nasabah,
+        setoran: hasil.setoran,
+        pengajuan: hasil.pengajuan,
+        setoranWarga: hasil.setoranWarga || [],
+      };
 
       if (sumber === 'sheet') {
         pita.className = 'adm-pita adm-pita-info';
@@ -262,9 +312,11 @@
   function renderSemua() {
     renderStat();
     isiPilihanPenyaring();
+    isiPilihanJenis();
     isiPilihanWarga();
     renderWarga();
     renderSetoran();
+    renderSetoranWarga();
     renderPengajuan();
   }
 
@@ -280,15 +332,25 @@
     const menunggu = data.pengajuan.filter(function (p) {
       return String(p.status || '') === BS_STATUS_AJU.DIAJUKAN;
     }).length;
+    const masukMenunggu = data.setoranWarga.filter(function (s) {
+      return String(s.status || BS_STATUS_SETOR.MENUNGGU) === BS_STATUS_SETOR.MENUNGGU;
+    }).length;
 
     $('statNasabah').textContent = data.nasabah.length;
     $('statBerat').textContent = angkaRamah(berat) + ' kg';
     $('statBelum').textContent = BankSampah.rupiah(belum);
     $('statPengajuan').textContent = menunggu;
+    $('statSetorWarga').textContent = masukMenunggu;
 
-    const lencana = $('lencanaPengajuan');
-    lencana.textContent = menunggu;
-    lencana.classList.toggle('tersembunyi', menunggu === 0);
+    aturLencana('lencanaPengajuan', menunggu);
+    aturLencana('lencanaSetorWarga', masukMenunggu);
+  }
+
+  function aturLencana(id, jumlah) {
+    const lencana = $(id);
+    if (!lencana) return;
+    lencana.textContent = jumlah;
+    lencana.classList.toggle('tersembunyi', jumlah === 0);
   }
 
   /* =======================================================================
@@ -304,7 +366,10 @@
     document.querySelectorAll('.adm-tab').forEach(function (t) {
       t.classList.toggle('aktif', t.getAttribute('data-tab') === nama);
     });
-    const peta = { warga: 'panelWarga', setoran: 'panelSetoran', pencairan: 'panelPencairan', panduan: 'panelPanduan' };
+    const peta = {
+      warga: 'panelWarga', masuk: 'panelMasuk', setoran: 'panelSetoran',
+      pencairan: 'panelPencairan', panduan: 'panelPanduan',
+    };
     Object.keys(peta).forEach(function (k) {
       $(peta[k]).classList.toggle('aktif', k === nama);
     });
@@ -624,9 +689,20 @@
       lihat: 'adm-btn-lihat', setor: 'adm-btn-setor', edit: 'adm-btn-edit',
       cairwarga: 'adm-btn-cair', cair: 'adm-btn-cair', batalcair: 'adm-btn-batal',
       hapus: 'adm-btn-hapus', setuju: 'adm-btn-cair', tolak: 'adm-btn-batal',
+      periksa: 'adm-btn-periksa',
     }[aksi] || 'adm-btn-edit';
     return '<button type="button" class="adm-btn ' + kelas + '" data-aksi="' + aksi +
       '" data-id="' + escHtml(id) + '">' + teks + '</button>';
+  }
+
+  /** Warna lencana untuk tiap jenis sampah — mengikuti urutan di config. */
+  function warnaJenis(jenis) {
+    if (BankSampah.kelompokJenis(jenis) === 'basah') return 'bs-badge-hijau';
+    const warna = ['bs-badge-biru', 'bs-badge-kuning', 'bs-badge-hijau', 'bs-badge-biru', 'bs-badge-abu'];
+    const urutan = BankSampah.daftarJenis().map(function (j) {
+      return String(j.nama).trim().toLowerCase();
+    }).indexOf(String(jenis || '').trim().toLowerCase());
+    return urutan >= 0 ? warna[urutan % warna.length] : 'bs-badge-abu';
   }
 
   /** Menyambungkan tombol data-aksi di dalam tabel ke fungsinya. */
@@ -661,10 +737,13 @@
         '<div class="bs-uang-angka">' + BankSampah.rupiah(r.sudahCair) + '</div></div>' +
       '</div>';
 
-    html += '<div class="bs-jenis-grid" style="margin-top:16px">' +
-      jenisKotak('bs-jenis-kering', '🧴 Sampah Kering', r.kering) +
-      jenisKotak('bs-jenis-basah', '🍂 Sampah Basah', r.basah) +
-      '</div>';
+    const rincian = (r.perJenis || []).filter(function (j) { return j.jumlahSetoran > 0; });
+    if (rincian.length) {
+      html += '<div class="bs-jenis-grid" style="margin-top:16px">' +
+        rincian.map(function (j) {
+          return jenisKotak('', (j.ikon || '♻️') + ' ' + j.nama, j);
+        }).join('') + '</div>';
+    }
 
     html += '<h4 style="margin:18px 0 8px;color:var(--hijau-tua)">Riwayat Setoran</h4>';
     if (!r.setoran.length) {
@@ -699,7 +778,7 @@
 
   function jenisKotak(kelas, judul, bagian) {
     return '<div class="bs-jenis ' + kelas + '">' +
-      '<div class="bs-jenis-nama">' + judul + '</div>' +
+      '<div class="bs-jenis-nama">' + escHtml(judul) + '</div>' +
       '<div class="bs-jenis-baris"><span>Berat</span><strong>' + angkaRamah(bagian.berat) + ' kg</strong></div>' +
       '<div class="bs-jenis-baris"><span>Kantong</span><strong>' + angkaRamah(bagian.kantong) + '</strong></div>' +
       '<div class="bs-jenis-baris"><span>Pendapatan</span><strong>' + BankSampah.rupiah(bagian.pendapatan) + '</strong></div>' +
@@ -714,7 +793,11 @@
     };
     $('modalWargaTutup').addEventListener('click', tutup);
     $('modalWargaLatar').addEventListener('click', tutup);
-    document.addEventListener('keydown', function (e) { if (e.key === 'Escape') tutup(); });
+    document.addEventListener('keydown', function (e) {
+      if (e.key !== 'Escape') return;
+      tutup();
+      tutupModalMasuk();
+    });
   }
 
   /* =======================================================================
@@ -727,17 +810,28 @@
     });
     $('btnBatalSetoran').addEventListener('click', resetFormSetoran);
 
-    // Harga mengikuti jenis sampah yang dipilih
+    // Harga & kolom "Lain-lain" mengikuti jenis sampah yang dipilih
     $('sJenis').addEventListener('change', function () {
-      const harga = KONFIGURASI.BANK_SAMPAH.HARGA_PER_KG;
-      $('sHarga').value = (nilai('sJenis') === 'Basah') ? harga.basah : harga.kering;
+      $('sHarga').value = hargaJenisTerpilih();
+      aturKolomJenisLain();
       hitungSetoran();
     });
+    aturKolomJenisLain();
 
     ['sBerat', 'sKantong', 'sHarga'].forEach(function (id) {
       $(id).addEventListener('input', hitungSetoran);
     });
     hitungSetoran();
+  }
+
+  /** Kolom keterangan hanya bisa diisi bila jenisnya memang butuh (Lain-lain). */
+  function aturKolomJenisLain() {
+    const kolom = $('sJenisLain');
+    if (!kolom) return;
+    const keterangan = BankSampah.cariJenis(nilai('sJenis'));
+    const perlu = !!(keterangan && keterangan.isian);
+    kolom.disabled = !perlu;
+    if (!perlu) kolom.value = '';
   }
 
   /** Berat yang dipakai: hasil timbangan; bila kosong → perkiraan dari kantong. */
@@ -769,16 +863,26 @@
       return;
     }
 
+    const jenis = nilai('sJenis') || (BankSampah.daftarJenis()[0] || {}).nama || BS_JENIS.KERING;
+    const keterangan = BankSampah.cariJenis(jenis);
+    const jenisLain = nilai('sJenisLain');
+    if (keterangan && keterangan.isian && !jenisLain) {
+      toast('⚠️ Jenis "' + jenis + '" perlu keterangan. Tulis sampah apa yang disetorkan.');
+      $('sJenisLain').focus();
+      return;
+    }
+
     const harga = angka('sHarga');
     const record = {
       idWarga: idWarga,
       tanggal: nilai('sTanggal') || BankSampah.tanggalHariIni(),
-      jenis: nilai('sJenis') || BS_JENIS.KERING,
+      jenis: jenis,
       berat: Math.round(berat * 100) / 100,
       kantong: angka('sKantong'),
       hargaPerKg: harga,
       pendapatan: Math.round(berat * harga),
-      catatan: nilai('sCatatan'),
+      catatan: [jenisLain ? 'Lain-lain: ' + jenisLain : '', nilai('sCatatan')]
+        .filter(Boolean).join(' · '),
     };
 
     const tombol = $('btnSimpanSetoran');
@@ -874,7 +978,8 @@
     $('formSetoran').reset();
     $('sWarga').value = sisaWarga; // petugas sering mencatat beberapa setoran berturut-turut
     $('sTanggal').value = BankSampah.tanggalHariIni();
-    $('sHarga').value = KONFIGURASI.BANK_SAMPAH.HARGA_PER_KG.kering;
+    $('sHarga').value = hargaJenisTerpilih();
+    aturKolomJenisLain();
     $('judulFormSetoran').textContent = '➕ Catat Setoran Sampah';
     $('ketFormSetoran').innerHTML = 'Isi setiap kali warga menyetor sampah. Pendapatan warga dihitung ' +
       'otomatis dari <strong>berat × harga per kg</strong>.';
@@ -890,6 +995,24 @@
     setTimeout(function () { $('sBerat').focus(); }, 250);
   }
 
+  /** Memilih jenis pada formulir. Jenis dari riwayat lama (mis. "Kering")
+   *  ditambahkan sementara supaya isian yang sedang diubah tidak berpindah
+   *  ke jenis lain tanpa disadari petugas. */
+  function pilihJenisSetoran(jenis) {
+    const sel = $('sJenis');
+    const teks = String(jenis || '').trim();
+    if (!sel || !teks) return;
+
+    const ada = Array.prototype.some.call(sel.options, function (o) { return o.value === teks; });
+    if (!ada) {
+      const opsi = document.createElement('option');
+      opsi.value = teks;
+      opsi.textContent = teks + ' (jenis lama)';
+      sel.appendChild(opsi);
+    }
+    sel.value = teks;
+  }
+
   function mulaiUbahSetoran(id) {
     const s = data.setoran.filter(function (x) { return String(x.id) === String(id); })[0];
     if (!s) return;
@@ -897,10 +1020,11 @@
 
     $('sWarga').value = BankSampah.normalId(s.idWarga);
     $('sTanggal').value = kunciTanggal(s.tanggal) || BankSampah.tanggalHariIni();
-    $('sJenis').value = String(s.jenis || '').indexOf('Basah') >= 0 ? 'Basah' : 'Kering';
+    pilihJenisSetoran(s.jenis);
+    aturKolomJenisLain();
     $('sBerat').value = BankSampah.keAngka(s.berat) || '';
     $('sKantong').value = BankSampah.keAngka(s.kantong) || '';
-    $('sHarga').value = BankSampah.keAngka(s.hargaPerKg) || KONFIGURASI.BANK_SAMPAH.HARGA_PER_KG.kering;
+    $('sHarga').value = BankSampah.keAngka(s.hargaPerKg) || hargaJenisTerpilih();
     $('sCatatan').value = s.catatan || '';
 
     const n = cariNasabah(s.idWarga);
@@ -1033,7 +1157,7 @@
         '<td><strong>' + escHtml(s.idWarga) + '</strong></td>' +
         '<td>' + escHtml((n && n.nama) || '(warga terhapus)') + '</td>' +
         '<td>' + escHtml(n ? [n.rt ? 'RT ' + n.rt : '', n.rw ? 'RW ' + n.rw : ''].filter(Boolean).join(' / ') || '—' : '—') + '</td>' +
-        '<td><span class="bs-badge ' + (String(s.jenis).indexOf('Basah') >= 0 ? 'bs-badge-hijau' : 'bs-badge-biru') + '">' +
+        '<td><span class="bs-badge ' + warnaJenis(s.jenis) + '">' +
           escHtml(s.jenis || '—') + '</span></td>' +
         '<td class="adm-kanan">' + angkaRamah(s.berat) + ' kg</td>' +
         '<td class="adm-kanan">' + angkaRamah(s.kantong) + '</td>' +
@@ -1068,7 +1192,317 @@
   }
 
   /* =======================================================================
-   *  TAB 3 — PENCAIRAN
+   *  TAB 2 — SETORAN YANG DICATAT SENDIRI OLEH WARGA
+   *  ---------------------------------------------------------------------
+   *  Catatan ini BELUM menambah tabungan siapa pun. Petugas memeriksa
+   *  fotonya, menimbang sampah yang dibawa, lalu menyetujui (berubah jadi
+   *  setoran resmi) atau menolaknya.
+   * ===================================================================== */
+  function wiringSetoranWarga() {
+    ['fmCari', 'fmStatus', 'fmJenis', 'fmUrut'].forEach(function (id) {
+      const e = $(id);
+      if (e) e.addEventListener('input', renderSetoranWarga);
+    });
+    $('btnResetMasuk').addEventListener('click', function () {
+      $('fmCari').value = '';
+      $('fmJenis').value = '';
+      $('fmStatus').value = BS_STATUS_SETOR.MENUNGGU;
+      $('fmUrut').value = 'baru';
+      renderSetoranWarga();
+    });
+    $('btnUnduhMasuk').addEventListener('click', unduhMasuk);
+
+    ['mBerat', 'mKantong', 'mHarga'].forEach(function (id) {
+      const e = $(id);
+      if (e) e.addEventListener('input', hitungMasuk);
+    });
+
+    $('btnSetujuiMasuk').addEventListener('click', setujuiMasuk);
+    $('btnTolakMasuk').addEventListener('click', tolakMasuk);
+
+    const tutup = $('modalMasukTutup');
+    const latar = $('modalMasukLatar');
+    if (tutup) tutup.addEventListener('click', tutupModalMasuk);
+    if (latar) latar.addEventListener('click', tutupModalMasuk);
+  }
+
+  function cariMasuk(id) {
+    return data.setoranWarga.filter(function (s) { return String(s.id) === String(id); })[0] || null;
+  }
+
+  function statusMasuk(s) {
+    return String((s && s.status) || BS_STATUS_SETOR.MENUNGGU);
+  }
+
+  function saringMasuk() {
+    const cari = nilai('fmCari').toLowerCase();
+    const status = nilai('fmStatus');
+    const jenis = nilai('fmJenis');
+    const urut = nilai('fmUrut') || 'baru';
+
+    const hasil = data.setoranWarga.filter(function (s) {
+      if (cari) {
+        const gabung = [s.idWarga, s.nama, s.noHp, s.alamat, s.jenisLain].join(' ').toLowerCase();
+        if (gabung.indexOf(cari) < 0) return false;
+      }
+      if (status && statusMasuk(s) !== status) return false;
+      if (jenis && String(s.jenis || '') !== jenis) return false;
+      return true;
+    });
+
+    hasil.sort(function (a, b) {
+      switch (urut) {
+        case 'lama': return String(a.tanggal || '').localeCompare(String(b.tanggal || ''));
+        case 'nama': return String(a.nama || '').localeCompare(String(b.nama || ''), 'id');
+        default:     return String(b.tanggal || '').localeCompare(String(a.tanggal || ''));
+      }
+    });
+
+    return hasil;
+  }
+
+  function renderSetoranWarga() {
+    tampilMasuk = saringMasuk();
+    const wadah = $('tabelMasuk');
+    if (!wadah) return;
+
+    $('infoJumlahMasuk').textContent =
+      'Menampilkan ' + tampilMasuk.length + ' dari ' + data.setoranWarga.length + ' catatan';
+
+    if (!data.setoranWarga.length) {
+      wadah.innerHTML = '<p class="adm-kosong">Belum ada setoran yang dicatat warga. 🎉<br>' +
+        'Catatan muncul di sini begitu warga mengisi formulir ' +
+        '<strong>“📸 Catat Setoran Sampah”</strong> di halaman Bank Sampah.</p>';
+      return;
+    }
+    if (!tampilMasuk.length) {
+      wadah.innerHTML = '<p class="adm-kosong">Tidak ada catatan yang cocok dengan penyaring. ' +
+        'Coba klik <strong>“↺ Bersihkan Penyaring”</strong>.</p>';
+      return;
+    }
+
+    const warnaStatus = {};
+    warnaStatus[BS_STATUS_SETOR.MENUNGGU] = 'bs-badge-kuning';
+    warnaStatus[BS_STATUS_SETOR.DISETUJUI] = 'bs-badge-hijau';
+    warnaStatus[BS_STATUS_SETOR.DITOLAK] = 'bs-badge-merah';
+
+    let html = '<div class="adm-tabel-wadah"><table class="adm-tabel"><thead><tr>' +
+      '<th>No.</th><th>Foto</th><th>Tanggal Isi</th><th>ID Nasabah</th><th>Nama Lengkap</th>' +
+      '<th>Alamat</th><th>RT/RW</th><th>No. HP/WA</th><th>Terdaftar</th><th>Jenis Sampah</th>' +
+      '<th class="adm-kanan">Perkiraan Berat</th><th class="adm-kanan">Kantong</th>' +
+      '<th>Catatan Warga</th><th>Status</th><th>Tgl Proses</th><th>Catatan Petugas</th>' +
+      '<th>Aksi</th></tr></thead><tbody>';
+
+    tampilMasuk.forEach(function (s, i) {
+      const st = statusMasuk(s);
+      const menunggu = st === BS_STATUS_SETOR.MENUNGGU;
+      const gambar = BankSampah.tautanFoto(s.foto, true);
+      const buka = BankSampah.tautanFoto(s.foto, false);
+
+      html += '<tr>' +
+        '<td>' + (i + 1) + '</td>' +
+        '<td>' + (gambar
+          ? '<a href="' + escHtml(buka) + '" target="_blank" rel="noopener" title="Buka foto ukuran penuh">' +
+            '<img class="adm-foto-kecil" src="' + escHtml(gambar) + '" alt="Foto setoran ' +
+            escHtml(s.nama || '') + '" loading="lazy"></a>'
+          : '<span class="adm-tanpa-foto">tanpa foto</span>') + '</td>' +
+        '<td>' + escHtml(tanggalRamah(s.tanggal)) + '</td>' +
+        '<td><strong>' + escHtml(s.idWarga || '—') + '</strong></td>' +
+        '<td>' + escHtml(s.nama || '—') + '</td>' +
+        '<td>' + escHtml(s.alamat || '—') + '</td>' +
+        '<td>' + escHtml([s.rt ? 'RT ' + s.rt : '', s.rw ? 'RW ' + s.rw : ''].filter(Boolean).join(' / ') || '—') + '</td>' +
+        '<td>' + escHtml(s.noHp || '—') + '</td>' +
+        '<td><span class="bs-badge ' + (String(s.terdaftar) === 'Ya' ? 'bs-badge-abu' : 'bs-badge-biru') + '">' +
+          escHtml(String(s.terdaftar) === 'Ya' ? 'Lama' : 'Baru') + '</span></td>' +
+        '<td><span class="bs-badge ' + warnaJenis(s.jenis) + '">' +
+          escHtml(BankSampah.labelJenis(s.jenis, s.jenisLain)) + '</span></td>' +
+        '<td class="adm-kanan">' + (BankSampah.keAngka(s.berat) ? angkaRamah(s.berat) + ' kg' : '—') + '</td>' +
+        '<td class="adm-kanan">' + (BankSampah.keAngka(s.kantong) ? angkaRamah(s.kantong) : '—') + '</td>' +
+        '<td>' + escHtml(s.catatan || '—') + '</td>' +
+        '<td><span class="bs-badge ' + (warnaStatus[st] || 'bs-badge-abu') + '">' + escHtml(st) + '</span></td>' +
+        '<td>' + escHtml(s.tanggalProses ? tanggalRamah(s.tanggalProses) : '—') + '</td>' +
+        '<td>' + escHtml(s.catatanPetugas || '—') + '</td>' +
+        '<td class="adm-aksi-sel">' +
+          btn('periksa', s.id, menunggu ? '👁️ Periksa' : '👁️ Lihat') +
+          btn('hapus', s.id, '🗑️ Hapus') +
+        '</td></tr>';
+    });
+
+    wadah.innerHTML = html + '</tbody></table></div>';
+    pasangAksi(wadah, { periksa: lihatMasuk, hapus: hapusMasuk });
+  }
+
+  /* ---------------------------------------------------------------------
+   *  Kotak "Periksa Setoran Warga"
+   * ------------------------------------------------------------------- */
+  function lihatMasuk(id) {
+    const s = cariMasuk(id);
+    if (!s) return;
+    masukDiperiksa = s;
+
+    const st = statusMasuk(s);
+    const menunggu = st === BS_STATUS_SETOR.MENUNGGU;
+    const gambar = BankSampah.tautanFoto(s.foto, true);
+    const buka = BankSampah.tautanFoto(s.foto, false);
+    const n = cariNasabah(s.idWarga);
+
+    $('modalMasukJudul').textContent = (menunggu ? '🔍 Periksa Setoran — ' : '📄 Setoran — ') +
+      (s.nama || s.idWarga || 'Warga');
+
+    let html = '<div class="adm-periksa-status bs-badge ' +
+      (menunggu ? 'bs-badge-kuning' : (st === BS_STATUS_SETOR.DISETUJUI ? 'bs-badge-hijau' : 'bs-badge-merah')) +
+      '">' + escHtml(st) + '</div>';
+
+    html += gambar
+      ? '<a class="adm-foto-besar" href="' + escHtml(buka) + '" target="_blank" rel="noopener">' +
+        '<img src="' + escHtml(gambar) + '" alt="Foto bukti setoran ' + escHtml(s.nama || '') + '">' +
+        '<span>🔎 Klik untuk membuka foto ukuran penuh</span></a>'
+      : '<p class="adm-kosong">Warga tidak menyertakan foto (atau fotonya gagal tersimpan).</p>';
+
+    html += '<div class="bs-identitas-rincian adm-periksa-rincian">' +
+      kotak('ID Nasabah', escHtml(s.idWarga || '—') +
+        (String(s.terdaftar) === 'Ya' ? '' : ' <small>(nasabah baru)</small>')) +
+      kotak('Nama Lengkap', escHtml(s.nama || '—')) +
+      kotak('NIK', escHtml(s.nik || (n && n.nik) || '—')) +
+      kotak('No. HP/WA', escHtml(s.noHp || '—')) +
+      kotak('Alamat', escHtml(s.alamat || '—')) +
+      kotak('RT / RW', escHtml([s.rt || '—', s.rw || '—'].join(' / '))) +
+      kotak('Jenis Sampah', escHtml(BankSampah.labelJenis(s.jenis, s.jenisLain))) +
+      kotak('Tanggal Diisi Warga', escHtml(tanggalRamah(s.tanggal))) +
+      kotak('Perkiraan Berat', BankSampah.keAngka(s.berat) ? angkaRamah(s.berat) + ' kg' : '—') +
+      kotak('Jumlah Kantong', BankSampah.keAngka(s.kantong) ? angkaRamah(s.kantong) : '—') +
+      kotak('Catatan Warga', escHtml(s.catatan || '—')) +
+      kotak('Nomor Catatan', escHtml(s.id)) +
+      '</div>';
+
+    if (!n) {
+      html += '<div class="adm-catatan">⚠️ ID Nasabah pada catatan ini <strong>tidak ada</strong> di ' +
+        'Data Warga. Daftarkan dulu warganya di tab <strong>👥 Data Warga</strong> sebelum menyetujui.</div>';
+    }
+    if (!menunggu) {
+      html += '<div class="adm-catatan">Catatan ini sudah diproses pada <strong>' +
+        escHtml(tanggalRamah(s.tanggalProses)) + '</strong>.' +
+        (s.catatanPetugas ? ' Catatan petugas: <strong>' + escHtml(s.catatanPetugas) + '</strong>.' : '') +
+        (s.idSetoran ? ' Nomor setoran resminya: <strong>' + escHtml(s.idSetoran) + '</strong>.' : '') +
+        '</div>';
+    }
+
+    $('modalMasukIsi').innerHTML = html;
+
+    // Kotak persetujuan hanya untuk catatan yang masih menunggu.
+    $('modalMasukAksi').classList.toggle('tersembunyi', !menunggu);
+    if (menunggu) {
+      $('mBerat').value = BankSampah.keAngka(s.berat) || '';
+      $('mKantong').value = BankSampah.keAngka(s.kantong) || '';
+      $('mHarga').value = BankSampah.hargaJenis(s.jenis);
+      $('mTanggal').value = kunciTanggal(s.tanggal) || BankSampah.tanggalHariIni();
+      $('mCatatan').value = '';
+      hitungMasuk();
+    }
+
+    const modal = $('modalMasuk');
+    modal.classList.add('tampil');
+    modal.setAttribute('aria-hidden', 'false');
+  }
+
+  function tutupModalMasuk() {
+    const modal = $('modalMasuk');
+    if (!modal) return;
+    modal.classList.remove('tampil');
+    modal.setAttribute('aria-hidden', 'true');
+    masukDiperiksa = null;
+  }
+
+  /** Berat yang dipakai saat menyetujui: hasil timbangan, atau perkiraan kantong. */
+  function beratMasuk() {
+    const berat = angka('mBerat');
+    if (berat > 0) return berat;
+    return angka('mKantong') * (KONFIGURASI.BANK_SAMPAH.KG_PER_KANTONG || 3);
+  }
+
+  function hitungMasuk() {
+    const berat = beratMasuk();
+    $('mHitungBerat').textContent = angkaRamah(berat) + ' kg';
+    $('mHitungRp').textContent = BankSampah.rupiah(berat * angka('mHarga'));
+  }
+
+  function setujuiMasuk() {
+    const s = masukDiperiksa;
+    if (!s) return;
+
+    const berat = beratMasuk();
+    if (berat <= 0) {
+      toast('⚠️ Isi dulu berat hasil timbangan (atau jumlah kantongnya).');
+      $('mBerat').focus();
+      return;
+    }
+    if (!cariNasabah(s.idWarga)) {
+      toast('⚠️ ID Nasabah "' + (s.idWarga || '-') + '" belum ada di Data Warga. Daftarkan dulu warganya.');
+      return;
+    }
+
+    const harga = angka('mHarga');
+    if (!window.confirm('Setujui setoran ' + BankSampah.labelJenis(s.jenis, s.jenisLain) + ' dari ' +
+      (s.nama || s.idWarga) + '?\n\n' +
+      'Yang dicatat: ' + angkaRamah(berat) + ' kg × ' + BankSampah.rupiah(harga) + ' = ' +
+      BankSampah.rupiah(Math.round(berat * harga)) + '\n\n' +
+      'Setoran ini langsung menambah tabungan warga tersebut.')) return;
+
+    kunciTombolMasuk(true);
+    tanganiAksi(
+      BankSampah.prosesSetoranWarga(s.id, BS_STATUS_SETOR.DISETUJUI, {
+        berat: Math.round(berat * 100) / 100,
+        kantong: angka('mKantong'),
+        hargaPerKg: harga,
+        tanggal: nilai('mTanggal') || BankSampah.tanggalHariIni(),
+        catatan: nilai('mCatatan'),
+      }),
+      '✅',
+      tutupModalMasuk
+    ).then(function () { kunciTombolMasuk(false); });
+  }
+
+  function tolakMasuk() {
+    const s = masukDiperiksa;
+    if (!s) return;
+
+    if (!window.confirm('Tolak catatan setoran dari ' + (s.nama || s.idWarga) + '?\n\n' +
+      'Tabungan warga tidak berubah, dan mereka bisa mencatat setoran lagi nanti.')) return;
+
+    const alasan = nilai('mCatatan') ||
+      (window.prompt('Alasan penolakan (boleh dikosongkan) — akan terlihat di daftar:', '') || '');
+
+    kunciTombolMasuk(true);
+    tanganiAksi(
+      BankSampah.prosesSetoranWarga(s.id, BS_STATUS_SETOR.DITOLAK, { catatan: alasan }),
+      '✖️',
+      tutupModalMasuk
+    ).then(function () { kunciTombolMasuk(false); });
+  }
+
+  function kunciTombolMasuk(kunci) {
+    $('btnSetujuiMasuk').disabled = kunci;
+    $('btnTolakMasuk').disabled = kunci;
+    $('btnSetujuiMasuk').textContent = kunci ? '⏳ Memproses…' : '✅ Setujui & Masukkan ke Tabungan';
+  }
+
+  function hapusMasuk(id) {
+    const s = cariMasuk(id);
+    if (!s) return;
+    if (!window.confirm('Hapus catatan setoran dari ' + (s.nama || s.idWarga) + ' tanggal ' +
+      tanggalRamah(s.tanggal) + '?\n\n' +
+      (s.idSetoran
+        ? 'Setoran resmi yang sudah masuk ke tabungan TIDAK ikut terhapus.'
+        : 'Catatan ini belum pernah masuk ke tabungan warga.') +
+      '\nTindakan ini tidak bisa dibatalkan.')) return;
+
+    tanganiAksi(BankSampah.hapusSetoranWarga(id), '🗑️', function () {
+      if (masukDiperiksa && String(masukDiperiksa.id) === String(id)) tutupModalMasuk();
+    });
+  }
+
+  /* =======================================================================
+   *  TAB 4 — PENCAIRAN
    * ===================================================================== */
   function wiringPencairan() {
     ['fpCari', 'fpStatus', 'fpUrut'].forEach(function (id) {
@@ -1339,6 +1773,23 @@
         BankSampah.keAngka(p.jumlah), p.status || '', p.tanggalProses || '', p.catatan || ''];
     });
     unduh('pengajuan-pencairan-bank-sampah', judul, baris);
+  }
+
+  function unduhMasuk() {
+    const judul = ['Tanggal Isi', 'ID Catatan', 'ID Nasabah', 'Nama Lengkap', 'NIK', 'Alamat',
+      'RT', 'RW', 'No. HP/WA', 'Sudah Terdaftar', 'Jenis Sampah', 'Keterangan Lain-lain',
+      'Perkiraan Berat (kg)', 'Jumlah Kantong', 'Catatan Warga', 'Tautan Foto', 'Status',
+      'Tanggal Diproses', 'Catatan Petugas', 'ID Setoran Hasil'];
+    const baris = tampilMasuk.map(function (s) {
+      const foto = BankSampah.tautanFoto(s.foto, false);
+      return [s.tanggal || '', s.id, s.idWarga || '', s.nama || '', s.nik || '', s.alamat || '',
+        s.rt || '', s.rw || '', s.noHp || '', s.terdaftar || '', s.jenis || '', s.jenisLain || '',
+        BankSampah.keAngka(s.berat), BankSampah.keAngka(s.kantong), s.catatan || '',
+        // Foto berbentuk data URL terlalu panjang untuk sel Excel — cukup ditandai.
+        (foto.indexOf('data:') === 0 ? '(tersimpan di perangkat petugas)' : foto),
+        statusMasuk(s), s.tanggalProses || '', s.catatanPetugas || '', s.idSetoran || ''];
+    });
+    unduh('setoran-dari-warga-bank-sampah', judul, baris);
   }
 
 })();

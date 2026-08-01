@@ -37,16 +37,21 @@
         <li><a href="index.html">Beranda</a></li>
         <li><a href="index.html#hitung">Hitung Jejak Karbon</a></li>
         <li><a href="bank-sampah.html" class="aktif">Cek Bank Sampah</a></li>
+        <li><a href="#setor">📸 Catat Setoran</a></li>
         <li><a href="#lokasi">📍 Lokasi &amp; Kontak</a></li>
       </ul>
     </nav>
 
     <div class="hero-isi">
       <span class="hero-lencana">♻️ Layanan Bank Sampah Kampung Baru</span>
-      <h1>Cek Tabungan Bank Sampah Anda</h1>
+      <h1>Cek &amp; Catat Setoran Bank Sampah</h1>
       <p class="hero-teks">
         Sudah menyetor sampah ke bank sampah? Lihat berapa kilogram sampah yang sudah Anda kumpulkan
         dan berapa rupiah tabungan yang sudah terkumpul — cukup masukkan <strong>ID Nasabah</strong> Anda.
+        Mau menyetor? <strong>Catat sendiri setoran Anda</strong> di bawah, lengkap dengan foto buktinya.
+      </p>
+      <p class="hero-teks">
+        <a class="tombol tombol-kecil" href="#setor">📸 Catat Setoran Sampah Saya</a>
       </p>
     </div>
 
@@ -130,24 +135,9 @@
               </div>
             </div>
 
-            <div class="bs-jenis-grid">
-              <div class="bs-jenis bs-jenis-kering">
-                <div class="bs-jenis-ikon">🧴</div>
-                <div class="bs-jenis-nama">Sampah Kering</div>
-                <div class="bs-jenis-ket">Plastik, kertas, kardus, kaleng, botol</div>
-                <div class="bs-jenis-baris"><span>Berat</span><strong id="bsKeringBerat">0 kg</strong></div>
-                <div class="bs-jenis-baris"><span>Kantong</span><strong id="bsKeringKantong">0</strong></div>
-                <div class="bs-jenis-baris"><span>Pendapatan</span><strong id="bsKeringRp">Rp 0</strong></div>
-              </div>
-              <div class="bs-jenis bs-jenis-basah">
-                <div class="bs-jenis-ikon">🍂</div>
-                <div class="bs-jenis-nama">Sampah Basah</div>
-                <div class="bs-jenis-ket">Sisa dapur, sayur, kulit buah, daun</div>
-                <div class="bs-jenis-baris"><span>Berat</span><strong id="bsBasahBerat">0 kg</strong></div>
-                <div class="bs-jenis-baris"><span>Kantong</span><strong id="bsBasahKantong">0</strong></div>
-                <div class="bs-jenis-baris"><span>Pendapatan</span><strong id="bsBasahRp">Rp 0</strong></div>
-              </div>
-            </div>
+            <!-- Rincian tiap jenis sampah — diisi js/bank-sampah.js
+                 mengikuti daftar KONFIGURASI.BANK_SAMPAH.JENIS di js/config.js -->
+            <div class="bs-jenis-grid" id="bsRincianJenis"></div>
           </div>
 
           <!-- Pendapatan -->
@@ -203,8 +193,166 @@
       </div>
     </section>
 
+    <!-- ================= CATAT SETORAN SAMPAH (oleh warga) ================= -->
+    <section class="seksi seksi-alt" id="setor">
+      <div class="wadah wadah-sempit">
+        <span class="seksi-label">Setor Sampah</span>
+        <h2 class="seksi-judul">📸 Catat Sendiri Setoran Sampah Anda</h2>
+        <p class="seksi-intro">
+          Isi formulir ini setiap kali Anda menyetorkan sampah — <strong>boleh yang sudah terdaftar
+          maupun yang belum</strong>. Setelah terisi lengkap, catatan Anda langsung masuk ke
+          <strong>dashboard petugas untuk disetujui</strong>, dan chat WhatsApp untuk pengelola
+          sudah kami siapkan tinggal dikirim.
+        </p>
+
+        <form class="bs-setor-kotak" id="formSetorWarga" novalidate>
+
+          <!-- ---------- Langkah 1: sudah terdaftar atau belum ---------- -->
+          <fieldset class="bs-set-blok">
+            <legend class="bs-set-legend">1️⃣ Anda sudah terdaftar sebagai nasabah?</legend>
+
+            <div class="bs-pilih-baris">
+              <label class="bs-pilih-kartu">
+                <input type="radio" name="swTerdaftar" value="ya" checked>
+                <span class="bs-pilih-isi">
+                  <strong>✅ Sudah terdaftar</strong>
+                  <small>Saya punya ID Nasabah (mis. BS-0001) atau NIK yang terdaftar.</small>
+                </span>
+              </label>
+              <label class="bs-pilih-kartu">
+                <input type="radio" name="swTerdaftar" value="tidak">
+                <span class="bs-pilih-isi">
+                  <strong>🆕 Belum terdaftar</strong>
+                  <small>Baru pertama kali menyetor. ID Nasabah dibuatkan otomatis.</small>
+                </span>
+              </label>
+            </div>
+
+            <div class="bs-set-field" id="swKotakId">
+              <label for="swId">ID Nasabah atau NIK <span class="wajib">*</span></label>
+              <div class="bs-set-gabung">
+                <input type="text" id="swId" placeholder="Contoh: BS-0001 atau 7372010101900001"
+                       autocomplete="off" inputmode="text">
+                <button type="button" class="tombol tombol-kecil" id="swCekId">🔎 Cek</button>
+              </div>
+              <small>Tekan <strong>Cek</strong> supaya nama &amp; alamat Anda terisi sendiri.</small>
+              <p class="bs-pesan" id="swPesanId" role="status" aria-live="polite"></p>
+            </div>
+
+            <p class="bs-set-info tersembunyi" id="swInfoBaru">
+              🆕 Tidak perlu mengisi ID. <strong>ID Nasabah baru akan dibuatkan otomatis</strong>
+              begitu setoran ini terkirim, dan nomornya langsung kami tampilkan supaya bisa Anda catat.
+            </p>
+          </fieldset>
+
+          <!-- ---------- Langkah 2: data diri ---------- -->
+          <fieldset class="bs-set-blok">
+            <legend class="bs-set-legend">2️⃣ Data Diri Anda</legend>
+
+            <div class="bs-set-grid">
+              <div class="bs-set-field bs-set-lebar">
+                <label for="swNama">Nama Lengkap <span class="wajib">*</span></label>
+                <input type="text" id="swNama" placeholder="Contoh: Budi Santoso" autocomplete="name">
+              </div>
+              <div class="bs-set-field bs-set-lebar">
+                <label for="swAlamat">Alamat <span class="wajib">*</span></label>
+                <input type="text" id="swAlamat" placeholder="Contoh: Jl. Bau Massepe No. 12, Kampung Baru"
+                       autocomplete="street-address">
+              </div>
+              <div class="bs-set-field">
+                <label for="swRt">RT</label>
+                <input type="text" id="swRt" inputmode="numeric" placeholder="Contoh: 02">
+              </div>
+              <div class="bs-set-field">
+                <label for="swRw">RW</label>
+                <input type="text" id="swRw" inputmode="numeric" placeholder="Contoh: 05">
+              </div>
+              <div class="bs-set-field bs-set-lebar">
+                <label for="swHp">No. HP / WA <span class="wajib">*</span></label>
+                <input type="tel" id="swHp" inputmode="tel" placeholder="Contoh: 0812xxxxxxx" autocomplete="tel">
+                <small>Dipakai petugas untuk menghubungi Anda saat setoran sudah ditimbang.</small>
+              </div>
+            </div>
+          </fieldset>
+
+          <!-- ---------- Langkah 3: sampah yang disetor ---------- -->
+          <fieldset class="bs-set-blok">
+            <legend class="bs-set-legend">3️⃣ Setoran Sampah <span class="wajib">*</span></legend>
+            <p class="bs-set-ket">
+              Pilih jenis sampah yang Anda setorkan sekarang. Menyetor beberapa jenis sekaligus?
+              Kirim satu per satu — setelah selesai, tombol <strong>“Catat setoran lain”</strong> akan muncul.
+            </p>
+
+            <!-- Diisi js/bank-sampah.js dari KONFIGURASI.BANK_SAMPAH.JENIS -->
+            <div class="bs-jenis-pilih" id="swJenisPilih"></div>
+
+            <div class="bs-set-field tersembunyi" id="swKotakLain">
+              <label for="swJenisLain">Isi jika memilih Lain-lain <span class="wajib">*</span></label>
+              <input type="text" id="swJenisLain" placeholder="Contoh: kaleng bekas, besi tua, kertas koran">
+              <small>Tuliskan sampah apa yang Anda setorkan, supaya petugas bisa menaksir harganya.</small>
+            </div>
+
+            <div class="bs-set-grid">
+              <div class="bs-set-field">
+                <label for="swBerat">Perkiraan Berat (kg)</label>
+                <input type="number" id="swBerat" min="0" step="0.1" inputmode="decimal" placeholder="Contoh: 4.5">
+              </div>
+              <div class="bs-set-field">
+                <label for="swKantong">Jumlah Kantong / Karung</label>
+                <input type="number" id="swKantong" min="0" step="1" inputmode="numeric" placeholder="Contoh: 2">
+              </div>
+              <div class="bs-set-field bs-set-lebar">
+                <label for="swCatatan">Catatan (boleh dikosongkan)</label>
+                <input type="text" id="swCatatan" placeholder="Contoh: botolnya sudah dicuci dan tutupnya dilepas">
+              </div>
+            </div>
+            <p class="bs-set-info">
+              💡 Cukup isi <strong>salah satu</strong> — berat <em>atau</em> jumlah kantong.
+              Angka ini masih perkiraan; <strong>petugaslah yang menimbang resminya</strong> saat
+              menyetujui setoran Anda.
+            </p>
+          </fieldset>
+
+          <!-- ---------- Langkah 4: foto bukti ---------- -->
+          <fieldset class="bs-set-blok">
+            <legend class="bs-set-legend">4️⃣ Foto Bukti Sampah <span class="wajib">*</span></legend>
+            <p class="bs-set-ket">
+              Foto sampah yang Anda setorkan supaya petugas bisa memeriksanya. Boleh memotret
+              langsung dari HP. Fotonya otomatis dikecilkan dulu agar hemat kuota.
+            </p>
+
+            <label class="bs-foto-pilih" for="swFoto" id="swFotoLabel">
+              <span class="bs-foto-ikon" aria-hidden="true">📷</span>
+              <span class="bs-foto-teks"><strong>Ambil / Pilih Foto Sampah</strong>
+                <small>Format JPG atau PNG</small></span>
+              <input type="file" id="swFoto" accept="image/*" capture="environment">
+            </label>
+
+            <div class="bs-foto-pratinjau tersembunyi" id="swFotoPratinjau">
+              <img id="swFotoGambar" alt="Pratinjau foto sampah yang akan disetor">
+              <div class="bs-foto-aksi">
+                <span id="swFotoInfo"></span>
+                <button type="button" class="tombol tombol-kecil tombol-batal" id="swFotoHapus">🗑️ Ganti Foto</button>
+              </div>
+            </div>
+          </fieldset>
+
+          <p class="bs-pesan" id="swPesan" role="status" aria-live="polite"></p>
+
+          <button type="submit" class="tombol tombol-penuh tombol-wa" id="swKirim">
+            💬 Kirim Setoran &amp; Chat Pengelola
+          </button>
+          <p class="bs-set-catatan">
+            Dengan menekan tombol ini, catatan setoran Anda dikirim ke
+            <strong>dashboard petugas bank sampah</strong> untuk <strong>disetujui atau ditolak</strong>,
+            dan chat WhatsApp untuk pengelola sudah kami siapkan tinggal Anda kirim.
+          </p>
+        </form>
+      </div>
+    </section>
+
     <!-- ======================= PENJELASAN ======================= -->
-    <section class="seksi seksi-alt">
+    <section class="seksi">
       <div class="wadah">
         <span class="seksi-label">Serba-serbi</span>
         <h2 class="seksi-judul">Apa Itu Bank Sampah?</h2>
@@ -219,15 +367,15 @@
           <div class="kartu">
             <div class="kartu-ikon">1️⃣</div>
             <h3>Pilah di Rumah</h3>
-            <p>Pisahkan sampah <strong>kering</strong> (plastik, kertas, kardus, kaleng, botol) dari
-               sampah <strong>basah</strong> (sisa dapur, sayur, kulit buah). Bersihkan dan keringkan
-               dulu agar harganya lebih baik.</p>
+            <p>Kumpulkan <strong>botol plastik, kardus, rak telur, gelas plastik</strong>, dan sampah
+               bernilai lainnya. Bersihkan dan keringkan dulu agar harganya lebih baik.</p>
           </div>
           <div class="kartu">
             <div class="kartu-ikon">2️⃣</div>
-            <h3>Setor &amp; Ditimbang</h3>
-            <p>Bawa ke sekretariat bank sampah pada hari layanan. Petugas menimbang, mencatat, dan
-               memasukkan hasilnya ke data Anda memakai <strong>ID Nasabah</strong>.</p>
+            <h3>Catat &amp; Setor</h3>
+            <p>Isi formulir <strong><a href="#setor">📸 Catat Setoran Sampah</a></strong> beserta foto
+               buktinya, lalu bawa sampahnya ke sekretariat. Petugas menimbang dan
+               <strong>menyetujui</strong> setoran Anda.</p>
           </div>
           <div class="kartu">
             <div class="kartu-ikon">3️⃣</div>
@@ -240,8 +388,8 @@
         <div class="bs-harga-kotak">
           <h3>💵 Perkiraan Harga Sampah</h3>
           <p class="bs-harga-ket">
-            Harga ini adalah acuan bank sampah Kampung Baru dan bisa berubah sewaktu-waktu
-            mengikuti harga pengepul.
+            Inilah jenis sampah yang diterima bank sampah Kampung Baru beserta harganya.
+            Harga ini acuan saja dan bisa berubah sewaktu-waktu mengikuti harga pengepul.
           </p>
           <div class="bs-harga-grid" id="bsDaftarHarga"></div>
         </div>
@@ -249,7 +397,7 @@
     </section>
 
     <!-- ==================== LOKASI & PETA BANK SAMPAH ==================== -->
-    <section id="lokasi" class="seksi">
+    <section id="lokasi" class="seksi seksi-alt">
       <div class="wadah">
         <span class="seksi-label">Lokasi &amp; Kontak</span>
         <h2 class="seksi-judul">Peta Lokasi Bank Sampah Kampung Baru</h2>
@@ -414,6 +562,57 @@
         Belum punya WhatsApp? Salin isi pesannya, lalu kirim lewat SMS — atau tunjukkan
         langsung kepada petugas di sekretariat bank sampah
         (<span data-bs-lokasi-patokan>tepat di belakang Posyandu</span>).
+      </p>
+    </div>
+  </div>
+
+  <!-- ============ MODAL: SETORAN TERKIRIM → CHAT KE PENGELOLA ============ -->
+  <div id="modalSetor" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="setorJudul">
+    <div class="modal-latar" id="setorLatar"></div>
+    <div class="modal-kotak bs-cair-modal">
+      <button class="modal-tutup" id="setorTutup" aria-label="Tutup">&times;</button>
+      <div class="modal-ikon" aria-hidden="true">✅</div>
+      <h3 class="modal-judul" id="setorJudul">Setoran Anda Sudah Tercatat!</h3>
+      <p class="modal-ket" id="setorKet">
+        Catatan setoran Anda sudah masuk ke dashboard petugas dan sedang
+        <strong>menunggu persetujuan</strong>. Langkah terakhir: kirim chat ke pengelola
+        supaya beliau langsung tahu.
+      </p>
+
+      <div class="bs-setor-idbaru tersembunyi" id="setorIdBaru">
+        <span class="bs-label-kecil">ID Nasabah Anda</span>
+        <strong id="setorIdNilai">—</strong>
+        <small>Catat baik-baik — nomor inilah yang dipakai untuk mengecek tabungan Anda nanti.</small>
+      </div>
+
+      <div class="bs-cair-tujuan">
+        <div class="bs-cair-tujuan-ikon" aria-hidden="true">👤</div>
+        <div>
+          <span class="bs-label-kecil">Dikirim kepada</span>
+          <strong data-bs-pengelola-nama>Pengelola Bank Sampah Kampung Baru</strong>
+          <span class="bs-cair-tujuan-no" data-bs-wa-teks>+62 813-5521-0234</span>
+        </div>
+      </div>
+
+      <details class="bs-cair-pratinjau">
+        <summary>📄 Lihat isi pesan yang akan dikirim</summary>
+        <pre id="setorPratinjau"></pre>
+      </details>
+
+      <a id="setorKirim" class="tombol tombol-penuh tombol-wa" href="https://wa.me/6281355210234"
+         target="_blank" rel="noopener">💬 Kirim lewat WhatsApp</a>
+
+      <button type="button" class="tombol tombol-penuh tombol-salin" id="setorSalin">
+        📋 Salin Isi Pesan
+      </button>
+
+      <button type="button" class="tombol tombol-penuh tombol-kecil tombol-batal" id="setorLagi">
+        ➕ Catat Setoran Lain
+      </button>
+
+      <p class="bs-cair-modal-catatan">
+        Foto bukti sudah ikut terkirim ke petugas, jadi <strong>tidak perlu dilampirkan lagi</strong>
+        di WhatsApp. Setoran resmi masuk ke tabungan Anda setelah petugas menimbang dan menyetujuinya.
       </p>
     </div>
   </div>

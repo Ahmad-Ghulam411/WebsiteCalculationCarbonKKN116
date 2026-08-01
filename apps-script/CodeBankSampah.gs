@@ -8,10 +8,14 @@
  *      TERSENDIRI, supaya petugas bank sampah tidak bisa membuka data karbon
  *      dan sebaliknya.
  *
- *  Menyimpan 3 tabel (tab/sheet):
- *    1. "Nasabah"   — data warga penabung sampah
- *    2. "Setoran"   — setiap kali warga menyetor sampah
- *    3. "Pengajuan" — permintaan warga untuk mencairkan pendapatan
+ *  Menyimpan 4 tabel (tab/sheet):
+ *    1. "Nasabah"      — data warga penabung sampah
+ *    2. "Setoran"      — setiap kali warga menyetor sampah
+ *    3. "Pengajuan"    — permintaan warga untuk mencairkan pendapatan
+ *    4. "SetoranWarga" — catatan setoran yang DIISI SENDIRI OLEH WARGA
+ *                        beserta foto buktinya, menunggu disetujui/ditolak
+ *                        petugas. Foto disimpan di Google Drive, yang
+ *                        tercatat di sheet hanyalah ID berkasnya.
  *
  *  CARA PASANG (ringkas — lihat README.md untuk lengkapnya):
  *   1. Buka Google Sheet BARU (sheet.new), beri nama mis. "Bank Sampah Kampung Baru".
@@ -24,6 +28,10 @@
  *        - Who has access    : Anyone
  *   6. Salin URL "Web app" (…/exec) → tempel ke
  *      KONFIGURASI.BANK_SAMPAH.APPS_SCRIPT_URL di js/config.js.
+ *   7. Saat pertama kali ada warga mengirim FOTO BUKTI, Google akan meminta
+ *      izin tambahan untuk membuat berkas di Google Drive Anda. Setujui saja
+ *      (Review permissions ▸ pilih akun ▸ Advanced ▸ Go to … ▸ Allow).
+ *      Fotonya masuk ke folder "Foto Setoran Bank Sampah" di Drive Anda.
  *
  *  Setiap kali berkas ini diubah, WAJIB deploy versi baru:
  *  Deploy ▸ Manage deployments ▸ (pensil) ▸ Version: New version ▸ Deploy.
@@ -38,15 +46,38 @@ var TOKEN_RAHASIA = 'rahasia-bank-sampah-116';
 var MIN_PENCAIRAN = 10000;
 
 /* Nama tab/sheet */
-var SHEET_NASABAH   = 'Nasabah';
-var SHEET_SETORAN   = 'Setoran';
-var SHEET_PENGAJUAN = 'Pengajuan';
+var SHEET_NASABAH       = 'Nasabah';
+var SHEET_SETORAN       = 'Setoran';
+var SHEET_PENGAJUAN     = 'Pengajuan';
+var SHEET_SETORAN_WARGA = 'SetoranWarga';
+
+/* Nama folder Google Drive tempat foto bukti setoran warga disimpan.
+ * Folder ini dibuat otomatis saat foto pertama masuk. */
+var FOLDER_FOTO = 'Foto Setoran Bank Sampah';
+
+/* Harga beli per kg (Rp) tiap jenis sampah — samakan dengan
+ * KONFIGURASI.BANK_SAMPAH.JENIS di js/config.js. Dipakai sebagai cadangan
+ * bila petugas tidak mengisi sendiri harganya saat menyetujui setoran warga. */
+var HARGA_JENIS = {
+  'botol plastik': 3000,
+  'kardus': 1500,
+  'rak telur': 1000,
+  'gelas plastik': 2500,
+  'lain-lain': 1000,
+  'kering': 2000, // pengelompokan lama
+  'basah': 500,   // pengelompokan lama
+};
+
+/* Perkiraan berat 1 kantong bila warga/petugas tidak menimbang (kg).
+ * Samakan dengan KONFIGURASI.BANK_SAMPAH.KG_PER_KANTONG di js/config.js. */
+var KG_PER_KANTONG = 3;
 
 /* Nilai status — HARUS sama persis dengan js/bank-sampah-storage.js */
 var STATUS_BELUM     = 'Belum Dicairkan';
 var STATUS_SUDAH     = 'Sudah Dicairkan';
 var STATUS_DIAJUKAN  = 'Diajukan';
 var STATUS_DISETUJUI = 'Disetujui';
+var STATUS_MENUNGGU  = 'Menunggu';
 
 /* Urutan kolom — HARUS sama dengan SKEMA_BS_* di js/bank-sampah-storage.js */
 var KOLOM_NASABAH = ['id', 'nama', 'nik', 'alamat', 'rt', 'rw', 'noHp', 'tanggalDaftar', 'status', 'catatan'];
@@ -63,12 +94,25 @@ var KOLOM_PENGAJUAN = ['id', 'idWarga', 'nama', 'tanggal', 'jumlah', 'status', '
 var JUDUL_PENGAJUAN = ['ID Pengajuan', 'ID Nasabah', 'Nama Warga', 'Tanggal Pengajuan',
                        'Jumlah Diajukan (Rp)', 'Status', 'Tanggal Diproses', 'Catatan'];
 
+var KOLOM_SETORAN_WARGA = ['id', 'tanggal', 'idWarga', 'nama', 'nik', 'alamat', 'rt', 'rw', 'noHp',
+                           'terdaftar', 'jenis', 'jenisLain', 'berat', 'kantong', 'catatan', 'foto',
+                           'status', 'tanggalProses', 'catatanPetugas', 'idSetoran'];
+var JUDUL_SETORAN_WARGA = ['ID Catatan', 'Tanggal Isi', 'ID Nasabah', 'Nama Lengkap', 'NIK', 'Alamat',
+                           'RT', 'RW', 'No. HP/WA', 'Sudah Terdaftar', 'Jenis Sampah',
+                           'Keterangan Lain-lain', 'Perkiraan Berat (kg)', 'Jumlah Kantong',
+                           'Catatan Warga', 'Foto Bukti', 'Status', 'Tanggal Diproses',
+                           'Catatan Petugas', 'ID Setoran Hasil'];
+
 /* Aksi yang BOLEH dipanggil warga tanpa token (hanya butuh ID nasabah) */
-var AKSI_PUBLIK = ['cek', 'ajukan'];
+var AKSI_PUBLIK = ['cek', 'ajukan', 'daftarMandiri', 'setorWarga', 'cekSetorWarga'];
 
 /* ==========================================================================
- *  PINTU MASUK — semua permintaan lewat GET (JSONP) supaya balasan server
- *  benar-benar bisa dibaca browser. doPost disediakan sebagai cadangan.
+ *  PINTU MASUK
+ *  ------------------------------------------------------------------------
+ *  - GET (JSONP) dipakai untuk hampir semua permintaan, supaya balasan
+ *    server benar-benar bisa dibaca browser.
+ *  - POST dipakai untuk data BESAR yang tidak muat di alamat URL, yaitu
+ *    setoran warga yang membawa FOTO BUKTI.
  * ======================================================================== */
 function doGet(e) {
   var p = (e && e.parameter) ? e.parameter : {};
@@ -96,6 +140,12 @@ function tangani(p) {
       case 'list':            return aksiList();
       case 'cek':             return aksiCek(p);
       case 'ajukan':          return aksiAjukan(p);
+
+      case 'daftarMandiri':      return aksiDaftarMandiri(p);
+      case 'setorWarga':         return aksiSetorWarga(p);
+      case 'cekSetorWarga':      return aksiCekSetorWarga(p);
+      case 'prosesSetoranWarga': return aksiProsesSetoranWarga(p);
+      case 'hapusSetoranWarga':  return aksiHapusBaris(sheetSetoranWarga(), p.id, 'Catatan setoran warga');
 
       case 'simpanNasabah':   return aksiSimpanNasabah(p);
       case 'editNasabah':     return aksiEditNasabah(p);
@@ -128,6 +178,7 @@ function aksiList() {
     nasabah: bacaSemua(sheetNasabah(), KOLOM_NASABAH),
     setoran: bacaSemua(sheetSetoran(), KOLOM_SETORAN),
     pengajuan: bacaSemua(sheetPengajuan(), KOLOM_PENGAJUAN),
+    setoranWarga: bacaSemua(sheetSetoranWarga(), KOLOM_SETORAN_WARGA),
   };
 }
 
@@ -333,6 +384,240 @@ function aksiProsesPengajuan(p) {
 }
 
 /* ==========================================================================
+ *  AKSI — PENDAFTARAN MANDIRI OLEH WARGA  (tanpa token)
+ * ======================================================================== */
+/* Warga yang belum jadi nasabah mendaftarkan dirinya sendiri dari halaman
+ * bank-sampah.html. NOMOR ID DIBUAT DI SINI (bukan di browser) supaya dua
+ * warga yang mendaftar bersamaan tidak mendapat nomor yang sama.
+ * Bila NIK — atau kombinasi No. HP + nama — sudah pernah terdaftar, ID lama
+ * itulah yang dikembalikan, jadi warga tidak berakhir punya dua ID. */
+function aksiDaftarMandiri(p) {
+  var nama = String(p.nama || '').trim();
+  if (!nama) return { ok: false, pesan: 'Nama lengkap belum diisi.' };
+
+  var sheet = sheetNasabah();
+  var semua = bacaSemua(sheet, KOLOM_NASABAH);
+
+  var lama = cariNasabahLama(semua, p);
+  if (lama) return { ok: true, pesan: 'Data lama dipakai kembali.', id: lama.id, lama: true };
+
+  var id = idNasabahBaru(semua);
+  var data = {};
+  KOLOM_NASABAH.forEach(function (k) { data[k] = (p[k] === undefined || p[k] === null) ? '' : p[k]; });
+  data.id = id;
+  data.nama = nama;
+  data.tanggalDaftar = data.tanggalDaftar || tanggalHariIni();
+  data.status = data.status || 'Aktif';
+  data.catatan = data.catatan || 'Mendaftar sendiri lewat halaman Bank Sampah';
+
+  sheet.appendRow(KOLOM_NASABAH.map(function (k) { return data[k]; }));
+  return { ok: true, pesan: 'Nasabah baru terdaftar.', id: id };
+}
+
+/* Mencocokkan warga dengan data yang sudah ada: NIK dulu, lalu No. HP + nama. */
+function cariNasabahLama(semua, p) {
+  var nik = normalId(p.nik);
+  var i;
+  if (nik) {
+    for (i = 0; i < semua.length; i++) {
+      if (normalId(semua[i].nik) === nik) return semua[i];
+    }
+  }
+  var hp = angkaSaja(p.noHp);
+  var nama = String(p.nama || '').trim().toLowerCase();
+  if (!hp || !nama) return null;
+  for (i = 0; i < semua.length; i++) {
+    if (angkaSaja(semua[i].noHp) === hp &&
+        String(semua[i].nama || '').trim().toLowerCase() === nama) return semua[i];
+  }
+  return null;
+}
+
+/* ==========================================================================
+ *  AKSI — SETORAN YANG DICATAT SENDIRI OLEH WARGA (+ foto bukti)
+ * ======================================================================== */
+/* Dipanggil warga (tanpa token) lewat POST, karena membawa foto.
+ * Catatan ini BELUM masuk ke tabungan — statusnya "Menunggu" sampai
+ * petugas menyetujuinya di dashboard. */
+function aksiSetorWarga(p) {
+  var nama = String(p.nama || '').trim();
+  var jenis = String(p.jenis || '').trim();
+  if (!nama)  return { ok: false, pesan: 'Nama lengkap belum diisi.' };
+  if (!jenis) return { ok: false, pesan: 'Jenis sampah belum dipilih.' };
+
+  var idWarga = normalId(p.idWarga);
+  if (idWarga && cariBaris(sheetNasabah(), idWarga) < 0) {
+    return { ok: false, pesan: 'ID nasabah ' + idWarga + ' tidak ditemukan.' };
+  }
+
+  var sheet = sheetSetoranWarga();
+  var id = String(p.id || '').trim() || idAcak('SW');
+
+  // Kiriman ulang (mis. jaringan warga putus lalu dikirim lagi) tidak digandakan.
+  if (cariBaris(sheet, id) >= 0) {
+    return { ok: true, pesan: 'Setoran sudah tercatat sebelumnya.', id: id };
+  }
+
+  var data = {};
+  KOLOM_SETORAN_WARGA.forEach(function (k) {
+    data[k] = (p[k] === undefined || p[k] === null) ? '' : p[k];
+  });
+  data.id = id;
+  data.idWarga = idWarga;
+  data.nama = nama;
+  data.jenis = jenis;
+  data.tanggal = data.tanggal || waktuSekarang();
+  data.terdaftar = idWarga ? 'Ya' : 'Tidak';
+  data.status = STATUS_MENUNGGU;
+  data.tanggalProses = '';
+  data.catatanPetugas = '';
+  data.idSetoran = '';
+  data.foto = simpanFotoDrive(p.foto, p.fotoTipe, id, nama);
+
+  sheet.appendRow(KOLOM_SETORAN_WARGA.map(function (k) { return data[k]; }));
+  return { ok: true, pesan: 'Setoran tercatat & menunggu persetujuan petugas.', id: id };
+}
+
+/* Dipakai halaman warga untuk memastikan catatannya benar-benar masuk,
+ * saat balasan POST-nya tidak sampai ke perangkat warga. */
+function aksiCekSetorWarga(p) {
+  var id = String(p.id || '').trim();
+  if (!id) return { ok: false, pesan: 'ID catatan belum diisi.' };
+
+  var sheet = sheetSetoranWarga();
+  var baris = cariBaris(sheet, id);
+  if (baris < 0) return { ok: true, ada: false };
+
+  var data = bacaBaris(sheet, baris, KOLOM_SETORAN_WARGA);
+  return { ok: true, ada: true, status: data.status, idWarga: data.idWarga };
+}
+
+/* Petugas menyetujui / menolak catatan setoran warga.
+ * Bila DISETUJUI, catatan itu langsung menjadi setoran resmi di tabungan
+ * warga — memakai berat & harga yang sudah dipastikan petugas. */
+function aksiProsesSetoranWarga(p) {
+  var sheet = sheetSetoranWarga();
+  var baris = cariBaris(sheet, String(p.id || '').trim());
+  if (baris < 0) return { ok: false, pesan: 'Catatan setoran warga tidak ditemukan.' };
+
+  var data = bacaBaris(sheet, baris, KOLOM_SETORAN_WARGA);
+  if (String(data.status || '') !== STATUS_MENUNGGU) {
+    return { ok: false, pesan: 'Catatan ini sudah pernah diproses (' + data.status + ').' };
+  }
+
+  var status = String(p.status || '').trim() || STATUS_DISETUJUI;
+  sheet.getRange(baris, KOLOM_SETORAN_WARGA.indexOf('status') + 1).setValue(status);
+  sheet.getRange(baris, KOLOM_SETORAN_WARGA.indexOf('tanggalProses') + 1).setValue(tanggalHariIni());
+  sheet.getRange(baris, KOLOM_SETORAN_WARGA.indexOf('catatanPetugas') + 1).setValue(p.catatan || '');
+
+  if (status !== STATUS_DISETUJUI) {
+    return { ok: true, pesan: 'Setoran warga ditandai "' + status.toLowerCase() + '".' };
+  }
+
+  var idWarga = normalId(data.idWarga);
+  if (!idWarga || cariBaris(sheetNasabah(), idWarga) < 0) {
+    return { ok: false, pesan: 'ID nasabah pada catatan ini tidak terdaftar, jadi setorannya ' +
+      'belum bisa dimasukkan ke tabungan. Daftarkan dulu warganya di tab Data Warga.' };
+  }
+
+  var kantong = keAngka(p.kantong !== '' && p.kantong !== undefined ? p.kantong : data.kantong);
+  var berat = keAngka(p.berat !== '' && p.berat !== undefined ? p.berat : data.berat);
+  if (berat <= 0) berat = kantong * KG_PER_KANTONG;
+  if (berat <= 0) {
+    return { ok: false, pesan: 'Berat setoran belum terisi. Timbang dulu sampahnya, ' +
+      'lalu isi beratnya saat menyetujui.' };
+  }
+
+  var harga = keAngka(p.hargaPerKg !== '' && p.hargaPerKg !== undefined ? p.hargaPerKg : 0);
+  if (harga <= 0) harga = hargaJenis(data.jenis);
+
+  var idSetoran = idAcak('ST');
+  var setoran = {
+    id: idSetoran,
+    idWarga: idWarga,
+    tanggal: String(p.tanggal || '').trim() || tanggalHariIni(),
+    jenis: data.jenis,
+    berat: Math.round(berat * 100) / 100,
+    kantong: kantong,
+    hargaPerKg: harga,
+    pendapatan: Math.round(berat * harga),
+    status: STATUS_BELUM,
+    tanggalCair: '',
+    catatan: catatanSetoranDari(data),
+  };
+  sheetSetoran().appendRow(KOLOM_SETORAN.map(function (k) { return setoran[k]; }));
+  sheet.getRange(baris, KOLOM_SETORAN_WARGA.indexOf('idSetoran') + 1).setValue(idSetoran);
+
+  return {
+    ok: true,
+    pesan: 'Setoran warga disetujui — ' + setoran.berat + ' kg masuk ke tabungannya (Rp ' +
+      setoran.pendapatan.toLocaleString('id-ID') + ').',
+    id: idSetoran,
+  };
+}
+
+/* Menyusun catatan setoran resmi dari catatan yang ditulis warga. */
+function catatanSetoranDari(data) {
+  var bagian = ['Dicatat sendiri oleh warga'];
+  var lain = String(data.jenisLain || '').trim();
+  if (lain) bagian.push('Lain-lain: ' + lain);
+  var catatan = String(data.catatan || '').trim();
+  if (catatan) bagian.push(catatan);
+  return bagian.join(' · ');
+}
+
+/* ==========================================================================
+ *  FOTO BUKTI — disimpan di Google Drive, sheet hanya menyimpan ID berkasnya
+ * ======================================================================== */
+/**
+ * Menyimpan foto kiriman warga ke Google Drive.
+ * Isi foto dikirim browser dalam bentuk base64 "web-safe" (memakai - dan _
+ * sebagai ganti + dan /), supaya tidak rusak saat melewati POST formulir.
+ * @returns {string} ID berkas Drive-nya, atau '' bila tidak ada foto.
+ */
+function simpanFotoDrive(isiBase64, tipe, idCatatan, namaWarga) {
+  var isi = String(isiBase64 || '').trim();
+  if (!isi) return '';
+
+  // Buang awalan "data:image/jpeg;base64," bila browser sempat menyertakannya.
+  var pisah = isi.indexOf('base64,');
+  if (pisah >= 0) {
+    var kepala = isi.substring(0, pisah);
+    var cocok = kepala.match(/data:([^;]+)/);
+    if (cocok && !tipe) tipe = cocok[1];
+    isi = isi.substring(pisah + 7);
+  }
+  isi = isi.replace(/\s/g, '');
+  if (!isi) return '';
+
+  try {
+    var jenisBerkas = String(tipe || 'image/jpeg');
+    var akhiran = jenisBerkas.indexOf('png') >= 0 ? '.png'
+      : (jenisBerkas.indexOf('webp') >= 0 ? '.webp' : '.jpg');
+    var namaBerkas = 'setoran-' + String(idCatatan || 'tanpa-id') + '-' +
+      String(namaWarga || '').replace(/[^\w\s-]/g, '').trim().replace(/\s+/g, '-') + akhiran;
+
+    var blob = Utilities.newBlob(Utilities.base64DecodeWebSafe(isi), jenisBerkas, namaBerkas);
+    var berkas = ambilFolderFoto().createFile(blob);
+    try {
+      berkas.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    } catch (izin) {
+      // Sebagian akun sekolah/kantor melarang berbagi ke publik. Fotonya tetap
+      // tersimpan — petugas bisa membukanya selama masuk dengan akun pemilik.
+    }
+    return berkas.getId();
+  } catch (err) {
+    // Foto gagal disimpan tidak boleh membatalkan setorannya.
+    return '';
+  }
+}
+
+function ambilFolderFoto() {
+  var daftar = DriveApp.getFoldersByName(FOLDER_FOTO);
+  return daftar.hasNext() ? daftar.next() : DriveApp.createFolder(FOLDER_FOTO);
+}
+
+/* ==========================================================================
  *  AKSI UMUM — edit / hapus satu baris berdasarkan kolom "id"
  * ======================================================================== */
 function aksiEditBaris(sheet, kolom, p) {
@@ -358,9 +643,10 @@ function aksiHapusBaris(sheet, id, label) {
 /* ==========================================================================
  *  BANTU — SHEET
  * ======================================================================== */
-function sheetNasabah()   { return ambilSheet(SHEET_NASABAH, JUDUL_NASABAH); }
-function sheetSetoran()   { return ambilSheet(SHEET_SETORAN, JUDUL_SETORAN); }
-function sheetPengajuan() { return ambilSheet(SHEET_PENGAJUAN, JUDUL_PENGAJUAN); }
+function sheetNasabah()      { return ambilSheet(SHEET_NASABAH, JUDUL_NASABAH); }
+function sheetSetoran()      { return ambilSheet(SHEET_SETORAN, JUDUL_SETORAN); }
+function sheetPengajuan()    { return ambilSheet(SHEET_PENGAJUAN, JUDUL_PENGAJUAN); }
+function sheetSetoranWarga() { return ambilSheet(SHEET_SETORAN_WARGA, JUDUL_SETORAN_WARGA); }
 
 function ambilSheet(nama, judul) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -434,6 +720,18 @@ function normalId(id) {
 function keAngka(v) {
   var n = parseFloat(String(v === null || v === undefined ? '' : v).replace(/[^0-9.-]/g, ''));
   return isNaN(n) ? 0 : n;
+}
+
+function angkaSaja(v) {
+  return String(v === null || v === undefined ? '' : v).replace(/[^0-9]/g, '');
+}
+
+/* Harga beli per kg untuk satu jenis sampah (lihat HARGA_JENIS di atas). */
+function hargaJenis(nama) {
+  var kunci = String(nama === null || nama === undefined ? '' : nama).trim().toLowerCase();
+  if (HARGA_JENIS.hasOwnProperty(kunci)) return HARGA_JENIS[kunci];
+  if (kunci.indexOf('basah') >= 0 || kunci.indexOf('organik') >= 0) return HARGA_JENIS['basah'];
+  return HARGA_JENIS['lain-lain'];
 }
 
 function idNasabahBaru(semua) {
