@@ -74,7 +74,7 @@ const Admin = (function () {
   function render(data, sumber) {
     el('adminJumlah').textContent = data.length;
     el('adminSumber').textContent = (sumber === 'sheet')
-      ? 'Google Sheets (online)'
+      ? 'Tersimpan online'
       : 'Cadangan di perangkat ini';
     el('adminStatus').textContent = '';
 
@@ -168,15 +168,18 @@ const Admin = (function () {
     // setelah dimuat ulang nanti).
     dataTerakhir[index] = record;
     render(dataTerakhir, sumberTerakhir);
-    toast('⏳ Menyimpan perubahan ke Google Sheets…');
+    toast('⏳ Menyimpan perubahan…');
 
     perbaruiDataSheet(index, record).then(function (hasil) {
       if (hasil.ok) {
-        toast('✅ Perubahan tersimpan di Google Sheets.');
+        toast('✅ Perubahan tersimpan online.');
       } else {
         dataTerakhir[index] = dataLama;
         render(dataTerakhir, sumberTerakhir);
-        toast('❌ Gagal menyimpan ke Google Sheets: ' + hasil.pesan);
+        // Pesan asli server memakai bahasa teknis — cukup dicatat di konsol.
+        console.warn('Gagal menyimpan data karbon:', hasil.pesan);
+        toast('❌ Perubahan belum tersimpan. Coba lagi sebentar lagi, ' +
+          'atau hubungi ' + Bantuan.sebut() + '.');
       }
     });
   }
@@ -200,15 +203,17 @@ const Admin = (function () {
     // Bila gagal, baris dikembalikan agar admin tahu data BELUM terhapus.
     dataTerakhir.splice(index, 1);
     render(dataTerakhir, sumberTerakhir);
-    toast('⏳ Menghapus data dari Google Sheets…');
+    toast('⏳ Menghapus data…');
 
     hapusDataSheet(index).then(function (hasil) {
       if (hasil.ok) {
-        toast('🗑️ Data dihapus dari Google Sheets.');
+        toast('🗑️ Data berhasil dihapus.');
       } else {
         dataTerakhir.splice(index, 0, dataLama);
         render(dataTerakhir, sumberTerakhir);
-        toast('❌ Gagal menghapus di Google Sheets: ' + hasil.pesan);
+        console.warn('Gagal menghapus data karbon:', hasil.pesan);
+        toast('❌ Data belum terhapus. Coba lagi sebentar lagi, ' +
+          'atau hubungi ' + Bantuan.sebut() + '.');
       }
     });
   }

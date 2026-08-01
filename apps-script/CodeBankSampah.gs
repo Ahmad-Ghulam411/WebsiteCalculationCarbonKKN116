@@ -50,6 +50,33 @@ var SHEET_NASABAH       = 'Nasabah';
 var SHEET_SETORAN       = 'Setoran';
 var SHEET_PENGAJUAN     = 'Pengajuan';
 var SHEET_SETORAN_WARGA = 'SetoranWarga';
+var SHEET_AKUN          = 'AkunAdmin';
+
+/* --------------------------------------------------------------------------
+ *  AKUN PETUGAS (dashboard admin bank sampah)
+ *
+ *  Akun di bawah ini hanya AKUN BAWAAN — dipakai selama petugas belum pernah
+ *  menggantinya dari menu "🔐 Akun Petugas" di dashboard. Begitu diganti,
+ *  akun yang berlaku tersimpan di tab "AkunAdmin" dan akun bawaan ini
+ *  TIDAK BERLAKU LAGI.
+ *
+ *  ⚠️ Samakan dengan KONFIGURASI.BANK_SAMPAH.ADMIN di js/config.js.
+ *
+ *  🔑 LUPA KATA SANDI? Buka Google Sheet ▸ tab "AkunAdmin" ▸ hapus barisnya
+ *     (baris ke-2, di bawah judul). Akun otomatis kembali ke akun bawaan
+ *     di bawah ini. Tidak ada data warga yang hilang.
+ * ------------------------------------------------------------------------ */
+var AKUN_AWAL = {
+  username: 'petugasbanksampah116',
+  password: 'banksampahkampung',
+};
+
+/* Ditempel di depan kata sandi sebelum diacak ("garam").
+ * ⚠️ HARUS SAMA PERSIS dengan GARAM di js/bank-sampah-akun.js. */
+var GARAM_SANDI = 'BankSampahKampungBaru116';
+
+/* Penanda baris akun petugas di tab "AkunAdmin" (isinya cuma satu baris). */
+var KUNCI_AKUN_PETUGAS = 'petugas';
 
 /* Nama folder Google Drive tempat foto bukti setoran warga disimpan.
  * Folder ini dibuat otomatis saat foto pertama masuk. */
@@ -93,6 +120,12 @@ var JUDUL_SETORAN = ['ID Setoran', 'ID Nasabah', 'Tanggal Setor', 'Jenis Sampah'
 var KOLOM_PENGAJUAN = ['id', 'idWarga', 'nama', 'tanggal', 'jumlah', 'status', 'tanggalProses', 'catatan'];
 var JUDUL_PENGAJUAN = ['ID Pengajuan', 'ID Nasabah', 'Nama Warga', 'Tanggal Pengajuan',
                        'Jumlah Diajukan (Rp)', 'Status', 'Tanggal Diproses', 'Catatan'];
+
+/* Tab "AkunAdmin" — kata sandi TIDAK PERNAH ditulis apa adanya di sini.
+ * Yang tersimpan hanyalah "sidik jari"-nya (SHA-256) sepanjang 64 huruf,
+ * yang tidak bisa dikembalikan menjadi kata sandi aslinya. */
+var KOLOM_AKUN = ['kunci', 'username', 'sidik', 'diubah'];
+var JUDUL_AKUN = ['Kunci', 'Nama Pengguna', 'Sidik Kata Sandi (SHA-256)', 'Terakhir Diubah'];
 
 var KOLOM_SETORAN_WARGA = ['id', 'tanggal', 'idWarga', 'nama', 'nik', 'alamat', 'rt', 'rw', 'noHp',
                            'terdaftar', 'jenis', 'jenisLain', 'berat', 'kantong', 'catatan', 'foto',
@@ -181,6 +214,10 @@ function tangani(p) {
       case 'prosesPengajuan': return aksiProsesPengajuan(p);
       case 'hapusPengajuan':  return aksiHapusBaris(sheetPengajuan(), p.id, 'Pengajuan');
 
+      case 'masukAdmin':      return aksiMasukAdmin(p);
+      case 'ubahAkunAdmin':   return aksiUbahAkunAdmin(p);
+      case 'infoAkunAdmin':   return aksiInfoAkunAdmin();
+
       default: return { ok: false, pesan: 'Aksi "' + aksi + '" tidak dikenal.' };
     }
   } catch (err) {
@@ -245,6 +282,132 @@ function tanpaFoto(s) {
   var salinan = {};
   Object.keys(s).forEach(function (k) { salinan[k] = (k === 'foto') ? '' : s[k]; });
   return salinan;
+}
+
+/* ==========================================================================
+ *  AKSI — AKUN PETUGAS (menu "🔐 Akun Petugas" di dashboard admin)
+ *  ------------------------------------------------------------------------
+ *  Kata sandi TIDAK PERNAH dikirim apa adanya dari browser. Yang dikirim
+ *  hanyalah "sidik jari"-nya (SHA-256), dan yang tersimpan di sheet juga
+ *  hanya sidik itu. Jadi walaupun ada yang mengintip alamat permintaannya
+ *  atau isi Google Sheet-nya, kata sandi aslinya tetap tidak terbaca.
+ *
+ *  Aturan penggantian akun: nama pengguna DAN kata sandi LAMA wajib cocok
+ *  dulu. Kalau tidak cocok, tidak ada apa pun yang diubah.
+ * ======================================================================== */
+
+/** Sidik jari kata sandi.
+ *  ⚠️ HARUS SAMA PERSIS dengan hash() di js/bank-sampah-akun.js. */
+function hashSandi(username, sandi) {
+  var teks = GARAM_SANDI + '|' + kunciUser(username) + '|' +
+    String(sandi === null || sandi === undefined ? '' : sandi);
+  var byte = Utilities.computeDigest(Utilities.DigestAlgorithm.SHA_256, teks, Utilities.Charset.UTF_8);
+  var hex = '';
+  for (var i = 0; i < byte.length; i++) {
+    var b = (byte[i] + 256) % 256;         // Apps Script memberi byte -128..127
+    hex += (b < 16 ? '0' : '') + b.toString(16);
+  }
+  return hex;
+}
+
+function rapikanUser(v) {
+  return String(v === null || v === undefined ? '' : v).trim();
+}
+
+function kunciUser(v) { return rapikanUser(v).toLowerCase(); }
+
+function sidikRapi(v) {
+  return String(v === null || v === undefined ? '' : v).trim().toLowerCase();
+}
+
+function sidikSah(v) { return /^[0-9a-f]{64}$/.test(sidikRapi(v)); }
+
+/** Akun yang sedang berlaku: dari tab "AkunAdmin" bila ada, kalau tidak
+ *  memakai AKUN_AWAL di bagian atas berkas ini. */
+function akunBerlaku() {
+  var semua = bacaSemua(sheetAkun(), KOLOM_AKUN);
+  for (var i = 0; i < semua.length; i++) {
+    if (kunciUser(semua[i].kunci) === KUNCI_AKUN_PETUGAS) {
+      var user = rapikanUser(semua[i].username);
+      var sidik = sidikRapi(semua[i].sidik);
+      if (user && sidikSah(sidik)) {
+        return {
+          username: user, sidik: sidik, tersimpan: true,
+          diubah: String(semua[i].diubah || ''), baris: i + 2,
+        };
+      }
+    }
+  }
+  return {
+    username: rapikanUser(AKUN_AWAL.username),
+    sidik: hashSandi(AKUN_AWAL.username, AKUN_AWAL.password),
+    tersimpan: false, diubah: '', baris: -1,
+  };
+}
+
+/** Mencocokkan nama pengguna + sidik sandi dengan akun yang berlaku. */
+function akunCocok(akun, username, sidik) {
+  return kunciUser(username) === kunciUser(akun.username) &&
+    sidikRapi(sidik) === akun.sidik;
+}
+
+/* Petugas menekan "Masuk Dashboard". */
+function aksiMasukAdmin(p) {
+  var akun = akunBerlaku();
+  if (!akunCocok(akun, p.akunUser, p.akunSidik)) {
+    return { ok: false, salah: true, pesan: 'Nama pengguna atau kata sandi salah.' };
+  }
+  return { ok: true, username: akun.username, diubah: akun.diubah, tersimpan: akun.tersimpan };
+}
+
+/* Petugas mengganti nama pengguna & kata sandinya sendiri. */
+function aksiUbahAkunAdmin(p) {
+  var akun = akunBerlaku();
+
+  // 1) Akun LAMA wajib benar dulu.
+  if (!akunCocok(akun, p.akunUser, p.akunSidik)) {
+    return {
+      ok: false, salah: true,
+      pesan: akun.tersimpan
+        ? 'Nama pengguna atau kata sandi lama salah. Akun tidak jadi diganti.'
+        : 'Nama pengguna atau kata sandi lama salah. Selama akun belum pernah diganti, ' +
+          'yang berlaku adalah AKUN_AWAL di CodeBankSampah.gs — samakan dengan ' +
+          'KONFIGURASI.BANK_SAMPAH.ADMIN di js/config.js, lalu deploy ulang.',
+    };
+  }
+
+  // 2) Akun BARU wajib masuk akal.
+  var userBaru = rapikanUser(p.akunUserBaru);
+  var sidikBaru = sidikRapi(p.akunSidikBaru);
+  if (userBaru.length < 4 || userBaru.length > 32 || !/^[A-Za-z0-9._-]+$/.test(userBaru)) {
+    return { ok: false, salah: true, pesan: 'Nama pengguna baru tidak sah (4–32 huruf/angka, tanpa spasi).' };
+  }
+  if (!sidikSah(sidikBaru)) {
+    return { ok: false, salah: true, pesan: 'Kata sandi baru tidak terkirim dengan utuh. Coba lagi.' };
+  }
+  if (sidikBaru === akun.sidik) {
+    return { ok: false, salah: true, pesan: 'Kata sandi baru masih sama dengan yang lama.' };
+  }
+
+  // 3) Simpan — satu baris saja di tab "AkunAdmin".
+  var sheet = sheetAkun();
+  var baris = [KUNCI_AKUN_PETUGAS, userBaru, sidikBaru, waktuSekarang()];
+  if (akun.baris > 0) {
+    sheet.getRange(akun.baris, 1, 1, KOLOM_AKUN.length).setValues([baris]);
+  } else {
+    sheet.appendRow(baris);
+  }
+
+  return {
+    ok: true, username: userBaru, diubah: baris[3],
+    pesan: 'Akun petugas berhasil diganti. Mulai sekarang masuk memakai akun yang baru.',
+  };
+}
+
+/* Menanyakan akun yang sedang berlaku — sidik sandinya TIDAK ikut dikirim. */
+function aksiInfoAkunAdmin() {
+  var akun = akunBerlaku();
+  return { ok: true, username: akun.username, diubah: akun.diubah, tersimpan: akun.tersimpan };
 }
 
 /* ==========================================================================
@@ -766,6 +929,18 @@ function sheetNasabah()      { return ambilSheet(SHEET_NASABAH, JUDUL_NASABAH); 
 function sheetSetoran()      { return ambilSheet(SHEET_SETORAN, JUDUL_SETORAN); }
 function sheetPengajuan()    { return ambilSheet(SHEET_PENGAJUAN, JUDUL_PENGAJUAN); }
 function sheetSetoranWarga() { return ambilSheet(SHEET_SETORAN_WARGA, JUDUL_SETORAN_WARGA); }
+
+/* Tab "AkunAdmin" — nama pengguna & sidik sandinya WAJIB dibaca sebagai teks.
+ * Kalau tidak, Google Sheets bisa menganggap sidik yang kebetulan berisi angka
+ * saja sebagai bilangan, angkanya dibulatkan, dan kata sandinya jadi tidak
+ * pernah cocok lagi. */
+function sheetAkun() {
+  var sheet = ambilSheet(SHEET_AKUN, JUDUL_AKUN);
+  if (sheet.getRange('C1').getNumberFormat() !== '@') {
+    sheet.getRange(1, 1, sheet.getMaxRows(), KOLOM_AKUN.length).setNumberFormat('@');
+  }
+  return sheet;
+}
 
 function ambilSheet(nama, judul) {
   var ss = SpreadsheetApp.getActiveSpreadsheet();

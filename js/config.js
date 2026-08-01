@@ -123,6 +123,30 @@ const KONFIGURASI = {
   },
 
   /* ------------------------------------------------------------------
+   * 7b) BANTUAN SISTEM WEB — anggota KKN yang mengurus programnya
+   *
+   *   Petugas & pengelola bank sampah TIDAK perlu mengurus hal teknis
+   *   (berkas program, penyimpanan online, dan sejenisnya). Tugas mereka
+   *   cukup mengelola DATA WARGA. Kalau ada yang tidak beres pada
+   *   dashboard, mereka cukup menghubungi nomor di bawah ini — nomornya
+   *   muncul sendiri di layar dashboard, jadi tidak perlu dihafal.
+   *
+   *   Ganti isian ini bila penanggung jawabnya berganti orang.
+   * ------------------------------------------------------------------ */
+  BANTUAN: {
+    nama: 'Ahmad Ghulam Ghazi',
+    peran: 'Anggota KKN 116',
+
+    /* Nomor untuk tautan wa.me — WAJIB format internasional: tanpa tanda "+",
+     * tanpa spasi, dan angka 0 di depan diganti 62.
+     * Contoh: 0897 9802 427  →  628979802427 */
+    wa: '628979802427',
+
+    /* Nomor yang ditampilkan di layar (boleh pakai spasi/strip) */
+    waTampil: '0897-9802-427',
+  },
+
+  /* ------------------------------------------------------------------
    * 8) INFO KONTAK (dipakai di footer)
    * ------------------------------------------------------------------ */
   KONTAK: {

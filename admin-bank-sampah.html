@@ -36,8 +36,13 @@
           <input type="password" id="inputSandi" autocomplete="current-password" placeholder="Kata sandi petugas">
         </div>
         <p class="adm-masuk-pesan" id="pesanMasuk"></p>
-        <button type="submit" class="tombol tombol-penuh">🔓 Masuk Dashboard</button>
+        <button type="submit" class="tombol tombol-penuh" id="btnMasuk">🔓 Masuk Dashboard</button>
       </form>
+
+      <p class="adm-masuk-bantuan">
+        Lupa akun atau tidak bisa masuk? Hubungi
+        <a class="bantuan-wa" href="#" target="_blank" rel="noopener"><span class="bantuan-sebut">anggota KKN</span></a>.
+      </p>
 
       <p class="adm-masuk-bawah">
         <a href="index.html">← Kembali ke Beranda</a> ·
@@ -103,6 +108,7 @@
           <button type="button" class="adm-tab" data-tab="setoran">⚖️ Setoran Sampah</button>
           <button type="button" class="adm-tab" data-tab="pencairan">💵 Pencairan <span class="bs-badge bs-badge-merah tersembunyi" id="lencanaPengajuan">0</span></button>
           <button type="button" class="adm-tab" data-tab="panduan">📖 Cara Pakai</button>
+          <button type="button" class="adm-tab" data-tab="akun">🔐 Akun Petugas</button>
         </div>
 
         <!-- =================== TAB 1: DATA WARGA =================== -->
@@ -318,7 +324,7 @@
                   <!-- Pilihannya diisi js/admin-bank-sampah.js dari
                        KONFIGURASI.BANK_SAMPAH.JENIS di js/config.js -->
                   <select id="sJenis"></select>
-                  <small>Menambah / mengubah jenis sampah cukup di <strong>js/config.js</strong>.</small>
+                  <small>Harga per kg terisi otomatis mengikuti jenis yang dipilih.</small>
                 </div>
                 <div class="adm-field">
                   <label for="sJenisLain">Keterangan Lain-lain</label>
@@ -586,7 +592,208 @@
             <p>
               Akun dashboard ini <strong>terpisah</strong> dari akun admin data jejak karbon —
               petugas bank sampah tidak bisa membuka data karbon, dan sebaliknya.
+              Nama pengguna &amp; kata sandinya bisa Anda ganti sendiri kapan saja lewat tab
+              <strong>🔐 Akun Petugas</strong>. Gantilah segera kalau ada petugas lama yang
+              sudah tidak bertugas lagi.
             </p>
+
+            <h3>🆘 Kalau Ada Yang Tidak Beres</h3>
+            <p>
+              Tugas petugas cukup <strong>mengelola data warga</strong> — urusan sistem webnya
+              bukan tanggung jawab Anda. Kalau dashboard tiba-tiba error, datanya tidak muncul,
+              tidak bisa masuk, lupa kata sandi, atau ingin menambah jenis sampah baru:
+              <strong>jangan mengubah apa pun</strong>, cukup hubungi anggota KKN di bawah ini.
+            </p>
+            <div class="adm-bantuan-kartu">
+              <span class="adm-bantuan-ikon">👨‍💻</span>
+              <div>
+                <div class="adm-bantuan-nama bantuan-nama">—</div>
+                <div class="adm-bantuan-peran bantuan-peran">Anggota KKN</div>
+              </div>
+              <a class="tombol tombol-wa bantuan-wa" href="#" target="_blank" rel="noopener">💬 Chat WhatsApp</a>
+            </div>
+            <p>
+              Saat menghubungi, sebutkan <strong>tulisan apa yang muncul di layar</strong> dan
+              apa yang sedang Anda kerjakan waktu itu — supaya lebih cepat ditangani.
+              Data yang sudah tersimpan <strong>tidak hilang</strong> walaupun layarnya error.
+            </p>
+          </div>
+        </section>
+
+        <!-- =================== TAB 6: AKUN PETUGAS =================== -->
+        <section class="adm-panel" id="panelAkun">
+          <div class="adm-kotak">
+            <h2 class="adm-kotak-judul">🔐 Ganti Nama Pengguna &amp; Kata Sandi</h2>
+            <p class="adm-kotak-ket">
+              Halaman ini untuk mengganti akun yang dipakai <strong>masuk ke dashboard ini</strong>.
+              Demi keamanan, Anda wajib memasukkan <strong>nama pengguna dan kata sandi yang sekarang</strong>
+              lebih dulu — supaya orang yang kebetulan menemukan layar ini dalam keadaan terbuka
+              tidak bisa mengambil alih akun Anda.
+            </p>
+
+            <div class="adm-akun-sekarang">
+              <span class="adm-akun-ikon">👤</span>
+              <div class="adm-akun-isi">
+                <div class="adm-akun-label">Nama pengguna yang sedang berlaku</div>
+                <div class="adm-akun-nama" id="akunNamaSekarang">—</div>
+                <div class="adm-akun-ket" id="akunKetSekarang">Memeriksa akun…</div>
+              </div>
+            </div>
+
+            <form id="formAkun" novalidate autocomplete="off">
+
+              <h3 class="adm-akun-judul">1️⃣ Buktikan dulu ini benar-benar Anda</h3>
+              <div class="adm-form-grid">
+                <div class="adm-field">
+                  <label for="akUserLama">Nama Pengguna Sekarang <span class="wajib">*</span></label>
+                  <input type="text" id="akUserLama" autocomplete="username"
+                         placeholder="Nama pengguna yang dipakai tadi saat masuk">
+                </div>
+                <div class="adm-field">
+                  <label for="akSandiLama">Kata Sandi Sekarang <span class="wajib">*</span></label>
+                  <div class="adm-sandi">
+                    <input type="password" id="akSandiLama" autocomplete="current-password"
+                           placeholder="Kata sandi yang berlaku sekarang">
+                    <button type="button" class="adm-sandi-lihat" data-lihat="akSandiLama"
+                            aria-label="Tampilkan kata sandi">👁️</button>
+                  </div>
+                </div>
+              </div>
+
+              <h3 class="adm-akun-judul">2️⃣ Akun baru yang Anda inginkan</h3>
+              <div class="adm-form-grid">
+                <div class="adm-field">
+                  <label for="akUserBaru">Nama Pengguna Baru <span class="wajib">*</span></label>
+                  <input type="text" id="akUserBaru" autocomplete="off" spellcheck="false"
+                         placeholder="Contoh: petugasbanksampah2026">
+                  <small>4–32 huruf. Boleh huruf, angka, titik, garis bawah (_), dan strip (-) — tanpa spasi.</small>
+                </div>
+                <div class="adm-field">
+                  <label for="akSandiBaru">Kata Sandi Baru <span class="wajib">*</span></label>
+                  <div class="adm-sandi">
+                    <input type="password" id="akSandiBaru" autocomplete="new-password"
+                           placeholder="Minimal 8 huruf/angka">
+                    <button type="button" class="adm-sandi-lihat" data-lihat="akSandiBaru"
+                            aria-label="Tampilkan kata sandi">👁️</button>
+                  </div>
+                  <small class="adm-sandi-nilai" id="akNilaiSandi"></small>
+                </div>
+                <div class="adm-field">
+                  <label for="akUlangi">Ulangi Kata Sandi Baru <span class="wajib">*</span></label>
+                  <div class="adm-sandi">
+                    <input type="password" id="akUlangi" autocomplete="new-password"
+                           placeholder="Ketik ulang kata sandi baru">
+                    <button type="button" class="adm-sandi-lihat" data-lihat="akUlangi"
+                            aria-label="Tampilkan kata sandi">👁️</button>
+                  </div>
+                  <small id="akCocokSandi"></small>
+                </div>
+              </div>
+
+              <div class="adm-catatan">
+                <strong>📌 Tolong dicatat sebelum menyimpan:</strong> tuliskan akun barunya di tempat
+                yang aman. Kata sandi disimpan dalam bentuk acak (tidak bisa dibaca siapa pun,
+                termasuk yang membuat aplikasi ini), jadi <strong>tidak ada yang bisa
+                memberitahukannya kembali kalau lupa</strong>. Kalau sampai lupa, hubungi
+                <span class="bantuan-sebut">anggota KKN</span> untuk mengembalikan akunnya ke awal —
+                data warga, setoran, dan pencairan tidak ada yang hilang.
+              </div>
+
+              <p class="adm-akun-pesan tersembunyi" id="akPesan" role="alert"></p>
+
+              <div class="adm-form-aksi">
+                <button type="submit" class="tombol" id="btnSimpanAkun">🔐 Simpan Akun Baru</button>
+                <button type="button" class="tombol tombol-kecil tombol-batal" id="btnBatalAkun">↺ Bersihkan Isian</button>
+              </div>
+            </form>
+
+            <!-- Muncul hanya setelah akun berhasil diganti -->
+            <div class="adm-akun-berhasil tersembunyi" id="akBerhasil">
+              <h3>✅ Akun petugas berhasil diganti</h3>
+              <p id="akBerhasilPesan"></p>
+              <ul class="adm-akun-ringkas">
+                <li>Nama pengguna baru: <strong id="akBerhasilUser">—</strong></li>
+                <li>Kata sandi baru: <strong>(tersimpan dalam bentuk acak — tidak ditampilkan)</strong></li>
+              </ul>
+              <p class="adm-akun-ingat">
+                Silakan coba keluar lalu masuk lagi memakai akun yang baru, supaya Anda yakin
+                akun tersebut sudah benar-benar berlaku.
+              </p>
+              <div class="adm-form-aksi">
+                <button type="button" class="tombol" id="btnKeluarAkun">🚪 Keluar &amp; Masuk Ulang Sekarang</button>
+                <button type="button" class="tombol tombol-kecil tombol-batal" id="btnGantiLagi">Ganti Lagi</button>
+              </div>
+            </div>
+          </div>
+
+          <div class="adm-kotak">
+            <h2 class="adm-kotak-judul">❓ Pertanyaan yang Sering Muncul</h2>
+            <div class="adm-tanya">
+              <details>
+                <summary>Apakah akun baru langsung berlaku di HP/laptop lain?</summary>
+                <p>Ya. Begitu tersimpan, akun barunya <strong>langsung berlaku di semua HP dan
+                   laptop</strong> yang dipakai membuka dashboard ini.</p>
+                <p>Kalau pada kotak keterangan di atas tertulis bahwa akunnya <em>hanya berlaku di
+                   perangkat ini</em>, berarti ada yang perlu dibereskan pada sistemnya. Anda tidak
+                   perlu memperbaikinya sendiri — cukup hubungi
+                   <span class="bantuan-sebut">anggota KKN</span>, lalu ganti akunnya sekali lagi
+                   sesudah dibereskan.</p>
+              </details>
+            </div>
+            <div class="adm-tanya">
+              <details>
+                <summary>Apakah kata sandi lama masih bisa dipakai?</summary>
+                <p><strong>Tidak.</strong> Begitu penggantian berhasil, kata sandi lama langsung
+                   tidak berlaku. Kalau ada yang masih mencoba masuk dengan akun lama, dia akan
+                   mendapat pesan “nama pengguna atau kata sandi salah”.</p>
+              </details>
+            </div>
+            <div class="adm-tanya">
+              <details>
+                <summary>Bagaimana kalau saya lupa kata sandi baru?</summary>
+                <p>Kata sandi disimpan dalam bentuk acak, sehingga <strong>tidak ada seorang pun
+                   yang bisa membacanya kembali</strong> — termasuk yang membuat aplikasi ini.
+                   Jadi kalau sampai lupa, akunnya perlu dikembalikan ke akun awal.</p>
+                <p>Hubungi <span class="bantuan-sebut">anggota KKN</span> untuk mengembalikannya.
+                   Seluruh <strong>data warga, setoran, dan pencairan tetap aman</strong> —
+                   tidak ada satu pun yang hilang.</p>
+              </details>
+            </div>
+            <div class="adm-tanya">
+              <details>
+                <summary>Apakah warga ikut terpengaruh?</summary>
+                <p>Tidak sama sekali. Halaman warga (<em>Cek Bank Sampah</em>) tidak memakai
+                   nama pengguna maupun kata sandi — warga cukup memasukkan ID Nasabahnya.</p>
+              </details>
+            </div>
+            <div class="adm-tanya">
+              <details>
+                <summary>Dashboard bermasalah — datanya tidak muncul atau tidak bisa masuk?</summary>
+                <p>Tenang, <strong>data yang sudah tersimpan tidak hilang</strong>. Coba dulu tekan
+                   tombol <strong>↻ Muat Ulang</strong> di pojok kanan atas, atau tutup lalu buka
+                   kembali halaman ini.</p>
+                <p>Kalau masih bermasalah, <strong>jangan mengubah apa pun</strong> — cukup hubungi
+                   <span class="bantuan-sebut">anggota KKN</span> dan sebutkan tulisan apa yang
+                   muncul di layar. Urusan sistemnya biar beliau yang menangani.</p>
+              </details>
+            </div>
+          </div>
+
+          <div class="adm-kotak adm-bantuan-kotak">
+            <h2 class="adm-kotak-judul">🆘 Butuh Bantuan?</h2>
+            <p class="adm-kotak-ket">
+              Tugas Anda cukup <strong>mengelola data warga</strong>. Urusan sistem webnya —
+              termasuk kalau ada yang error, lupa kata sandi, atau ingin menambah jenis sampah
+              baru — ditangani oleh anggota KKN di bawah ini.
+            </p>
+            <div class="adm-bantuan-kartu">
+              <span class="adm-bantuan-ikon">👨‍💻</span>
+              <div>
+                <div class="adm-bantuan-nama bantuan-nama">—</div>
+                <div class="adm-bantuan-peran bantuan-peran">Anggota KKN</div>
+              </div>
+              <a class="tombol tombol-wa bantuan-wa" href="#" target="_blank" rel="noopener">💬 Chat WhatsApp</a>
+            </div>
           </div>
         </section>
 
@@ -666,8 +873,10 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="js/config.js"></script>
+  <script src="js/bantuan.js"></script>
   <script src="js/xlsx-export.js"></script>
   <script src="js/bank-sampah-storage.js"></script>
+  <script src="js/bank-sampah-akun.js"></script>
   <script src="js/admin-bank-sampah.js"></script>
 </body>
 </html>
