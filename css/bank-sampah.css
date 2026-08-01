@@ -233,6 +233,40 @@
 .bs-tabel tbody tr:nth-child(even) { background: #f5faf6; }
 .bs-tabel tbody tr:hover { background: var(--hijau-muda); }
 .bs-tabel tbody tr:last-child td { border-bottom: none; }
+.bs-tabel td .bs-badge + .bs-badge { margin-left: 5px; }
+
+/* Kolom catatan boleh turun baris — kalau tidak, tabelnya jadi sangat lebar. */
+.bs-tabel td.bs-tabel-catatan {
+  white-space: normal; min-width: 150px; max-width: 260px;
+  font-size: .82rem; color: var(--tinta-lembut);
+}
+
+/* ---------------- Riwayat gabungan (petugas + catatan warga) -------------- */
+.bs-riwayat-info {
+  background: #fff8e6; border: 1px solid #f3dfae; border-radius: var(--radius-sm);
+  color: #7a5406; font-size: .87rem; line-height: 1.6; padding: 11px 14px; margin-bottom: 12px;
+}
+.bs-riwayat-ket {
+  font-size: .8rem; color: var(--tinta-lembut); line-height: 2.1; margin-top: 12px;
+}
+.bs-riwayat-asal {
+  display: block; font-size: .72rem; font-weight: 700;
+  color: var(--tinta-lembut); margin-top: 2px;
+}
+.bs-riwayat-perkiraan { color: var(--tinta-lembut); font-style: italic; }
+
+/* Petunjuk geser — hanya perlu di layar sempit, saat tabelnya terpotong. */
+.bs-tabel-geser { display: none; font-size: .8rem; color: var(--tinta-lembut); margin-bottom: 8px; }
+@media (max-width: 760px) { .bs-tabel-geser { display: block; } }
+
+/* Baris yang belum menjadi tabungan resmi diberi warna berbeda supaya
+ * warga langsung paham nilainya masih perkiraan / tidak jadi. */
+.bs-tabel tbody tr.bs-baris-menunggu,
+.bs-tabel tbody tr.bs-baris-menunggu:nth-child(even) { background: #fffbf0; }
+.bs-tabel tbody tr.bs-baris-ditolak,
+.bs-tabel tbody tr.bs-baris-ditolak:nth-child(even) { background: #fdf4f1; }
+.bs-tabel tbody tr.bs-baris-menunggu:hover,
+.bs-tabel tbody tr.bs-baris-ditolak:hover { background: var(--hijau-muda); }
 
 .bs-hasil-aksi { text-align: center; margin: 6px 0 10px; }
 
