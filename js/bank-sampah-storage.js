@@ -146,6 +146,36 @@ const BankSampah = (function () {
    * tidak memunculkan error "… is not defined" di konsol browser. */
   const TENGGANG_TELAT_MS = 60000;
 
+  /* ---------------------------------------------------------------------
+   *  NAMA ISIAN YANG "DIPESAN" OLEH GOOGLE
+   *  -------------------------------------------------------------------
+   *  Gerbang depan Google (script.google.com) memakai sendiri beberapa nama
+   *  isian. Kalau permintaan kita ikut membawa nama itu, permintaannya
+   *  DITOLAK dengan galat 400 — skripnya memang tetap berjalan dan datanya
+   *  TETAP tersimpan, tetapi balasannya tidak pernah sampai ke browser.
+   *  Akibatnya di layar warga muncul "server belum menjawab" padahal
+   *  datanya sudah masuk (dan kalau warga menekan kirim lagi, datanya dobel).
+   *
+   *  "rt" (RT tempat tinggal warga) ternyata salah satu nama itu. Karena itu
+   *  di perjalanan namanya diganti "rtWarga", lalu DIKEMBALIKAN menjadi "rt"
+   *  oleh apps-script/CodeBankSampah.gs. Nama kolom di Google Sheets maupun
+   *  di seluruh berkas ini tetap "rt" seperti semula.
+   *
+   *  ⚠️  Karena itu apps-script/CodeBankSampah.gs WAJIB di-deploy ulang
+   *      (Deploy ▸ Manage deployments ▸ ✏️ ▸ Version: New version ▸ Deploy).
+   *      Selama belum, setoran tetap tercatat — hanya kolom RT-nya kosong.
+   * ------------------------------------------------------------------- */
+  const NAMA_DIPESAN = { rt: 'rtWarga' };
+
+  /** Menyalin isian permintaan sambil mengganti nama yang dipesan Google. */
+  function paramAman(params) {
+    const aman = {};
+    Object.keys(params || {}).forEach(function (k) {
+      aman[NAMA_DIPESAN[k] || k] = params[k];
+    });
+    return aman;
+  }
+
   /** Balasan semu saat server tidak menjawab (BEDA dengan server menolak). */
   function balasanKosong() {
     return {
@@ -194,9 +224,10 @@ const BankSampah = (function () {
         resolve(balasanKosong());
       }
 
+      const kirim = paramAman(params);
       const query = new URLSearchParams();
-      Object.keys(params).forEach(function (k) {
-        const v = params[k];
+      Object.keys(kirim).forEach(function (k) {
+        const v = kirim[k];
         query.set(k, (v === null || v === undefined) ? '' : String(v));
       });
       query.set('callback', cbName);
@@ -266,9 +297,10 @@ const BankSampah = (function () {
       return Promise.resolve(null);
     }
 
+    const kirim = paramAman(params);
     const isi = new URLSearchParams();
-    Object.keys(params).forEach(function (k) {
-      const v = params[k];
+    Object.keys(kirim).forEach(function (k) {
+      const v = kirim[k];
       isi.set(k, (v === null || v === undefined) ? '' : String(v));
     });
 
@@ -297,11 +329,12 @@ const BankSampah = (function () {
       form.target = nama;
       form.style.display = 'none';
 
-      Object.keys(params).forEach(function (k) {
+      const kirim = paramAman(params);
+      Object.keys(kirim).forEach(function (k) {
         // <textarea> dipakai karena isian foto bisa sangat panjang.
         const kotak = document.createElement('textarea');
         kotak.name = k;
-        const v = params[k];
+        const v = kirim[k];
         kotak.value = (v === null || v === undefined) ? '' : String(v);
         form.appendChild(kotak);
       });
@@ -859,7 +892,19 @@ const BankSampah = (function () {
     }
 
     // Aksi baca-tulis kecil — aman dipakai lewat JSONP seperti aksi lainnya.
-    return kirimAksi(Object.assign({ action: 'daftarMandiri' }, data));
+    const kiriman = Object.assign({ action: 'daftarMandiri' }, data);
+
+    return kirimAksi(kiriman).then(function (hasil) {
+      if (hasil.ok || !hasil.tanpaBalasan) return hasil;
+
+      /* Balasannya hilang di jalan — padahal warganya bisa jadi SUDAH masuk
+       * ke Sheets. Khusus pendaftaran, mengulang itu AMAN: server mencocokkan
+       * NIK (atau No. HP + nama) lebih dulu, sehingga warga yang tadi sempat
+       * tersimpan akan menerima ID LAMA-nya kembali, bukan ID kedua. Sekali
+       * ulang biasanya cukup untuk memungut ID itu, sehingga setoran warga
+       * tidak jadi batal hanya karena balasan pertama tersesat. */
+      return jeda(1500).then(function () { return kirimAksi(kiriman); });
+    });
   }
 
   /** Mencari nasabah yang sudah ada berdasarkan NIK, lalu No. HP + nama. */
@@ -869,13 +914,25 @@ const BankSampah = (function () {
       const lewatNik = daftar.filter(function (n) { return normalId(n.nik) === nik; })[0];
       if (lewatNik) return lewatNik;
     }
-    const hp = String(data.noHp || '').replace(/[^0-9]/g, '');
+    const hp = nomorKunci(data.noHp);
     const nama = String(data.nama || '').trim().toLowerCase();
     if (!hp || !nama) return null;
     return daftar.filter(function (n) {
-      return String(n.noHp || '').replace(/[^0-9]/g, '') === hp &&
+      return nomorKunci(n.noHp) === hp &&
         String(n.nama || '').trim().toLowerCase() === nama;
     })[0] || null;
+  }
+
+  /** Menyeragamkan No. HP sebelum dibandingkan — kembarannya ada di
+   *  apps-script/CodeBankSampah.gs. Google Sheets menyimpan "08979802427"
+   *  sebagai angka sehingga 0 di depannya hilang; tanpa penyeragaman ini
+   *  warga yang sama bisa terdaftar berkali-kali. */
+  function nomorKunci(v) {
+    let d = String(v === null || v === undefined ? '' : v).replace(/[^0-9]/g, '');
+    if (!d) return '';
+    if (d.indexOf('620') === 0) d = d.slice(2);                        // 62 + 08xx…
+    if (d.indexOf('62') === 0 && d.charAt(2) === '8') d = d.slice(2);  // 62 + 8xx…
+    return d.replace(/^0+/, '');
   }
 
   /* =======================================================================

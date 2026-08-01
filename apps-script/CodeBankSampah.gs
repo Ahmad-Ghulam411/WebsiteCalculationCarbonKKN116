@@ -115,13 +115,34 @@ var AKSI_PUBLIK = ['cek', 'ajukan', 'daftarMandiri', 'setorWarga', 'cekSetorWarg
  *    setoran warga yang membawa FOTO BUKTI.
  * ======================================================================== */
 function doGet(e) {
-  var p = (e && e.parameter) ? e.parameter : {};
+  var p = normalkanParam((e && e.parameter) ? e.parameter : {});
   return balas(tangani(p), p.callback);
 }
 
 function doPost(e) {
-  var p = (e && e.parameter) ? e.parameter : {};
+  var p = normalkanParam((e && e.parameter) ? e.parameter : {});
   return balas(tangani(p), p.callback);
+}
+
+/**
+ * Mengembalikan nama isian yang sengaja disamarkan browser.
+ *
+ * KENAPA PERLU?
+ *   Gerbang depan Google memakai sendiri nama isian "rt". Permintaan dari
+ *   browser yang ikut membawa "rt" DITOLAK dengan galat 400 sebelum
+ *   balasannya sampai — walaupun skrip ini sebenarnya tetap berjalan dan
+ *   datanya TETAP tersimpan. Di layar warga hal itu terlihat seperti
+ *   "server belum menjawab", lalu warga menekan kirim lagi dan datanya dobel.
+ *
+ *   Karena itu js/bank-sampah-storage.js mengirim RT dengan nama "rtWarga",
+ *   dan di sinilah namanya dikembalikan menjadi "rt". Nama kolom di sheet
+ *   tetap "RT" seperti biasa — tidak ada yang berubah bagi petugas.
+ */
+function normalkanParam(p) {
+  var hasil = {};
+  Object.keys(p).forEach(function (k) { hasil[k] = p[k]; });
+  if (hasil.rt === undefined && hasil.rtWarga !== undefined) hasil.rt = hasil.rtWarga;
+  return hasil;
 }
 
 function tangani(p) {
@@ -423,14 +444,31 @@ function cariNasabahLama(semua, p) {
       if (normalId(semua[i].nik) === nik) return semua[i];
     }
   }
-  var hp = angkaSaja(p.noHp);
+  var hp = nomorKunci(p.noHp);
   var nama = String(p.nama || '').trim().toLowerCase();
   if (!hp || !nama) return null;
   for (i = 0; i < semua.length; i++) {
-    if (angkaSaja(semua[i].noHp) === hp &&
+    if (nomorKunci(semua[i].noHp) === hp &&
         String(semua[i].nama || '').trim().toLowerCase() === nama) return semua[i];
   }
   return null;
+}
+
+/**
+ * Menyeragamkan No. HP sebelum dibandingkan.
+ *
+ * Google Sheets menyimpan "08979802427" sebagai ANGKA, sehingga angka 0 di
+ * depannya hilang dan yang terbaca tinggal 8979802427. Kalau dibandingkan
+ * apa adanya dengan yang diketik warga, keduanya dianggap berbeda — warga
+ * yang sama jadi didaftarkan berulang kali. Di sini semuanya disamakan:
+ * awalan +62 / 62 diubah ke bentuk lokal, lalu angka 0 di depan dibuang.
+ */
+function nomorKunci(v) {
+  var d = angkaSaja(v);
+  if (!d) return '';
+  if (d.indexOf('620') === 0) d = d.slice(2);                        // 62 + 08xx…
+  if (d.indexOf('62') === 0 && d.charAt(2) === '8') d = d.slice(2);  // 62 + 8xx…
+  return d.replace(/^0+/, '');
 }
 
 /* ==========================================================================

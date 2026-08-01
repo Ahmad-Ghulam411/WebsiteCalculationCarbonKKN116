@@ -326,6 +326,30 @@ dan **SetoranWarga** (catatan setoran kiriman warga + foto buktinya).
 > Anda **wajib** melakukan **Deploy ▸ Manage deployments ▸ (pensil) ▸
 > Version: New version ▸ Deploy**. Kalau tidak, Web App masih menjalankan kode lama.
 
+#### ⚠️ Nama isian “rt” yang dipesan Google — kenapa RT dikirim sebagai `rtWarga`
+
+Gerbang depan Google (`script.google.com`) memakai sendiri nama isian **`rt`**.
+Permintaan dari browser yang ikut membawa isian bernama `rt` **ditolak dengan
+galat 400** — padahal skripnya **tetap berjalan dan datanya tetap tersimpan**,
+hanya balasannya yang tidak pernah sampai ke browser.
+
+Dulu hal ini membuat warga **yang belum terdaftar** selalu melihat pesan
+*“Server bank sampah belum menjawab…”* saat menyetor, walaupun namanya
+sebenarnya sudah masuk ke tab **Nasabah** — dan setiap kali dicoba lagi,
+warganya bertambah satu baris lagi.
+
+Karena itu `js/bank-sampah-storage.js` mengirim RT dengan nama **`rtWarga`**,
+lalu `CodeBankSampah.gs` mengembalikannya menjadi `rt`. **Nama kolom di
+spreadsheet tetap “RT”** — tidak ada yang berubah bagi petugas.
+
+> 🔁 **Karena itu `CodeBankSampah.gs` WAJIB di-deploy ulang** (Deploy ▸ Manage
+> deployments ▸ ✏️ ▸ Version: **New version** ▸ Deploy). Selama belum
+> di-deploy ulang, setoran warga **tetap tercatat dan tidak lagi error** —
+> hanya kolom **RT**-nya saja yang kosong.
+
+Kalau suatu saat menambah kolom baru, **hindari nama `rt`** (dan uji dulu nama
+barunya) supaya masalah yang sama tidak terulang.
+
 #### 📷 Izin Google Drive untuk foto bukti setoran
 
 Foto yang dikirim warga **tidak** ditaruh di dalam spreadsheet (kepanjangan),
