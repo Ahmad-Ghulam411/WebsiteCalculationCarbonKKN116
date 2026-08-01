@@ -111,14 +111,22 @@
           <!-- Setoran terakhir -->
           <div class="bs-kartu bs-kartu-terakhir">
             <h3 class="bs-kartu-judul">🆕 Setoran yang Baru Saja Dimasukkan</h3>
-            <p class="bs-kartu-ket">Ini catatan setoran Anda yang paling akhir dicatat petugas.</p>
+            <p class="bs-kartu-ket">
+              Catatan setoran Anda yang paling akhir masuk ke tabungan. Selengkapnya —
+              termasuk yang masih menunggu persetujuan — ada di
+              <strong>📜 Riwayat Setoran Anda</strong> di bawah.
+            </p>
             <div id="bsSetoranTerakhir" class="bs-terakhir-isi"></div>
           </div>
 
           <!-- Total berat / kantong -->
           <div class="bs-kartu">
             <h3 class="bs-kartu-judul">⚖️ Berat &amp; Jumlah Kantong Keseluruhan</h3>
-            <p class="bs-kartu-ket">Seluruh sampah yang pernah Anda setorkan, dipisah menurut jenisnya.</p>
+            <p class="bs-kartu-ket">
+              Seluruh sampah Anda yang <strong>sudah ditimbang &amp; dicatat petugas</strong>,
+              dipisah menurut jenisnya. Setoran yang masih menunggu persetujuan belum
+              ikut dihitung di sini — lihat <strong>📜 Riwayat Setoran Anda</strong>.
+            </p>
 
             <div class="bs-total-utama">
               <div>
@@ -130,7 +138,7 @@
                 <div class="bs-total-angka" id="bsTotalKantong">0 kantong</div>
               </div>
               <div>
-                <span class="bs-label-kecil">Jumlah Setoran</span>
+                <span class="bs-label-kecil">Setoran Tercatat</span>
                 <div class="bs-total-angka" id="bsJumlahSetoran">0 kali</div>
               </div>
             </div>
@@ -181,8 +189,12 @@
           <!-- Riwayat -->
           <div class="bs-kartu">
             <h3 class="bs-kartu-judul">📜 Riwayat Setoran Anda</h3>
-            <p class="bs-kartu-ket">Daftar semua setoran, dari yang terbaru.</p>
-            <div class="bs-tabel-wadah" id="bsRiwayat"></div>
+            <p class="bs-kartu-ket">
+              Daftar <strong>semua</strong> setoran dari yang terbaru — baik yang dicatat petugas
+              maupun yang <strong>Anda catat sendiri</strong>, termasuk yang masih menunggu
+              persetujuan dan yang ditolak.
+            </p>
+            <div id="bsRiwayat"></div>
           </div>
 
           <div class="bs-hasil-aksi">

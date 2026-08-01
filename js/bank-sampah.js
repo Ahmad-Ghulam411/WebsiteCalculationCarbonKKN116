@@ -185,22 +185,37 @@
     if (cair) cair.addEventListener('click', ajukanPencairan);
   }
 
-  function cari(idMentah) {
+  /**
+   * Mencari data seorang warga lalu menampilkannya.
+   * @param {string} idMentah
+   * @param {{senyap:boolean}} [opsi] - senyap = memuat ulang diam-diam
+   *        (tanpa tulisan "sedang mencari" & tanpa menggulir halaman),
+   *        dipakai setelah warga mengirim setoran / pengajuan.
+   */
+  function cari(idMentah, opsi) {
+    const senyap = !!(opsi && opsi.senyap);
     const id = BankSampah.normalId(idMentah);
     if (!id) {
-      pesanCek('Mohon isi dulu ID Nasabah Anda.', 'salah');
-      $('inputId').focus();
+      if (!senyap) {
+        pesanCek('Mohon isi dulu ID Nasabah Anda.', 'salah');
+        $('inputId').focus();
+      }
       return;
     }
 
     const tombol = $('tombolCek');
-    tombol.disabled = true;
-    tombol.textContent = 'Mencari…';
-    pesanCek('⏳ Sedang mencari data Anda…', 'proses');
+    if (!senyap) {
+      tombol.disabled = true;
+      tombol.textContent = 'Mencari…';
+      pesanCek('⏳ Sedang mencari data Anda…', 'proses');
+    }
 
     BankSampah.cekWarga(id)
       .then(function (hasil) {
         if (!hasil.ok || !hasil.nasabah) {
+          // Muat ulang diam-diam yang gagal cukup dibiarkan — data yang
+          // sudah tampil di layar warga tidak perlu ikut hilang.
+          if (senyap) return;
           $('hasilBs').classList.add('tersembunyi');
           pesanCek(hasil.tanpaBalasan
             ? '❌ Server bank sampah belum menjawab. Periksa koneksi internet Anda, ' +
@@ -211,13 +226,14 @@
         }
 
         wargaAktif = hasil.nasabah;
-        ringkasanAktif = BankSampah.ringkas(hasil.setoran, hasil.pengajuan);
+        ringkasanAktif = BankSampah.ringkas(hasil.setoran, hasil.pengajuan, hasil.setoranWarga);
         try { localStorage.setItem(KUNCI_ID_TERAKHIR, BankSampah.normalId(hasil.nasabah.id)); } catch (e) {}
 
-        pesanCek('');
-        tampilkan(wargaAktif, ringkasanAktif);
+        if (!senyap) pesanCek('');
+        tampilkan(wargaAktif, ringkasanAktif, senyap);
       })
       .then(function () {
+        if (senyap) return;
         tombol.disabled = false;
         tombol.textContent = 'Cek Sekarang';
       });
@@ -226,7 +242,7 @@
   /* ---------------------------------------------------------------------
    *  Menampilkan hasil
    * ------------------------------------------------------------------- */
-  function tampilkan(warga, r) {
+  function tampilkan(warga, r, senyap) {
     const bagian = $('hasilBs');
     bagian.classList.remove('tersembunyi');
 
@@ -249,6 +265,7 @@
 
     /* --- Setoran terakhir --- */
     const wadahTerakhir = $('bsSetoranTerakhir');
+    const menunggu = r.setoranMenunggu || [];
     if (r.setoranTerakhir) {
       const s = r.setoranTerakhir;
       wadahTerakhir.innerHTML =
@@ -260,6 +277,21 @@
           kotakKecil('Pendapatan', BankSampah.rupiah(s.pendapatan)) +
         '</div>' +
         (s.catatan ? '<p class="bs-terakhir-catatan">📝 ' + escHtml(s.catatan) + '</p>' : '');
+    } else if (menunggu.length) {
+      // Belum ada setoran resmi, tetapi catatan yang diisi sendiri oleh warga
+      // sudah masuk — tampilkan itu supaya warganya tidak mengira hilang.
+      const m = menunggu[0];
+      wadahTerakhir.innerHTML =
+        '<div class="bs-terakhir-tanggal">📅 ' + escHtml(tanggalRamah(m.tanggal)) +
+          ' <span class="bs-badge bs-badge-kuning">⏳ Menunggu Persetujuan</span></div>' +
+        '<div class="bs-terakhir-grid">' +
+          kotakKecil('Jenis Sampah', escHtml(m.jenis || '—')) +
+          kotakKecil('Perkiraan Berat', m.berat > 0 ? angkaRamah(m.berat) + ' kg' : '—') +
+          kotakKecil('Jumlah Kantong', m.kantong > 0 ? angkaRamah(m.kantong) + ' kantong' : '—') +
+          kotakKecil('Perkiraan Pendapatan', '± ' + BankSampah.rupiah(m.pendapatan)) +
+        '</div>' +
+        '<p class="bs-terakhir-catatan">📥 Catatan setoran Anda sudah masuk ke dashboard ' +
+          'petugas. Nilainya baru dihitung ke tabungan setelah ditimbang & disetujui.</p>';
     } else {
       wadahTerakhir.innerHTML = '<p class="bs-kosong">Belum ada setoran yang tercatat. ' +
         'Yuk, mulai pilah sampah di rumah dan setorkan ke bank sampah! ♻️</p>';
@@ -278,8 +310,9 @@
     $('bsUangSudah').textContent = BankSampah.rupiah(r.sudahCair);
 
     aturTombolCair(r);
-    aturRiwayat(r.setoran);
+    aturRiwayat(r);
 
+    if (senyap) return;
     setTimeout(function () {
       bagian.scrollIntoView({ behavior: 'smooth', block: 'start' });
     }, 100);
@@ -366,31 +399,100 @@
       'WhatsApp pengelola bank sampah.';
   }
 
-  function aturRiwayat(daftar) {
+  /**
+   * Riwayat setoran — SATU daftar berisi semuanya:
+   *   - setoran yang dicatat petugas,
+   *   - setoran yang dicatat sendiri oleh warga & sudah disetujui
+   *     (yang tampil adalah baris resminya, ditandai "dicatat sendiri"),
+   *   - setoran yang dicatat sendiri & masih menunggu persetujuan,
+   *   - setoran yang dicatat sendiri & ditolak petugas.
+   * Penggabungan + pencegahan data dobelnya dikerjakan BankSampah.ringkas().
+   */
+  function aturRiwayat(r) {
     const wadah = $('bsRiwayat');
-    if (!daftar || !daftar.length) {
+    if (!wadah) return;
+
+    const daftar = r.riwayat || [];
+    if (!daftar.length) {
       wadah.innerHTML = '<p class="bs-kosong">Belum ada riwayat setoran.</p>';
       return;
     }
 
-    let html = '<table class="bs-tabel"><thead><tr>' +
+    const menunggu = r.setoranMenunggu || [];
+    let html = '';
+    if (menunggu.length) {
+      html += '<p class="bs-riwayat-info">⏳ <strong>' + menunggu.length + ' setoran</strong> ' +
+        'yang Anda catat sendiri sedang menunggu persetujuan petugas ' +
+        '(perkiraan ' + BankSampah.rupiah(r.perkiraanMenunggu) + '). Nilainya baru masuk ke ' +
+        'tabungan setelah sampahnya ditimbang & disetujui petugas.</p>';
+    }
+
+    html += '<p class="bs-tabel-geser">👉 Geser tabel ke samping untuk melihat ' +
+      'pendapatan, status, dan catatannya.</p>';
+
+    html += '<div class="bs-tabel-wadah"><table class="bs-tabel"><thead><tr>' +
       '<th>Tanggal</th><th>Jenis</th><th>Berat</th><th>Kantong</th>' +
-      '<th>Pendapatan</th><th>Status</th></tr></thead><tbody>';
+      '<th>Pendapatan</th><th>Status</th><th>Catatan</th></tr></thead><tbody>';
 
     daftar.forEach(function (s) {
-      const sudah = String(s.status || '').indexOf('Sudah') === 0;
-      html += '<tr>' +
+      const kelas = kelasBarisRiwayat(s);
+      html += '<tr' + (kelas ? ' class="' + kelas + '"' : '') + '>' +
         '<td>' + escHtml(tanggalRamah(s.tanggal)) + '</td>' +
-        '<td>' + escHtml(s.jenis || '—') + '</td>' +
-        '<td>' + angkaRamah(s.berat) + ' kg</td>' +
-        '<td>' + angkaRamah(s.kantong) + '</td>' +
-        '<td>' + BankSampah.rupiah(s.pendapatan) + '</td>' +
-        '<td><span class="bs-badge ' + (sudah ? 'bs-badge-abu' : 'bs-badge-kuning') + '">' +
-          escHtml(s.status || '—') + '</span></td>' +
+        '<td>' + escHtml(s.jenis || '—') +
+          (s.dariWarga ? '<small class="bs-riwayat-asal">📱 dicatat sendiri</small>' : '') + '</td>' +
+        '<td>' + (s.berat > 0 ? angkaRamah(s.berat) + ' kg' : '—') + '</td>' +
+        '<td>' + (s.kantong > 0 ? angkaRamah(s.kantong) : '—') + '</td>' +
+        '<td>' + nilaiRiwayat(s) + '</td>' +
+        '<td>' + lencanaRiwayat(s) + '</td>' +
+        '<td class="bs-tabel-catatan">' + escHtml(s.catatan || '—') + '</td>' +
         '</tr>';
     });
 
-    wadah.innerHTML = html + '</tbody></table>';
+    html += '</tbody></table></div>' +
+      '<p class="bs-riwayat-ket">Keterangan status — ' +
+      '<span class="bs-badge bs-badge-kuning">⏳ Menunggu Persetujuan</span> catatan Anda ' +
+      'belum ditimbang petugas, nilainya masih perkiraan · ' +
+      '<span class="bs-badge bs-badge-merah">❌ Ditolak</span> catatan tidak disetujui ' +
+      '(alasannya ada di kolom Catatan) · ' +
+      '<span class="bs-badge bs-badge-hijau">✅ Disetujui</span> sudah masuk ke tabungan Anda · ' +
+      '<span class="bs-badge bs-badge-biru">Belum Dicairkan</span> / ' +
+      '<span class="bs-badge bs-badge-abu">Sudah Dicairkan</span> keadaan uangnya.</p>';
+
+    wadah.innerHTML = html;
+  }
+
+  function kelasBarisRiwayat(s) {
+    if (s.resmi) return '';
+    return s.status === BS_STATUS_SETOR.DITOLAK ? 'bs-baris-ditolak' : 'bs-baris-menunggu';
+  }
+
+  /** Kolom pendapatan — setoran yang belum ditimbang petugas masih perkiraan. */
+  function nilaiRiwayat(s) {
+    if (s.perkiraan) {
+      return '<span class="bs-riwayat-perkiraan" title="Perkiraan — angka pastinya ' +
+        'mengikuti timbangan petugas">± ' + BankSampah.rupiah(s.pendapatan) + '</span>';
+    }
+    if (!s.resmi) return '<span class="bs-riwayat-perkiraan">—</span>';
+    return BankSampah.rupiah(s.pendapatan);
+  }
+
+  /** Lencana status: persetujuan (bila dicatat warga) + keadaan pencairan. */
+  function lencanaRiwayat(s) {
+    const lencana = [];
+    const badge = function (warna, teks) {
+      return '<span class="bs-badge ' + warna + '">' + escHtml(teks) + '</span>';
+    };
+
+    if (s.status === BS_STATUS_SETOR.MENUNGGU) lencana.push(badge('bs-badge-kuning', '⏳ Menunggu Persetujuan'));
+    else if (s.status === BS_STATUS_SETOR.DITOLAK) lencana.push(badge('bs-badge-merah', '❌ Ditolak'));
+    else if (s.status === BS_STATUS_SETOR.DISETUJUI) lencana.push(badge('bs-badge-hijau', '✅ Disetujui'));
+    else if (s.status) lencana.push(badge('bs-badge-abu', s.status));
+
+    if (s.resmi) {
+      const sudah = String(s.statusCair || '').indexOf('Sudah') === 0;
+      lencana.push(badge(sudah ? 'bs-badge-abu' : 'bs-badge-biru', s.statusCair || '—'));
+    }
+    return lencana.join(' ');
   }
 
   /* ---------------------------------------------------------------------
@@ -465,6 +567,10 @@
       const s = r.setoranTerakhir;
       baris.push('• Setoran terakhir: ' + tanggalRamah(s.tanggal) + ' — ' + (s.jenis || '-') +
         ', ' + angkaRamah(s.berat) + ' kg (' + BankSampah.rupiah(s.pendapatan) + ')');
+    }
+    if ((r.setoranMenunggu || []).length) {
+      baris.push('• Masih menunggu persetujuan: ' + r.setoranMenunggu.length + ' setoran ' +
+        '(perkiraan ' + BankSampah.rupiah(r.perkiraanMenunggu) + ') — BELUM termasuk jumlah di bawah');
     }
     baris.push('');
 
@@ -549,7 +655,7 @@
         } else {
           toast('ℹ️ ' + hasil.pesan + ' Pengajuan lewat WhatsApp tetap bisa diteruskan.');
         }
-        cari(id); // muat ulang agar status terbaru terlihat
+        cari(id, { senyap: true }); // muat ulang agar status terbaru terlihat
       });
   }
 
@@ -1084,6 +1190,14 @@
         : 'Catatan setoran Anda sudah masuk ke dashboard petugas dan sedang ' +
           '<strong>menunggu persetujuan</strong>. Langkah terakhir: kirim chat ke pengelola ' +
           'supaya beliau langsung tahu.';
+    }
+
+    // Bila hasil cek warga yang sama sedang terbuka di atas halaman, segarkan
+    // diam-diam supaya setoran yang baru dikirim langsung terlihat di
+    // "Riwayat Setoran Anda" dengan status "Menunggu Persetujuan".
+    if (wargaAktif && hasilId.id &&
+        BankSampah.normalId(wargaAktif.id) === BankSampah.normalId(hasilId.id)) {
+      cari(hasilId.id, { senyap: true });
     }
 
     if (!modal) {

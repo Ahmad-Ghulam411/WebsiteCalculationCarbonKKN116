@@ -509,16 +509,24 @@ const BankSampah = (function () {
   }
 
   /**
-   * Mencari SATU nasabah beserta seluruh setoran & pengajuannya.
-   * Dipakai halaman "Cek Bank Sampah" milik warga — tidak butuh token,
-   * cukup tahu ID nasabahnya.
+   * Mencari SATU nasabah beserta seluruh setoran, pengajuan, DAN catatan
+   * setoran yang diisinya sendiri (yang masih menunggu persetujuan / ditolak
+   * sekalipun). Dipakai halaman "Cek Bank Sampah" milik warga — tidak butuh
+   * token, cukup tahu ID nasabahnya.
+   *
+   * Catatan: foto bukti sengaja TIDAK ikut dibawa. Isinya tidak dipakai di
+   * riwayat warga, dan tanpa foto balasannya jauh lebih ringan untuk HP.
+   *
    * @returns {Promise<{ok:boolean, pesan:string, nasabah:Object|null,
-   *                    setoran:Array, pengajuan:Array}>}
+   *                    setoran:Array, pengajuan:Array, setoranWarga:Array}>}
    */
   function cekWarga(id) {
     const kunci = normalId(id);
     if (!kunci) {
-      return Promise.resolve({ ok: false, pesan: 'ID nasabah belum diisi.', nasabah: null, setoran: [], pengajuan: [] });
+      return Promise.resolve({
+        ok: false, pesan: 'ID nasabah belum diisi.',
+        nasabah: null, setoran: [], pengajuan: [], setoranWarga: [],
+      });
     }
 
     if (!pakaiServer()) {
@@ -527,7 +535,10 @@ const BankSampah = (function () {
       })[0] || null;
 
       if (!nasabah) {
-        return Promise.resolve({ ok: false, pesan: 'ID nasabah tidak ditemukan.', nasabah: null, setoran: [], pengajuan: [] });
+        return Promise.resolve({
+          ok: false, pesan: 'ID nasabah tidak ditemukan.',
+          nasabah: null, setoran: [], pengajuan: [], setoranWarga: [],
+        });
       }
       const idAsli = normalId(nasabah.id);
       return Promise.resolve({
@@ -536,6 +547,9 @@ const BankSampah = (function () {
         nasabah: nasabah,
         setoran: ambilLokal(KUNCI_BS_SETORAN).filter(function (s) { return normalId(s.idWarga) === idAsli; }),
         pengajuan: ambilLokal(KUNCI_BS_PENGAJUAN).filter(function (p) { return normalId(p.idWarga) === idAsli; }),
+        setoranWarga: ambilLokal(KUNCI_BS_SETORAN_WARGA)
+          .filter(function (s) { return normalId(s.idWarga) === idAsli; })
+          .map(tanpaFoto),
       });
     }
 
@@ -547,15 +561,23 @@ const BankSampah = (function () {
           nasabah: resp.nasabah,
           setoran: Array.isArray(resp.setoran) ? resp.setoran : [],
           pengajuan: Array.isArray(resp.pengajuan) ? resp.pengajuan : [],
+          /* Kosong bila apps-script/CodeBankSampah.gs belum di-deploy ulang —
+           * halaman tetap berjalan, riwayatnya saja yang belum lengkap. */
+          setoranWarga: Array.isArray(resp.setoranWarga) ? resp.setoranWarga : [],
         };
       }
       return {
         ok: false,
         tanpaBalasan: !!(resp && resp.tanpaBalasan),
         pesan: (resp && resp.pesan) || 'Tidak bisa menghubungi server bank sampah. Coba lagi sebentar.',
-        nasabah: null, setoran: [], pengajuan: [],
+        nasabah: null, setoran: [], pengajuan: [], setoranWarga: [],
       };
     });
+  }
+
+  /** Salinan sebuah catatan setoran warga tanpa isi foto buktinya. */
+  function tanpaFoto(s) {
+    return Object.assign({}, s, { foto: '' });
   }
 
   /* =======================================================================
@@ -565,9 +587,19 @@ const BankSampah = (function () {
    * Merangkum setoran seorang warga menjadi angka-angka yang ditampilkan.
    * Fungsi murni — tidak menyentuh penyimpanan, jadi hasilnya sama
    * baik data berasal dari Google Sheets maupun dari perangkat.
+   *
+   * @param {Array} setoran      - setoran RESMI (sudah masuk tabungan warga)
+   * @param {Array} pengajuan    - pengajuan pencairan warga
+   * @param {Array} [setoranWarga] - catatan setoran yang diisi sendiri oleh
+   *        warga. Yang statusnya "Menunggu"/"Ditolak" ikut ditampilkan di
+   *        riwayat tetapi TIDAK dihitung sebagai tabungan; yang sudah
+   *        "Disetujui" tidak diulang, karena baris resminya sudah ada di
+   *        `setoran` (lihat gabungRiwayat).
    */
-  function ringkas(setoran, pengajuan) {
-    const daftar = (setoran || []).slice().sort(function (a, b) {
+  function ringkas(setoran, pengajuan, setoranWarga) {
+    /* Baris ber-ID kembar (mis. sisa kiriman ulang saat jaringan warga putus)
+     * dibuang lebih dulu, supaya tabungannya tidak terhitung dua kali. */
+    const daftar = tanpaKembar(setoran).sort(function (a, b) {
       return String(b.tanggal || '').localeCompare(String(a.tanggal || ''));
     });
 
@@ -625,6 +657,9 @@ const BankSampah = (function () {
       return String(p.status || '') === BS_STATUS_AJU.DIAJUKAN;
     });
 
+    /* Riwayat lengkap: setoran resmi + catatan yang baru diisi warga. */
+    const gabungan = gabungRiwayat(daftar, setoranWarga);
+
     return {
       setoran: daftar,
       setoranTerakhir: daftar.length ? daftar[0] : null,
@@ -639,6 +674,161 @@ const BankSampah = (function () {
       sudahCair: sudahCair,
       pengajuan: pengajuanUrut,
       pengajuanMenunggu: menunggu.length ? menunggu[0] : null,
+
+      /* Riwayat gabungan (terbaru dulu) — satu setoran hanya muncul sekali. */
+      riwayat: gabungan.riwayat,
+      setoranMenunggu: gabungan.menunggu,
+      setoranDitolak: gabungan.ditolak,
+      perkiraanMenunggu: gabungan.perkiraanMenunggu,
+    };
+  }
+
+  /* -----------------------------------------------------------------------
+   *  RIWAYAT GABUNGAN — setoran petugas + catatan warga, tanpa data dobel
+   *
+   *  Perjalanan satu setoran warga:
+   *    1. Warga mengisi formulir       → catatan "Menunggu"          (belum bernilai)
+   *    2a. Petugas MENOLAK             → catatan "Ditolak"           (tetap terlihat)
+   *    2b. Petugas MENYETUJUI          → catatan "Disetujui" DAN lahir satu
+   *        setoran RESMI di buku setoran; nomornya dicatat pada kolom
+   *        "ID Setoran Hasil" (idSetoran).
+   *
+   *  Karena itu langkah 2b TIDAK boleh ditampilkan dua kali. Yang dipakai
+   *  adalah baris resminya (yang memuat berat & harga hasil timbangan
+   *  petugas), lalu ditandai bahwa asalnya dari catatan warga sendiri.
+   * --------------------------------------------------------------------- */
+
+  /* Penanda yang ditulis otomatis pada catatan setoran resmi hasil
+   * persetujuan — dipakai sebagai cadangan bila kolom "ID Setoran Hasil"
+   * belum sempat terisi (mis. data lama). Kembarannya ada di
+   * apps-script/CodeBankSampah.gs → catatanSetoranDari(). */
+  const PENANDA_ASAL_WARGA = 'Dicatat sendiri oleh warga';
+
+  function kunciBaris(nilai) {
+    return String(nilai === null || nilai === undefined ? '' : nilai).trim().toUpperCase();
+  }
+
+  /** Membuang baris ber-ID sama sambil menjaga urutan aslinya. */
+  function tanpaKembar(daftar) {
+    const sudah = {};
+    return (daftar || []).filter(function (b) {
+      const kunci = kunciBaris(b && b.id);
+      if (!kunci) return true;              // tanpa ID → tidak bisa dipastikan kembar
+      if (sudah[kunci]) return false;
+      sudah[kunci] = true;
+      return true;
+    });
+  }
+
+  /** Status sebuah catatan warga; yang kosong dianggap masih "Menunggu". */
+  function statusSetoranWarga(s) {
+    return String((s && s.status) || '').trim() || BS_STATUS_SETOR.MENUNGGU;
+  }
+
+  /** Perkiraan berat (kg) catatan warga — bila belum ditimbang, ditaksir dari kantong. */
+  function beratPerkiraan(s) {
+    const berat = keAngka(s && s.berat);
+    if (berat > 0) return berat;
+    return keAngka(s && s.kantong) * (cfg().KG_PER_KANTONG || 3);
+  }
+
+  /** Perkiraan pendapatan catatan warga — angka pastinya menunggu timbangan petugas. */
+  function perkiraanPendapatan(s) {
+    return Math.round(beratPerkiraan(s) * hargaJenis(s && s.jenis));
+  }
+
+  /** Membuang penanda asal dari catatan setoran — asalnya sudah ditandai
+   *  tersendiri di tampilan, jadi tidak perlu diulang sebagai tulisan. */
+  function catatanTanpaPenanda(teks) {
+    const isi = String(teks === null || teks === undefined ? '' : teks).trim();
+    if (isi.indexOf(PENANDA_ASAL_WARGA) !== 0) return isi;
+    return isi.slice(PENANDA_ASAL_WARGA.length).replace(/^\s*·\s*/, '').trim();
+  }
+
+  /**
+   * Menggabungkan setoran resmi dengan catatan warga menjadi SATU daftar
+   * riwayat (terbaru dulu). Tiap barisnya:
+   *   { id, tanggal, jenis, berat, kantong, pendapatan, catatan,
+   *     resmi, dariWarga, status, statusCair, perkiraan }
+   *   - resmi     : sudah masuk tabungan warga (berat & harga dari petugas)
+   *   - dariWarga : setorannya dicatat sendiri oleh warga
+   *   - status    : Menunggu / Ditolak / Disetujui / '' (dicatat petugas)
+   *   - statusCair: Belum / Sudah Dicairkan — hanya untuk baris resmi
+   *   - perkiraan : nilai rupiahnya masih taksiran, belum ditimbang petugas
+   */
+  function gabungRiwayat(setoranResmi, setoranWarga) {
+    const resmi = setoranResmi || [];
+    const catatanWarga = tanpaKembar(setoranWarga).sort(function (a, b) {
+      return String(b.tanggal || '').localeCompare(String(a.tanggal || ''));
+    });
+
+    /* ID setoran resmi yang benar-benar ada — dipakai untuk mencocokkan
+     * catatan warga yang sudah disetujui dengan baris resminya. */
+    const adaResmi = {};
+    resmi.forEach(function (s) {
+      const kunci = kunciBaris(s.id);
+      if (kunci) adaResmi[kunci] = true;
+    });
+
+    const asalWarga = {};   // ID setoran resmi → catatan warga asalnya
+    catatanWarga.forEach(function (w) {
+      const kunci = kunciBaris(w.idSetoran);
+      if (kunci && adaResmi[kunci]) asalWarga[kunci] = w;
+    });
+
+    const riwayat = resmi.map(function (s) {
+      const asal = asalWarga[kunciBaris(s.id)] || null;
+      const dariWarga = !!asal || String(s.catatan || '').indexOf(PENANDA_ASAL_WARGA) === 0;
+      return {
+        id: String(s.id || ''),
+        tanggal: s.tanggal || '',
+        jenis: asal ? labelJenis(asal.jenis, asal.jenisLain) : String(s.jenis || ''),
+        berat: keAngka(s.berat),
+        kantong: keAngka(s.kantong),
+        pendapatan: keAngka(s.pendapatan),
+        catatan: catatanTanpaPenanda(s.catatan),
+        resmi: true,
+        dariWarga: dariWarga,
+        status: dariWarga ? BS_STATUS_SETOR.DISETUJUI : '',
+        statusCair: String(s.status || BS_STATUS_CAIR.BELUM),
+        perkiraan: false,
+      };
+    });
+
+    /* Catatan warga yang BELUM menjadi setoran resmi. Yang sudah "Disetujui"
+     * sengaja dilewati — barisnya sudah ikut di daftar resmi di atas. */
+    const belumResmi = [];
+    catatanWarga.forEach(function (w) {
+      const status = statusSetoranWarga(w);
+      if (status === BS_STATUS_SETOR.DISETUJUI) return;
+
+      const ditolak = status === BS_STATUS_SETOR.DITOLAK;
+      belumResmi.push({
+        id: String(w.id || ''),
+        tanggal: w.tanggal || '',
+        jenis: labelJenis(w.jenis, w.jenisLain),
+        berat: keAngka(w.berat),
+        kantong: keAngka(w.kantong),
+        pendapatan: ditolak ? 0 : perkiraanPendapatan(w),
+        catatan: String(w.catatanPetugas || w.catatan || '').trim(),
+        resmi: false,
+        dariWarga: true,
+        status: status,
+        statusCair: '',
+        perkiraan: !ditolak,
+      });
+    });
+
+    const menunggu = belumResmi.filter(function (b) { return b.status !== BS_STATUS_SETOR.DITOLAK; });
+    const ditolak = belumResmi.filter(function (b) { return b.status === BS_STATUS_SETOR.DITOLAK; });
+
+    return {
+      riwayat: riwayat.concat(belumResmi).sort(function (a, b) {
+        return String(b.tanggal || '').localeCompare(String(a.tanggal || ''));
+      }),
+      menunggu: menunggu,
+      ditolak: ditolak,
+      perkiraanMenunggu: menunggu.reduce(function (jumlah, b) { return jumlah + b.pendapatan; }, 0),
     };
   }
 

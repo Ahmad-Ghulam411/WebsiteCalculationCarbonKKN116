@@ -228,7 +228,23 @@ function aksiCek(p) {
     pengajuan: bacaSemua(sheetPengajuan(), KOLOM_PENGAJUAN).filter(function (x) {
       return normalId(x.idWarga) === idAsli;
     }),
+    /* Catatan setoran yang diisi SENDIRI oleh warga ini — ikut dikirim supaya
+     * riwayat di halaman warga memuat yang "Menunggu" & "Ditolak" juga, bukan
+     * hanya setoran yang sudah dicatat petugas. Yang sudah "Disetujui" tidak
+     * digandakan di layar: halaman warga memakai baris setoran resminya
+     * (lihat gabungRiwayat() di js/bank-sampah-storage.js). */
+    setoranWarga: bacaSemua(sheetSetoranWarga(), KOLOM_SETORAN_WARGA)
+      .filter(function (s) { return normalId(s.idWarga) === idAsli; })
+      .map(tanpaFoto),
   };
+}
+
+/* Salinan catatan setoran warga TANPA isi kolom fotonya. Foto tidak dipakai
+ * di riwayat warga, dan tanpa foto balasannya jauh lebih ringan untuk HP. */
+function tanpaFoto(s) {
+  var salinan = {};
+  Object.keys(s).forEach(function (k) { salinan[k] = (k === 'foto') ? '' : s[k]; });
+  return salinan;
 }
 
 /* ==========================================================================

@@ -296,7 +296,8 @@
       const id = BankSampah.normalId(n.id);
       const setoran = data.setoran.filter(function (s) { return BankSampah.normalId(s.idWarga) === id; });
       const pengajuan = data.pengajuan.filter(function (p) { return BankSampah.normalId(p.idWarga) === id; });
-      ringkasanWarga[id] = BankSampah.ringkas(setoran, pengajuan);
+      const catatanWarga = data.setoranWarga.filter(function (s) { return BankSampah.normalId(s.idWarga) === id; });
+      ringkasanWarga[id] = BankSampah.ringkas(setoran, pengajuan, catatanWarga);
     });
   }
 
@@ -705,6 +706,26 @@
     return urutan >= 0 ? warna[urutan % warna.length] : 'bs-badge-abu';
   }
 
+  /** Lencana satu baris riwayat: status persetujuan (bila dicatat warga)
+   *  ditambah keadaan pencairannya (bila sudah jadi setoran resmi). */
+  function lencanaRiwayat(s) {
+    const lencana = [];
+    const badge = function (warna, teks) {
+      return '<span class="bs-badge ' + warna + '">' + escHtml(teks) + '</span>';
+    };
+
+    if (s.status === BS_STATUS_SETOR.MENUNGGU) lencana.push(badge('bs-badge-kuning', '⏳ Menunggu'));
+    else if (s.status === BS_STATUS_SETOR.DITOLAK) lencana.push(badge('bs-badge-merah', '❌ Ditolak'));
+    else if (s.status === BS_STATUS_SETOR.DISETUJUI) lencana.push(badge('bs-badge-hijau', '✅ Disetujui'));
+    else if (s.status) lencana.push(badge('bs-badge-abu', s.status));
+
+    if (s.resmi) {
+      const sudah = String(s.statusCair || '').indexOf('Sudah') === 0;
+      lencana.push(badge(sudah ? 'bs-badge-abu' : 'bs-badge-biru', s.statusCair || '—'));
+    }
+    return lencana.join(' ');
+  }
+
   /** Menyambungkan tombol data-aksi di dalam tabel ke fungsinya. */
   function pasangAksi(wadah, peta) {
     wadah.querySelectorAll('button[data-aksi]').forEach(function (b) {
@@ -745,22 +766,35 @@
         }).join('') + '</div>';
     }
 
+    /* Riwayat gabungan — sama persis dengan yang dilihat warga di halaman
+     * "Cek Bank Sampah": setoran petugas + catatan warga yang masih
+     * menunggu/ditolak, tanpa data dobel. */
     html += '<h4 style="margin:18px 0 8px;color:var(--hijau-tua)">Riwayat Setoran</h4>';
-    if (!r.setoran.length) {
+    const riwayat = r.riwayat || [];
+    if (!riwayat.length) {
       html += '<p class="adm-kosong">Warga ini belum pernah menyetor sampah.</p>';
     } else {
+      if ((r.setoranMenunggu || []).length) {
+        html += '<p class="adm-catatan">⏳ ' + r.setoranMenunggu.length + ' catatan warga ini ' +
+          'masih menunggu persetujuan (perkiraan ' + BankSampah.rupiah(r.perkiraanMenunggu) +
+          ') — belum masuk tabungan. Proses di tab <strong>“📥 Setoran Warga”</strong>.</p>';
+      }
       html += '<div class="bs-tabel-wadah"><table class="bs-tabel"><thead><tr>' +
-        '<th>Tanggal</th><th>Jenis</th><th>Berat</th><th>Kantong</th><th>Pendapatan</th><th>Status</th>' +
-        '</tr></thead><tbody>';
-      r.setoran.forEach(function (s) {
-        const sudah = String(s.status || '').indexOf('Sudah') === 0;
-        html += '<tr><td>' + escHtml(tanggalRamah(s.tanggal)) + '</td>' +
-          '<td>' + escHtml(s.jenis || '—') + '</td>' +
-          '<td>' + angkaRamah(s.berat) + ' kg</td>' +
-          '<td>' + angkaRamah(s.kantong) + '</td>' +
-          '<td>' + BankSampah.rupiah(s.pendapatan) + '</td>' +
-          '<td><span class="bs-badge ' + (sudah ? 'bs-badge-abu' : 'bs-badge-kuning') + '">' +
-            escHtml(s.status || '—') + '</span></td></tr>';
+        '<th>Tanggal</th><th>Jenis</th><th>Berat</th><th>Kantong</th><th>Pendapatan</th>' +
+        '<th>Status</th><th>Catatan</th></tr></thead><tbody>';
+      riwayat.forEach(function (s) {
+        html += '<tr' + (s.resmi ? '' : ' class="bs-baris-' +
+            (s.status === BS_STATUS_SETOR.DITOLAK ? 'ditolak' : 'menunggu') + '"') + '>' +
+          '<td>' + escHtml(tanggalRamah(s.tanggal)) + '</td>' +
+          '<td>' + escHtml(s.jenis || '—') +
+            (s.dariWarga ? '<small class="bs-riwayat-asal">📱 dicatat warga</small>' : '') + '</td>' +
+          '<td>' + (s.berat > 0 ? angkaRamah(s.berat) + ' kg' : '—') + '</td>' +
+          '<td>' + (s.kantong > 0 ? angkaRamah(s.kantong) : '—') + '</td>' +
+          '<td>' + (s.resmi ? BankSampah.rupiah(s.pendapatan)
+            : '<span class="bs-riwayat-perkiraan">' +
+              (s.perkiraan ? '± ' + BankSampah.rupiah(s.pendapatan) : '—') + '</span>') + '</td>' +
+          '<td>' + lencanaRiwayat(s) + '</td>' +
+          '<td class="bs-tabel-catatan">' + escHtml(s.catatan || '—') + '</td></tr>';
       });
       html += '</tbody></table></div>';
     }

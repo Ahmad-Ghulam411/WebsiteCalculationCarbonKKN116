@@ -67,6 +67,10 @@ responsif (mobile-first), dan di-*hosting* gratis di **Vercel**.
   plus **setoran yang baru saja dimasukkan** petugas.
 - 💰 **Rincian pendapatan** — Pendapatan Keseluruhan, **Belum Dicairkan**, dan
   **Sudah Dicairkan**, lengkap dengan riwayat setoran.
+- 📜 **Riwayat setoran yang menyatu** — satu daftar berisi **semuanya**: setoran
+  yang dicatat petugas **dan** setoran yang **dicatat sendiri oleh warga**,
+  apa pun statusnya (**⏳ Menunggu Persetujuan**, **✅ Disetujui**, **❌ Ditolak**).
+  Setoran warga yang sudah disetujui **tidak ditampilkan dua kali**.
 - 💬 **Tombol "Ajukan Pencairan lewat WhatsApp"** — pengajuan warga langsung
   dikirim ke **WhatsApp pengelola bank sampah** dalam bentuk pesan siap kirim
   (Nama, NIK, ID Nasabah, rincian sampah, ringkasan pendapatan, dan jumlah yang
@@ -224,14 +228,34 @@ berbeda dari data karbon) supaya akses petugasnya benar-benar terpisah.
 3. Akan tampil: **Nama Warga**, **NIK**, **berat & jumlah kantong keseluruhan**
    (dirinci **per jenis sampah**), **setoran yang baru saja dimasukkan**,
    **Pendapatan Keseluruhan**, **Belum Dicairkan**, **Sudah Dicairkan**, dan
-   riwayat setoran.
-4. Bila tabungannya sudah cukup, tombol **💬 Ajukan Pencairan lewat WhatsApp**
+   **📜 Riwayat Setoran Anda**.
+4. **📜 Riwayat Setoran Anda menggabungkan semuanya** — setoran yang dicatat
+   petugas maupun yang **dicatat sendiri oleh warga** lewat bagian
+   **“📸 Catat Setoran Sampah”**, jadi tidak ada setoran yang “hilang”:
+
+   | Lencana di kolom Status | Artinya | Ikut jadi tabungan? |
+   |---|---|---|
+   | **⏳ Menunggu Persetujuan** | Catatan warga sudah masuk ke dashboard, petugas belum menimbang. Kolom Pendapatan masih **perkiraan** (ditulis `± Rp …`). | Belum |
+   | **❌ Ditolak** | Petugas tidak menerima setoran itu. Alasannya ada di kolom **Catatan**. | Tidak |
+   | **✅ Disetujui** | Sudah ditimbang & dimasukkan petugas ke tabungan. Angkanya memakai **hasil timbangan petugas**. | Ya |
+   | **Belum / Sudah Dicairkan** | Keadaan uangnya. Muncul untuk setiap setoran yang sudah masuk tabungan. | — |
+
+   Baris yang berasal dari catatan warga sendiri ditandai **📱 dicatat sendiri**.
+   Setoran warga yang **sudah disetujui hanya muncul SEKALI** (memakai baris
+   resminya), jadi **tidak ada data dobel**. Setoran yang baru saja dikirim
+   lewat formulir juga **langsung muncul** di riwayat tanpa perlu mencari ulang.
+5. Bila tabungannya sudah cukup, tombol **💬 Ajukan Pencairan lewat WhatsApp**
    bisa ditekan. Muncul kotak berisi nomor WA pengelola, jumlah yang diajukan,
    dan **pratinjau isi pesannya**. Setelah tombol hijau ditekan, WhatsApp
    terbuka dengan pesan yang sudah lengkap — warga tinggal menekan *kirim*.
    Pengajuannya juga **tercatat otomatis** di dashboard petugas.
-5. Di bagian bawah halaman ada **peta lokasi bank sampah** (tepat di belakang
+6. Di bagian bawah halaman ada **peta lokasi bank sampah** (tepat di belakang
    Posyandu) beserta tombol **petunjuk arah** dan **chat pengelola**.
+
+> ⚠️ Agar setoran kiriman warga ikut muncul di riwayat saat memakai Google
+> Sheets, `apps-script/CodeBankSampah.gs` **wajib di-deploy ulang** (lihat
+> peringatan di bagian pemasangan). Selama belum, halaman tetap berjalan normal
+> — riwayatnya saja yang masih berisi setoran dari petugas saja.
 
 #### 📸 Mencatat setoran sampah sendiri (bagian **“Catat Setoran Sampah”**)
 
@@ -266,6 +290,11 @@ ada di tengah halaman `bank-sampah.html` (menu **📸 Catat Setoran**):
 > ⚠️ Setoran ini **belum menambah tabungan** warga. Angka beratnya masih
 > perkiraan. Tabungan baru bertambah setelah **petugas menimbang dan
 > menyetujuinya** di dashboard.
+>
+> Walaupun begitu, catatannya **langsung terlihat** oleh warga di
+> **📜 Riwayat Setoran Anda** dengan lencana **⏳ Menunggu Persetujuan** —
+> lalu berubah sendiri menjadi **✅ Disetujui** (beserta angka hasil timbangan
+> petugas) atau **❌ Ditolak** (beserta alasannya) setelah diproses.
 
 > Halaman ini juga bisa dibuka lewat tautan langsung berisi ID, mis.
 > `bank-sampah.html?id=BS-0001` — praktis untuk dibagikan lewat WhatsApp.
