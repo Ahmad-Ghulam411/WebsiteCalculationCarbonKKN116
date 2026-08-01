@@ -11,15 +11,20 @@
  *    Tab 3 — Setoran Sampah    : catat timbangan sampah + penyaring + tandai cair
  *    Tab 4 — Pencairan         : proses pengajuan warga & pencairan langsung
  *    Tab 5 — Cara Pakai        : panduan penggunaan untuk petugas
+ *    Tab 6 — Akun Petugas      : ganti nama pengguna & kata sandi sendiri
  *
- *  Catatan keamanan: kata sandi di config.js bersifat client-side, jadi ini
- *  hanya PENGHALANG DASAR — sama seperti dashboard admin jejak karbon.
+ *  Catatan keamanan: seluruh pemeriksaan berjalan di browser, jadi ini
+ *  PENGHALANG DASAR — sama seperti dashboard admin jejak karbon. Meski begitu,
+ *  begitu akun diganti lewat tab "🔐 Akun Petugas", kata sandinya tidak lagi
+ *  tertulis apa adanya di js/config.js: yang tersimpan hanya sidik acaknya
+ *  (SHA-256) di Google Sheets. Lihat js/bank-sampah-akun.js.
  * ========================================================================== */
 
 (function () {
   'use strict';
 
   const KUNCI_SESI = 'bankSampahSesiPetugas';
+  const KUNCI_SESI_NAMA = 'bankSampahNamaPetugas';
 
   /* Data mentah hasil pemuatan terakhir */
   let data = { nasabah: [], setoran: [], pengajuan: [], setoranWarga: [] };
@@ -41,6 +46,13 @@
   /* Catatan setoran warga yang sedang diperiksa di kotak "Periksa Setoran" */
   let masukDiperiksa = null;
 
+  /* Nama pengguna yang dipakai masuk — ditampilkan di tab "🔐 Akun Petugas" */
+  let namaPetugas = '';
+
+  /* Penjaga supaya tombol yang sedang bekerja tidak diklik dua kali */
+  let sedangMasuk = false;
+  let sedangSimpanAkun = false;
+
   document.addEventListener('DOMContentLoaded', init);
 
   function init() {
@@ -53,9 +65,13 @@
     wiringFilterSetoran();
     wiringSetoranWarga();
     wiringPencairan();
+    wiringAkun();
     wiringModal();
 
-    if (sesiAktif()) bukaDashboard();
+    if (sesiAktif()) {
+      namaPetugas = ambilNamaSesi();
+      bukaDashboard();
+    }
   }
 
   /* =======================================================================
@@ -168,6 +184,25 @@
     try { return sessionStorage.getItem(KUNCI_SESI) === 'aktif'; } catch (e) { return false; }
   }
 
+  function ambilNamaSesi() {
+    try { return sessionStorage.getItem(KUNCI_SESI_NAMA) || ''; } catch (e) { return ''; }
+  }
+
+  function simpanSesi(nama) {
+    try {
+      sessionStorage.setItem(KUNCI_SESI, 'aktif');
+      sessionStorage.setItem(KUNCI_SESI_NAMA, nama || '');
+    } catch (e) {}
+  }
+
+  function keluarDashboard() {
+    try {
+      sessionStorage.removeItem(KUNCI_SESI);
+      sessionStorage.removeItem(KUNCI_SESI_NAMA);
+    } catch (e) {}
+    window.location.reload();
+  }
+
   function wiringMasuk() {
     const form = $('formMasuk');
     if (form) {
@@ -177,37 +212,79 @@
       });
     }
     const keluar = $('btnKeluar');
-    if (keluar) {
-      keluar.addEventListener('click', function () {
-        try { sessionStorage.removeItem(KUNCI_SESI); } catch (e) {}
-        window.location.reload();
-      });
-    }
+    if (keluar) keluar.addEventListener('click', keluarDashboard);
+
     const muat = $('btnMuat');
     if (muat) muat.addEventListener('click', muatData);
   }
 
+  /** Menulis pesan di layar masuk. Baris kedua (kecil) dipakai untuk
+   *  menerangkan keadaan server, mis. "Google Sheets belum menjawab". */
+  function pesanMasuk(teks, catatan) {
+    const kotak = $('pesanMasuk');
+    if (!kotak) return;
+    if (!teks && !catatan) { kotak.textContent = ''; return; }
+    kotak.innerHTML = escHtml(teks || '') +
+      (catatan ? '<br><small>' + escHtml(catatan) + '</small>' : '');
+  }
+
+  /**
+   * Memeriksa akun petugas lalu membuka dashboard.
+   *
+   * Pemeriksaannya menunggu jawaban Google Sheets (lihat AkunPetugas.masuk),
+   * jadi tombolnya dikunci dulu supaya tidak diklik berkali-kali.
+   */
   function masuk() {
-    const akun = KONFIGURASI.BANK_SAMPAH.ADMIN;
+    if (sedangMasuk) return;
+
     const user = nilai('inputUser');
     const sandi = $('inputSandi').value;
-    const pesan = $('pesanMasuk');
+    const tombol = $('btnMasuk');
 
-    if (user.toLowerCase() !== String(akun.username).toLowerCase() || sandi !== akun.password) {
-      pesan.textContent = 'Nama pengguna atau kata sandi salah. Coba lagi.';
+    sedangMasuk = true;
+    if (tombol) { tombol.disabled = true; tombol.textContent = '⏳ Memeriksa akun…'; }
+    pesanMasuk('', '');
+
+    const beres = function () {
+      sedangMasuk = false;
+      if (tombol) { tombol.disabled = false; tombol.textContent = '🔓 Masuk Dashboard'; }
+    };
+
+    AkunPetugas.masuk(user, sandi).then(function (hasil) {
+      beres();
+
+      if (!hasil.ok) {
+        pesanMasuk(hasil.pesan, hasil.catatan);
+        $('inputSandi').value = '';
+        $('inputSandi').focus();
+        return;
+      }
+
+      pesanMasuk('', '');
+      namaPetugas = hasil.username || user;
+      simpanSesi(namaPetugas);
       $('inputSandi').value = '';
-      $('inputSandi').focus();
-      return;
-    }
 
-    pesan.textContent = '';
-    try { sessionStorage.setItem(KUNCI_SESI, 'aktif'); } catch (e) {}
-    bukaDashboard();
+      if (hasil.catatan) {
+        toast('ℹ️ ' + hasil.catatan);
+      } else if (hasil.bawaan) {
+        // Selama akun bawaan masih dipakai, kata sandinya tertulis apa adanya
+        // di js/config.js — siapa pun yang membuka berkas itu bisa membacanya.
+        toast('🔐 Anda masih memakai akun bawaan. Sebaiknya diganti lewat tab "🔐 Akun Petugas".');
+      }
+
+      bukaDashboard();
+    }).catch(function (err) {
+      beres();
+      pesanMasuk('Terjadi gangguan saat memeriksa akun. Coba lagi.', String(err));
+    });
   }
 
   function bukaDashboard() {
     $('layarMasuk').classList.add('tersembunyi');
     $('layarDashboard').classList.remove('tersembunyi');
+    // Keterangan akun sengaja tidak ditanyakan sekarang: kotaknya baru terlihat
+    // saat tab "🔐 Akun Petugas" dibuka, dan bukaTab() yang mengurusnya.
     muatData();
   }
 
@@ -369,11 +446,19 @@
     });
     const peta = {
       warga: 'panelWarga', masuk: 'panelMasuk', setoran: 'panelSetoran',
-      pencairan: 'panelPencairan', panduan: 'panelPanduan',
+      pencairan: 'panelPencairan', panduan: 'panelPanduan', akun: 'panelAkun',
     };
     Object.keys(peta).forEach(function (k) {
       $(peta[k]).classList.toggle('aktif', k === nama);
     });
+
+    if (nama === 'akun') {
+      segarkanKotakAkun();
+    } else {
+      // Kata sandi yang terlanjur diketik jangan ditinggal di layar.
+      kosongkanSandiAkun();
+    }
+
     window.scrollTo({ top: 0, behavior: 'smooth' });
   }
 
@@ -1709,6 +1794,239 @@
       tolak: function (id) { prosesPengajuan(id, BS_STATUS_AJU.DITOLAK); },
       hapus: hapusPengajuan,
     });
+  }
+
+  /* =======================================================================
+   *  TAB 6 — AKUN PETUGAS  (ganti nama pengguna & kata sandi)
+   *  ---------------------------------------------------------------------
+   *  Seluruh urusan sandi-menyandi ada di js/bank-sampah-akun.js. Di sini
+   *  hanya urusan tampilan: mengisi kotak keterangan, memeriksa isian di
+   *  layar, dan menampilkan hasilnya.
+   * ===================================================================== */
+  function wiringAkun() {
+    const form = $('formAkun');
+    if (!form) return;
+
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      simpanAkunBaru();
+    });
+
+    $('btnBatalAkun').addEventListener('click', function () {
+      resetFormAkun();
+      $('akUserLama').focus();
+    });
+
+    $('btnGantiLagi').addEventListener('click', function () {
+      $('akBerhasil').classList.add('tersembunyi');
+      form.classList.remove('tersembunyi');
+      resetFormAkun();
+      $('akUserLama').focus();
+    });
+
+    $('btnKeluarAkun').addEventListener('click', keluarDashboard);
+
+    /* Tombol mata 👁️ — supaya petugas bisa memastikan ketikannya benar. */
+    document.querySelectorAll('.adm-sandi-lihat').forEach(function (tombol) {
+      tombol.addEventListener('click', function () {
+        const kotak = $(tombol.getAttribute('data-lihat'));
+        if (!kotak) return;
+        const sedangTerlihat = kotak.type === 'text';
+        kotak.type = sedangTerlihat ? 'password' : 'text';
+        tombol.textContent = sedangTerlihat ? '👁️' : '🙈';
+        tombol.setAttribute('aria-label',
+          sedangTerlihat ? 'Tampilkan kata sandi' : 'Sembunyikan kata sandi');
+        kotak.focus();
+      });
+    });
+
+    $('akSandiBaru').addEventListener('input', petunjukSandi);
+    $('akUlangi').addEventListener('input', petunjukSandi);
+  }
+
+  /** Menampilkan penilaian kekuatan sandi & kecocokan ulangannya. */
+  function petunjukSandi() {
+    const sandi = $('akSandiBaru').value;
+    const ulangi = $('akUlangi').value;
+
+    const nilaiSandi = AkunPetugas.nilaiSandi(sandi);
+    const kotakNilai = $('akNilaiSandi');
+    kotakNilai.textContent = nilaiSandi.label;
+    kotakNilai.className = 'adm-sandi-nilai' + (nilaiSandi.kelas ? ' ' + nilaiSandi.kelas : '');
+
+    const kotakCocok = $('akCocokSandi');
+    if (!ulangi) {
+      kotakCocok.textContent = '';
+      kotakCocok.className = '';
+      return;
+    }
+    const cocok = ulangi === sandi;
+    kotakCocok.textContent = cocok ? '✅ Sudah sama.' : '❌ Belum sama dengan kata sandi baru di atas.';
+    kotakCocok.className = 'adm-sandi-nilai ' + (cocok ? 'kuat' : 'lemah');
+  }
+
+  /** Pesan merah/kuning di bawah formulir akun. */
+  function pesanAkun(teks, catatan, jenis) {
+    const kotak = $('akPesan');
+    if (!kotak) return;
+    if (!teks && !catatan) {
+      kotak.classList.add('tersembunyi');
+      kotak.textContent = '';
+      return;
+    }
+    kotak.className = 'adm-akun-pesan' + (jenis === 'hati' ? ' hati' : '');
+    kotak.innerHTML = escHtml(teks || '') +
+      (catatan ? '<br><small>' + escHtml(catatan) + '</small>' : '');
+  }
+
+  function kosongkanSandiAkun() {
+    ['akSandiLama', 'akSandiBaru', 'akUlangi'].forEach(function (id) {
+      const kotak = $(id);
+      if (kotak) { kotak.value = ''; kotak.type = 'password'; }
+    });
+    document.querySelectorAll('.adm-sandi-lihat').forEach(function (t) { t.textContent = '👁️'; });
+    const nilaiKotak = $('akNilaiSandi');
+    const cocokKotak = $('akCocokSandi');
+    if (nilaiKotak) { nilaiKotak.textContent = ''; nilaiKotak.className = 'adm-sandi-nilai'; }
+    if (cocokKotak) { cocokKotak.textContent = ''; cocokKotak.className = ''; }
+  }
+
+  function resetFormAkun() {
+    const form = $('formAkun');
+    if (form) form.reset();
+    kosongkanSandiAkun();
+    pesanAkun('', '');
+  }
+
+  /** Memindahkan sorotan ke isian yang bermasalah. */
+  function fokusIsianAkun(isian) {
+    const peta = {
+      lama: 'akSandiLama', userBaru: 'akUserBaru',
+      sandiBaru: 'akSandiBaru', ulangi: 'akUlangi',
+    };
+    const kotak = $(peta[isian] || 'akUserLama');
+    if (kotak) kotak.focus();
+  }
+
+  /* ------------------ Kotak "akun yang sedang berlaku" ------------------- */
+  function tulisKotakAkun(nama, ket, hati) {
+    const kotakNama = $('akunNamaSekarang');
+    const kotakKet = $('akunKetSekarang');
+    if (kotakNama) kotakNama.textContent = nama || '—';
+    if (kotakKet) {
+      kotakKet.textContent = ket || '';
+      kotakKet.className = 'adm-akun-ket' + (hati ? ' hati' : '');
+    }
+  }
+
+  /** Menerangkan akun mana yang sedang dipakai & di mana ia tersimpan. */
+  function segarkanKotakAkun() {
+    if (!$('akunNamaSekarang')) return;
+
+    const cepat = AkunPetugas.infoCepat();
+    const nama = namaPetugas || cepat.username;
+    const kapan = function (waktu) { return waktu ? ' Terakhir diganti: ' + waktu + '.' : ''; };
+
+    if (!BankSampah.pakaiServer()) {
+      tulisKotakAkun(nama,
+        'Akun ini tersimpan di PERANGKAT INI saja, karena BANK_SAMPAH.APPS_SCRIPT_URL ' +
+        'di js/config.js masih kosong.' + kapan(cepat.diubah), true);
+      return;
+    }
+
+    tulisKotakAkun(nama, 'Memeriksa akun di Google Sheets…', false);
+
+    AkunPetugas.info().then(function (info) {
+      const diPerangkat = AkunPetugas.akunPerangkat();
+
+      if (!info.ok) {
+        tulisKotakAkun(nama,
+          'Belum bisa memastikan ke Google Sheets — ' + (info.catatan || 'server tidak menjawab.') +
+          ' Untuk sementara yang dipakai adalah catatan akun di perangkat ini.', true);
+        return;
+      }
+
+      if (!info.bawaan) {
+        tulisKotakAkun(info.username,
+          'Tersimpan di Google Sheets, jadi berlaku di semua HP/laptop.' + kapan(info.diubah), false);
+        return;
+      }
+
+      if (diPerangkat) {
+        tulisKotakAkun(diPerangkat.username,
+          '⚠️ Akun ini baru berlaku di PERANGKAT INI. Di Google Sheets masih tersimpan akun ' +
+          'bawaan, jadi dari HP/laptop lain akunnya belum berubah. Deploy ulang Apps Script ' +
+          '(Deploy ▸ Manage deployments ▸ ✏️ ▸ Version: New version ▸ Deploy), lalu ganti akun sekali lagi.',
+          true);
+        return;
+      }
+
+      tulisKotakAkun(info.username,
+        'Ini masih akun BAWAAN yang tertulis apa adanya di js/config.js — siapa pun yang ' +
+        'membuka berkas itu bisa membacanya. Sebaiknya segera diganti lewat formulir di bawah.',
+        true);
+    });
+  }
+
+  /* ------------------------ Menyimpan akun baru -------------------------- */
+  function simpanAkunBaru() {
+    if (sedangSimpanAkun) return;
+
+    const isian = {
+      userLama: nilai('akUserLama'),
+      sandiLama: $('akSandiLama').value,
+      userBaru: nilai('akUserBaru'),
+      sandiBaru: $('akSandiBaru').value,
+      ulangi: $('akUlangi').value,
+    };
+
+    const tombol = $('btnSimpanAkun');
+    sedangSimpanAkun = true;
+    tombol.disabled = true;
+    tombol.textContent = '⏳ Menyimpan akun baru…';
+    pesanAkun('', '');
+
+    const beres = function () {
+      sedangSimpanAkun = false;
+      tombol.disabled = false;
+      tombol.textContent = '🔐 Simpan Akun Baru';
+    };
+
+    AkunPetugas.ubah(isian).then(function (hasil) {
+      beres();
+
+      if (!hasil.ok) {
+        pesanAkun(hasil.pesan, hasil.catatan);
+        fokusIsianAkun(hasil.isian);
+        return;
+      }
+
+      namaPetugas = hasil.username;
+      simpanSesi(namaPetugas);
+      tampilkanAkunBerhasil(hasil);
+      toast('🔐 Akun petugas berhasil diganti.');
+    }).catch(function (err) {
+      beres();
+      pesanAkun('Terjadi gangguan saat menyimpan akun. Akun lama masih berlaku.', String(err));
+    });
+  }
+
+  function tampilkanAkunBerhasil(hasil) {
+    resetFormAkun(); // isian & kata sandi tidak boleh tertinggal di layar
+
+    $('formAkun').classList.add('tersembunyi');
+    $('akBerhasil').classList.remove('tersembunyi');
+    $('akBerhasilUser').textContent = hasil.username;
+    $('akBerhasilPesan').textContent = hasil.hanyaPerangkat
+      ? 'Akun baru tersimpan, TETAPI untuk sementara hanya berlaku di perangkat ini — ' +
+        (hasil.catatan || 'Google Sheets belum bisa dihubungi.') +
+        ' Dari HP/laptop lain, akun yang berlaku masih yang lama. Setelah Apps Script ' +
+        'di-deploy ulang, ganti akunnya sekali lagi dari sini agar tersimpan permanen.'
+      : 'Mulai sekarang, masuk ke dashboard ini memakai akun yang baru. ' +
+        'Kata sandi lama sudah tidak berlaku lagi.';
+
+    segarkanKotakAkun();
+    $('akBerhasil').scrollIntoView({ behavior: 'smooth', block: 'center' });
   }
 
   /* =======================================================================

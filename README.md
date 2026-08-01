@@ -89,9 +89,15 @@ responsif (mobile-first), dan di-*hosting* gratis di **Vercel**.
 - ✅ **Persetujuan setoran oleh petugas** — setoran kiriman warga **belum
   menambah tabungan** siapa pun sampai petugas memeriksa fotonya, menimbang
   ulang, lalu menekan **✅ Setujui** (atau **✖️ Tolak** disertai alasannya).
-- 🗂️ **Dashboard admin bank sampah** dengan 5 tab: Data Warga,
-  **Setoran dari Warga**, Setoran Sampah, Pencairan, dan **Cara Pakai**
-  (panduan lengkap untuk petugas).
+- 🗂️ **Dashboard admin bank sampah** dengan 6 tab: Data Warga,
+  **Setoran dari Warga**, Setoran Sampah, Pencairan, **Cara Pakai**
+  (panduan lengkap untuk petugas), dan **Akun Petugas**.
+- 🔐 **Petugas bisa mengganti sendiri nama pengguna & kata sandinya** lewat tab
+  **🔐 Akun Petugas** — tanpa menyentuh kode sama sekali. Nama pengguna **dan**
+  kata sandi lama wajib dimasukkan lebih dulu sebagai bukti, kata sandi baru
+  harus diketik dua kali, dan begitu tersimpan **akun lama langsung tidak
+  berlaku** di semua perangkat. Kata sandinya **tidak pernah disimpan apa
+  adanya** — yang tercatat di Google Sheets hanya *sidik acaknya* (SHA-256).
 - 🔎 **Penyaring lengkap** — cari nama/ID/NIK/HP, RT, RW, status nasabah, sisa
   tabungan, keaktifan menyetor, jenis sampah, status pencairan, rentang tanggal,
   dan berbagai pilihan pengurutan.
@@ -121,6 +127,8 @@ js/bank-sampah-storage.js       Lapisan data bank sampah (nasabah, setoran,
                                    pengajuan, & setoran kiriman warga + fotonya)
 js/bank-sampah-lokasi.js        Peta lokasi & nomor WA pengelola (beranda + halaman warga)
 js/bank-sampah.js               Logika halaman warga "Cek Bank Sampah"
+js/bank-sampah-akun.js          🔐 Akun petugas: pengacak sandi (SHA-256), pemeriksaan
+                                   saat masuk, & penggantian nama pengguna/kata sandi
 js/admin-bank-sampah.js         Logika dashboard admin bank sampah
 
 apps-script/Code.gs             Backend Google Apps Script — DATA KARBON
@@ -301,9 +309,10 @@ ada di tengah halaman `bank-sampah.html` (menu **📸 Catat Setoran**):
 
 ### 🧑‍💼 Untuk petugas — halaman `admin-bank-sampah.html`
 
-Masuk dengan **username + password** dari `KONFIGURASI.BANK_SAMPAH.ADMIN`
-(bawaan: `petugasbanksampah` / `banksampah116` — **GANTI!**).
-Dashboardnya punya 5 tab:
+Masuk dengan **username + password**. Selama akun belum pernah diganti, yang
+berlaku adalah **akun bawaan** dari `KONFIGURASI.BANK_SAMPAH.ADMIN`
+(`petugasbanksampah116` / `banksampahkampung` — **GANTI lewat tab
+🔐 Akun Petugas!**). Dashboardnya punya 6 tab:
 
 | Tab | Isi |
 | --- | --- |
@@ -312,6 +321,7 @@ Dashboardnya punya 5 tab:
 | ⚖️ **Setoran Sampah** | Catat setoran (otomatis menghitung pendapatan), ubah/hapus setoran, tandai/batalkan "Sudah Dicairkan", penyaring (cari, jenis, status, RT, rentang tanggal, pengurutan) + baris TOTAL, unduh Excel. |
 | 💵 **Pencairan** | Proses pengajuan warga (**✅ Setujui & Tandai Cair** / **✖️ Tolak**) dan **pencairan langsung** bila warga datang ke sekretariat. |
 | 📖 **Cara Pakai** | Panduan lengkap alur kerja harian, cara mengisi setoran, arti istilah, dan catatan keamanan — bisa dibaca petugas kapan saja. |
+| 🔐 **Akun Petugas** | **Ganti nama pengguna & kata sandi sendiri**, tanpa menyentuh kode. Wajib memasukkan akun lama dulu sebagai bukti. |
 
 **Alur kerja singkat:** daftarkan warga (atau biarkan mereka mendaftar sendiri) →
 catat ID Nasabah di buku tabungannya → **periksa & setujui setoran yang dikirim
@@ -320,6 +330,46 @@ saat uang diserahkan.
 
 > 🔔 Angka **📥 Setoran Warga Menunggu** di baris statistik dan **lencana merah**
 > pada tab menunjukkan berapa catatan yang masih perlu diperiksa.
+
+### 🔐 Mengganti Nama Pengguna & Kata Sandi Petugas
+
+Akun bawaan di `js/config.js` **tertulis apa adanya** dan bisa dibaca siapa saja
+yang membuka berkas itu. Karena itu, sesudah website terpasang, **gantilah akun
+petugas lewat dashboard** — tidak perlu menyentuh kode lagi:
+
+1. Masuk ke `admin-bank-sampah.html` seperti biasa.
+2. Buka tab **🔐 Akun Petugas**.
+3. Isi **nama pengguna & kata sandi yang sekarang** (ini buktinya bahwa yang
+   mengganti benar-benar Anda — bukan orang yang kebetulan menemukan layar ini
+   dalam keadaan terbuka).
+4. Isi **nama pengguna baru** (4–32 huruf/angka, tanpa spasi) dan **kata sandi
+   baru** (minimal 8 huruf) — kata sandi baru diketik **dua kali**.
+5. Klik **🔐 Simpan Akun Baru**, lalu **🚪 Keluar & Masuk Ulang** untuk
+   memastikan akun barunya benar-benar berlaku.
+
+Setelah tersimpan, **akun lama langsung mati** — di HP/laptop mana pun.
+
+**Bagaimana kata sandinya disimpan?** Tidak pernah apa adanya. Browser
+mengubahnya lebih dulu menjadi *sidik acak* **SHA-256** sepanjang 64 huruf, dan
+hanya sidik itulah yang berjalan di jaringan dan tersimpan di tab **`AkunAdmin`**
+Google Sheet. Sidik tersebut tidak bisa dikembalikan menjadi kata sandi aslinya —
+jadi walaupun ada yang mengintip isi spreadsheet atau alamat permintaannya,
+kata sandi Anda tetap tidak terbaca.
+
+> ⚠️ **Agar berlaku di semua perangkat, `apps-script/CodeBankSampah.gs` harus
+> di-deploy ulang** (*Deploy ▸ Manage deployments ▸ ✏️ ▸ Version: New version ▸
+> Deploy*). Kalau belum, penggantian akun **tetap bisa dilakukan** — tetapi
+> hanya berlaku di perangkat yang dipakai, dan dashboard akan mengatakannya
+> terus terang di layar.
+
+> 🔑 **Lupa kata sandi?** Buka Google Sheet bank sampah ▸ tab **`AkunAdmin`** ▸
+> **hapus barisnya** (baris di bawah judul). Akun otomatis kembali ke akun
+> bawaan di `js/config.js`. **Seluruh data warga, setoran, dan pencairan tetap
+> aman** — yang terhapus hanya catatan akunnya.
+
+> 📝 Sebelum akun pernah diganti, yang dipakai adalah `var AKUN_AWAL` di
+> `CodeBankSampah.gs`. Samakan isinya dengan `BANK_SAMPAH.ADMIN` di
+> `js/config.js` supaya penggantian pertama tidak ditolak.
 
 ### 🗄️ Menghubungkan Bank Sampah ke Google Sheets
 
@@ -406,8 +456,8 @@ Karena itu, saat **foto pertama** masuk, Google akan meminta **izin tambahan**:
 | --- | --- | --- |
 | `BANK_SAMPAH.APPS_SCRIPT_URL` | URL Web App khusus bank sampah (kosong = simpan di perangkat) | `''` |
 | `BANK_SAMPAH.token` | Kata sandi rahasia, harus sama dengan `TOKEN_RAHASIA` di `CodeBankSampah.gs` | `rahasia-bank-sampah-116` |
-| `BANK_SAMPAH.ADMIN.username` | Username petugas bank sampah | `petugasbanksampah` |
-| `BANK_SAMPAH.ADMIN.password` | Password petugas bank sampah | `banksampah116` |
+| `BANK_SAMPAH.ADMIN.username` | Username **bawaan** petugas — hanya berlaku sampai akun diganti lewat tab **🔐 Akun Petugas** | `petugasbanksampah116` |
+| `BANK_SAMPAH.ADMIN.password` | Password **bawaan** petugas — hanya berlaku sampai akun diganti lewat tab **🔐 Akun Petugas** | `banksampahkampung` |
 | `BANK_SAMPAH.PREFIX_ID` | Awalan ID nasabah otomatis (`BS-0001`, …) | `BS` |
 | `BANK_SAMPAH.JENIS` | **Daftar jenis sampah + harga per kg + ikon + keterangan.** Dipakai serentak oleh formulir warga, formulir petugas, penyaring, dan tabel harga | Botol Plastik `3000`, Kardus `1500`, Rak Telur `1000`, Gelas Plastik `2500`, Lain-lain `1000` |
 | `BANK_SAMPAH.HARGA_PER_KG.kering` | Harga sampah kering per kg (Rp) — **hanya untuk riwayat lama** | `2000` |
@@ -427,6 +477,12 @@ Karena itu, saat **foto pertama** masuk, Google akan meminta **izin tambahan**:
 
 > Bila `MIN_PENCAIRAN` diubah, ubah juga `var MIN_PENCAIRAN` di
 > `apps-script/CodeBankSampah.gs` agar pemeriksaan di server ikut menyesuaikan.
+
+> **`BANK_SAMPAH.ADMIN` hanyalah akun bawaan.** Begitu petugas mengganti akunnya
+> dari tab **🔐 Akun Petugas**, isian ini **tidak berlaku lagi** — yang dipakai
+> adalah akun di tab `AkunAdmin` pada Google Sheet. Bila Anda memakai Google
+> Sheets, samakan juga `var AKUN_AWAL` di `apps-script/CodeBankSampah.gs`
+> (dipakai sebelum akun pernah diganti), lalu **deploy versi baru**.
 
 > **Mengubah jenis sampah / harganya.** Cukup ubah `BANK_SAMPAH.JENIS` di
 > `js/config.js` — seluruh halaman langsung ikut. Bila Anda memakai Google
@@ -531,10 +587,19 @@ vercel --prod     # deploy ke produksi
   **penghalang dasar** — bukan pengamanan penuh. Untuk keamanan sungguhan,
   proteksi harus dilakukan di sisi server. Ini berlaku untuk **kedua** dashboard
   (data karbon maupun bank sampah).
+- **Segera ganti akun petugas bank sampah lewat tab 🔐 Akun Petugas.** Selama
+  masih memakai akun bawaan, kata sandinya tertulis apa adanya di `js/config.js`
+  dan bisa dibaca siapa saja yang membuka berkas itu. Setelah diganti, yang
+  tersimpan hanyalah **sidik acak SHA-256** di Google Sheets — kata sandinya
+  tidak lagi tertulis di mana pun, dan tidak pernah ikut menempel di alamat URL.
+  (Pemeriksaannya tetap berjalan di browser, jadi ini **memperkecil** risiko,
+  bukan menghapusnya.)
 - **Pemisahan akses admin** dilakukan lewat akun, spreadsheet, dan Apps Script
   yang berbeda — jadi petugas bank sampah tidak melihat data karbon dan
   sebaliknya. Namun karena keduanya client-side, jangan pakai kata sandi yang
   sama dengan akun penting lain.
+- **Ganti akun petugas setiap ada pergantian pengurus**, agar petugas lama tidak
+  lagi bisa membuka data warga.
 - **Halaman Cek Bank Sampah bisa dibuka siapa saja yang tahu ID Nasabah**
   (itulah cara warga mengaksesnya tanpa perlu membuat akun). Karena itu halaman
   tersebut hanya menampilkan data tabungan warga bersangkutan — bukan daftar

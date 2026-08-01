@@ -675,3 +675,75 @@
 /* ------------------------------- Modal ----------------------------------- */
 .adm-modal-kotak { max-width: 720px; text-align: left; }
 .adm-modal-kotak .modal-judul { text-align: left; }
+
+/* =========================================================================
+ *  TAB "🔐 AKUN PETUGAS" — ganti nama pengguna & kata sandi
+ * ======================================================================= */
+
+/* Kotak abu-abu berisi akun yang sedang berlaku */
+.adm-akun-sekarang {
+  display: flex; align-items: center; gap: 14px;
+  background: #f4faf6; border: 1px solid var(--garis); border-left: 4px solid var(--hijau-terang);
+  border-radius: var(--radius-sm); padding: 14px 16px; margin-bottom: 20px;
+}
+.adm-akun-ikon { font-size: 1.9rem; line-height: 1; flex: none; }
+.adm-akun-isi { min-width: 0; }
+.adm-akun-label {
+  font-size: .76rem; font-weight: 700; letter-spacing: .5px; text-transform: uppercase;
+  color: var(--tinta-lembut);
+}
+.adm-akun-nama {
+  font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.12rem;
+  color: var(--hijau-tua); word-break: break-all; margin: 2px 0;
+}
+.adm-akun-ket { font-size: .84rem; color: var(--tinta-lembut); line-height: 1.5; }
+.adm-akun-ket.hati { color: #96690b; font-weight: 600; }
+
+.adm-akun-judul {
+  color: var(--hijau-tua); font-size: 1.02rem; margin: 20px 0 12px;
+  padding-bottom: 8px; border-bottom: 1px dashed var(--garis);
+}
+.adm-akun-judul:first-child { margin-top: 0; }
+
+/* Kotak isian kata sandi + tombol mata (👁️) di dalamnya */
+.adm-sandi { position: relative; display: block; }
+.adm-sandi input { width: 100%; padding-right: 46px; }
+.adm-sandi-lihat {
+  position: absolute; top: 50%; right: 6px; transform: translateY(-50%);
+  width: 34px; height: 34px; border: none; border-radius: 8px;
+  background: transparent; cursor: pointer; font-size: 1.05rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center; transition: var(--trans);
+}
+.adm-sandi-lihat:hover { background: #eef4f0; }
+.adm-sandi-lihat:focus-visible { outline: 2px solid var(--hijau-terang); outline-offset: 1px; }
+
+.adm-sandi-nilai { font-weight: 700; }
+.adm-sandi-nilai.lemah  { color: #c0421f; }
+.adm-sandi-nilai.sedang { color: #96690b; }
+.adm-sandi-nilai.kuat   { color: var(--hijau-tua); }
+
+.adm-akun-pesan {
+  margin-top: 16px; padding: 12px 14px; border-radius: var(--radius-sm);
+  background: #fdeee9; border: 1px solid #f3a488; color: #c0421f;
+  font-size: .92rem; font-weight: 600; line-height: 1.55;
+}
+.adm-akun-pesan.hati { background: #fff6e2; border-color: #ffd98a; color: #96690b; }
+
+/* Kotak hijau setelah akun berhasil diganti */
+.adm-akun-berhasil {
+  margin-top: 4px; padding: 20px 18px; border-radius: var(--radius-sm);
+  background: linear-gradient(160deg, #f4faf6, #eaf6ef); border: 1px solid var(--hijau-terang);
+}
+.adm-akun-berhasil h3 { color: var(--hijau-tua); font-size: 1.12rem; margin-bottom: 8px; }
+.adm-akun-berhasil p { color: var(--tinta-lembut); font-size: .94rem; line-height: 1.6; margin-bottom: 10px; }
+.adm-akun-ringkas { list-style: none; padding: 0; margin: 0 0 12px; }
+.adm-akun-ringkas li {
+  background: #fff; border: 1px solid var(--garis); border-radius: 10px;
+  padding: 9px 13px; margin-bottom: 7px; font-size: .92rem; color: var(--tinta-lembut);
+  word-break: break-all;
+}
+.adm-akun-ringkas strong { color: var(--hijau-tua); }
+.adm-akun-ingat {
+  background: #fff6e2; border: 1px solid #ffd98a; border-radius: 10px;
+  padding: 11px 13px; color: #7a5608; font-size: .9rem;
+}

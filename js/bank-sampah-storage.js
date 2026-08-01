@@ -1307,6 +1307,15 @@ const BankSampah = (function () {
     ringkas: ringkas,
     pakaiServer: pakaiServer,
 
+    /* Jalur langsung ke Apps Script — dipakai js/bank-sampah-akun.js (akun
+     * petugas), yang perlu membaca sendiri balasan mentah dari server
+     * (mis. penanda "salah" saat kata sandi lama tidak cocok).
+     *   panggilServer      → sekali kirim, untuk aksi yang MENGUBAH data.
+     *   panggilServerBaca  → untuk aksi MEMBACA; boleh dicoba sekali lagi
+     *                        bila balasannya hilang di jalan. */
+    panggilServer: jsonp,
+    panggilServerBaca: jsonpBaca,
+
     // nasabah
     simpanNasabah: simpanNasabah,
     ubahNasabah: ubahNasabah,
