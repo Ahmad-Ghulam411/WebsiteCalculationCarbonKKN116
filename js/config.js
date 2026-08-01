@@ -139,6 +139,7 @@ const KONFIGURASI = {
    *       - Username & password adminnya BERBEDA.
    *    Jadi petugas bank sampah tidak bisa membuka data karbon,
    *    dan sebaliknya.
+   
    * ------------------------------------------------------------------ */
   BANK_SAMPAH: {
     /* URL "Web App" hasil deploy apps-script/CodeBankSampah.gs.
