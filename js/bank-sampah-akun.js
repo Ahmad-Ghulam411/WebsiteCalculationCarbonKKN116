@@ -261,22 +261,27 @@ const AkunPetugas = (function () {
 
   /**
    * Menerjemahkan balasan server yang BUKAN "ok" dan BUKAN "salah sandi"
-   * menjadi alasan yang bisa dibaca petugas.
-   * @returns {string} alasan mengapa server tidak bisa dipakai kali ini
+   * menjadi alasan yang bisa DIMENGERTI PETUGAS.
+   *
+   * Pesan asli dari server sengaja tidak diteruskan ke layar: isinya bahasa
+   * teknis yang tidak bisa ditindaklanjuti petugas bank sampah. Pesan itu
+   * cukup dicatat di konsol browser untuk keperluan pemeriksaan.
+   * Layar hanya perlu memberi tahu bahwa urusannya bukan tugas petugas —
+   * bagian "hubungi anggota KKN" ditambahkan oleh js/admin-bank-sampah.js.
+   *
+   * @returns {string} alasan mengapa penyimpanan online tidak bisa dipakai
    */
   function alasanServer(resp) {
-    if (resp && resp.tanpaBalasan) {
-      return 'Google Sheets belum menjawab (koneksi lambat atau Apps Script sedang sibuk).';
-    }
     const pesan = String((resp && resp.pesan) || '');
+    if (pesan) console.warn('Balasan penyimpanan online:', pesan);
+
+    if (resp && resp.tanpaBalasan) {
+      return 'Penyimpanan online belum menjawab (koneksi lambat atau server sedang sibuk).';
+    }
     if (/tidak dikenal/i.test(pesan)) {
-      return 'Apps Script di Google Sheets masih versi lama (belum mengenal fitur ganti akun). ' +
-        'Buka Apps Script ▸ Deploy ▸ Manage deployments ▸ ✏️ ▸ Version: New version ▸ Deploy.';
+      return 'Penyimpanan online belum siap menerima penggantian akun.';
     }
-    if (/token/i.test(pesan)) {
-      return 'Token di js/config.js tidak sama dengan TOKEN_RAHASIA di CodeBankSampah.gs.';
-    }
-    return pesan || 'Google Sheets tidak bisa dihubungi.';
+    return 'Penyimpanan online sedang tidak bisa dihubungi.';
   }
 
   /* =======================================================================

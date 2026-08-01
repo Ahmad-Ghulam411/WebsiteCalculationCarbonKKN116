@@ -125,6 +125,8 @@ js/admin.js                     Logika dashboard admin data karbon
 js/main.js                      Penghubung semua bagian + animasi (halaman utama)
 js/bank-sampah-storage.js       Lapisan data bank sampah (nasabah, setoran,
                                    pengajuan, & setoran kiriman warga + fotonya)
+js/bantuan.js                   🆘 Kontak anggota KKN yang mengurus sistem webnya —
+                                   dipakai semua halaman saat ada gangguan
 js/bank-sampah-lokasi.js        Peta lokasi & nomor WA pengelola (beranda + halaman warga)
 js/bank-sampah.js               Logika halaman warga "Cek Bank Sampah"
 js/bank-sampah-akun.js          🔐 Akun petugas: pengacak sandi (SHA-256), pemeriksaan

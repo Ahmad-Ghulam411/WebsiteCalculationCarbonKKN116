@@ -747,3 +747,31 @@
   background: #fff6e2; border: 1px solid #ffd98a; border-radius: 10px;
   padding: 11px 13px; color: #7a5608; font-size: .9rem;
 }
+
+/* =========================================================================
+ *  KARTU BANTUAN — anggota KKN yang mengurus sistem webnya
+ *  (petugas cukup mengelola data; urusan teknis tinggal chat WhatsApp)
+ * ======================================================================= */
+.adm-bantuan-kotak { border-left: 4px solid var(--hijau-terang); }
+
+.adm-bantuan-kartu {
+  display: flex; align-items: center; flex-wrap: wrap; gap: 14px;
+  background: linear-gradient(160deg, #f4faf6, #eaf6ef);
+  border: 1px solid var(--garis); border-radius: var(--radius-sm);
+  padding: 16px 18px; margin: 14px 0;
+}
+.adm-bantuan-kartu > div { flex: 1 1 180px; min-width: 0; }
+.adm-bantuan-ikon { font-size: 2.1rem; line-height: 1; flex: none; }
+.adm-bantuan-nama {
+  font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.08rem;
+  color: var(--hijau-tua); word-break: break-word;
+}
+.adm-bantuan-peran { font-size: .86rem; color: var(--tinta-lembut); margin-top: 2px; }
+.adm-bantuan-kartu .tombol { flex: none; }
+
+/* Baris "Lupa akun?" di bawah kotak masuk */
+.adm-masuk-bantuan {
+  margin-top: 16px; padding-top: 14px; border-top: 1px dashed var(--garis);
+  font-size: .88rem; color: var(--tinta-lembut); line-height: 1.6;
+}
+.adm-masuk-bantuan a { font-weight: 700; }

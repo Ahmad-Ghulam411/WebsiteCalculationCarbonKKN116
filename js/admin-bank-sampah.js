@@ -135,11 +135,18 @@
     set('ketKgKantong', kg);
     set('panduanKgKantong', kg);
 
+    isiKontakBantuan();
     isiPilihanJenis();
     $('sHarga').value = hargaJenisTerpilih();
     $('sTanggal').value = BankSampah.tanggalHariIni();
     $('wTanggal').value = BankSampah.tanggalHariIni();
   }
+
+  /* Nama & nomor anggota KKN yang mengurus sistem webnya — lihat js/bantuan.js.
+   * Petugas bank sampah tidak perlu tahu urusan teknis: setiap kali ada yang
+   * tidak beres, layar cukup menunjuk ke satu orang yang bisa dihubungi. */
+  function saranHubungi() { return Bantuan.saranHubungi(); }
+  function isiKontakBantuan() { Bantuan.isiHalaman(); }
 
   /** Mengisi seluruh pilihan "Jenis Sampah" dari KONFIGURASI.BANK_SAMPAH.JENIS. */
   function isiPilihanJenis() {
@@ -305,13 +312,17 @@
       sumber = hasil.sumber;
 
       if (!hasil.ok) {
+        /* Pesan asli dari server sengaja TIDAK ditampilkan: isinya bahasa
+         * teknis yang tidak bisa ditindaklanjuti petugas. Cukup disimpan di
+         * catatan browser supaya bisa ditanyakan bila diperlukan. */
+        console.warn('Gagal memuat data bank sampah:', hasil.pesan);
+
         pita.className = 'adm-pita adm-pita-salah';
         pita.textContent = hasil.tanpaBalasan
-          ? '❌ Google Sheets belum menjawab (koneksi lambat atau Apps Script sedang sibuk). ' +
+          ? '❌ Penyimpanan data belum menjawab (koneksi lambat atau server sedang sibuk). ' +
             'Data di layar mungkin belum yang terbaru — klik "↻ Muat Ulang" untuk mencoba lagi.'
-          : '❌ Gagal menghubungi Google Sheets: ' + hasil.pesan +
-            ' — periksa BANK_SAMPAH.APPS_SCRIPT_URL & token di js/config.js, ' +
-            'lalu pastikan Apps Script sudah di-deploy versi terbaru.';
+          : '❌ Data belum bisa diambil dari penyimpanan. Coba klik "↻ Muat Ulang" sekali lagi. ' +
+            'Kalau tetap begini, data Anda tetap aman — ' + saranHubungi();
         hitungUlang();
         renderSemua();
         return hasil;
@@ -326,12 +337,11 @@
 
       if (sumber === 'sheet') {
         pita.className = 'adm-pita adm-pita-info';
-        pita.textContent = '☁️ Data tersimpan di Google Sheets — bisa dibuka dari perangkat mana pun.';
+        pita.textContent = '☁️ Data tersimpan online — bisa dibuka dari HP/laptop mana pun.';
       } else {
         pita.className = 'adm-pita adm-pita-hati';
-        pita.textContent = '📱 Data baru tersimpan di PERANGKAT INI saja. Agar bisa dibuka dari HP/laptop ' +
-          'lain (dan tidak hilang saat data browser dibersihkan), isi BANK_SAMPAH.APPS_SCRIPT_URL di js/config.js. ' +
-          'Panduannya ada di README.';
+        pita.textContent = '📱 Data baru tersimpan di PERANGKAT INI saja, jadi belum bisa dibuka dari ' +
+          'HP/laptop lain dan bisa hilang bila data browser dibersihkan. ' + saranHubungi();
       }
 
       hitungUlang();
@@ -1929,41 +1939,43 @@
 
     if (!BankSampah.pakaiServer()) {
       tulisKotakAkun(nama,
-        'Akun ini tersimpan di PERANGKAT INI saja, karena BANK_SAMPAH.APPS_SCRIPT_URL ' +
-        'di js/config.js masih kosong.' + kapan(cepat.diubah), true);
+        'Akun ini berlaku di PERANGKAT INI saja, karena dashboard belum tersambung ke ' +
+        'penyimpanan online.' + kapan(cepat.diubah) + ' ' + saranHubungi(), true);
       return;
     }
 
-    tulisKotakAkun(nama, 'Memeriksa akun di Google Sheets…', false);
+    tulisKotakAkun(nama, 'Memeriksa akun…', false);
 
     AkunPetugas.info().then(function (info) {
       const diPerangkat = AkunPetugas.akunPerangkat();
 
       if (!info.ok) {
+        console.warn('Keterangan akun belum bisa dipastikan:', info.catatan);
         tulisKotakAkun(nama,
-          'Belum bisa memastikan ke Google Sheets — ' + (info.catatan || 'server tidak menjawab.') +
-          ' Untuk sementara yang dipakai adalah catatan akun di perangkat ini.', true);
+          'Keterangan akun belum bisa dipastikan karena penyimpanan online sedang tidak ' +
+          'menjawab. Untuk sementara dipakai catatan akun di perangkat ini. Coba buka lagi ' +
+          'tab ini sebentar lagi.', true);
         return;
       }
 
       if (!info.bawaan) {
         tulisKotakAkun(info.username,
-          'Tersimpan di Google Sheets, jadi berlaku di semua HP/laptop.' + kapan(info.diubah), false);
+          'Tersimpan online, jadi berlaku di semua HP/laptop.' + kapan(info.diubah), false);
         return;
       }
 
       if (diPerangkat) {
         tulisKotakAkun(diPerangkat.username,
-          '⚠️ Akun ini baru berlaku di PERANGKAT INI. Di Google Sheets masih tersimpan akun ' +
-          'bawaan, jadi dari HP/laptop lain akunnya belum berubah. Deploy ulang Apps Script ' +
-          '(Deploy ▸ Manage deployments ▸ ✏️ ▸ Version: New version ▸ Deploy), lalu ganti akun sekali lagi.',
+          '⚠️ Akun ini baru berlaku di PERANGKAT INI — dari HP/laptop lain, akun yang berlaku ' +
+          'masih yang lama. ' + saranHubungi() + ' Sesudah dibereskan, ganti akunnya sekali lagi ' +
+          'dari sini agar berlaku di mana saja.',
           true);
         return;
       }
 
       tulisKotakAkun(info.username,
-        'Ini masih akun BAWAAN yang tertulis apa adanya di js/config.js — siapa pun yang ' +
-        'membuka berkas itu bisa membacanya. Sebaiknya segera diganti lewat formulir di bawah.',
+        'Ini masih akun BAWAAN yang dipakai sejak dashboard dipasang, dan sudah diketahui ' +
+        'orang lain di luar petugas. Sebaiknya segera diganti lewat formulir di bawah.',
         true);
     });
   }
@@ -2017,11 +2029,11 @@
     $('formAkun').classList.add('tersembunyi');
     $('akBerhasil').classList.remove('tersembunyi');
     $('akBerhasilUser').textContent = hasil.username;
+    if (hasil.catatan) console.warn('Catatan penggantian akun:', hasil.catatan);
     $('akBerhasilPesan').textContent = hasil.hanyaPerangkat
-      ? 'Akun baru tersimpan, TETAPI untuk sementara hanya berlaku di perangkat ini — ' +
-        (hasil.catatan || 'Google Sheets belum bisa dihubungi.') +
-        ' Dari HP/laptop lain, akun yang berlaku masih yang lama. Setelah Apps Script ' +
-        'di-deploy ulang, ganti akunnya sekali lagi dari sini agar tersimpan permanen.'
+      ? 'Akun baru tersimpan, TETAPI untuk sementara hanya berlaku di perangkat ini — dari ' +
+        'HP/laptop lain, akun yang berlaku masih yang lama. ' + saranHubungi() +
+        ' Sesudah dibereskan, ganti akunnya sekali lagi dari sini agar berlaku di mana saja.'
       : 'Mulai sekarang, masuk ke dashboard ini memakai akun yang baru. ' +
         'Kata sandi lama sudah tidak berlaku lagi.';
 

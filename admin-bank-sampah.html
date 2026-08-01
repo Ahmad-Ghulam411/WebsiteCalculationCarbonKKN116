@@ -39,6 +39,11 @@
         <button type="submit" class="tombol tombol-penuh" id="btnMasuk">🔓 Masuk Dashboard</button>
       </form>
 
+      <p class="adm-masuk-bantuan">
+        Lupa akun atau tidak bisa masuk? Hubungi
+        <a class="bantuan-wa" href="#" target="_blank" rel="noopener"><span class="bantuan-sebut">anggota KKN</span></a>.
+      </p>
+
       <p class="adm-masuk-bawah">
         <a href="index.html">← Kembali ke Beranda</a> ·
         <a href="bank-sampah.html">Halaman Warga</a>
@@ -319,7 +324,7 @@
                   <!-- Pilihannya diisi js/admin-bank-sampah.js dari
                        KONFIGURASI.BANK_SAMPAH.JENIS di js/config.js -->
                   <select id="sJenis"></select>
-                  <small>Menambah / mengubah jenis sampah cukup di <strong>js/config.js</strong>.</small>
+                  <small>Harga per kg terisi otomatis mengikuti jenis yang dipilih.</small>
                 </div>
                 <div class="adm-field">
                   <label for="sJenisLain">Keterangan Lain-lain</label>
@@ -591,6 +596,27 @@
               <strong>🔐 Akun Petugas</strong>. Gantilah segera kalau ada petugas lama yang
               sudah tidak bertugas lagi.
             </p>
+
+            <h3>🆘 Kalau Ada Yang Tidak Beres</h3>
+            <p>
+              Tugas petugas cukup <strong>mengelola data warga</strong> — urusan sistem webnya
+              bukan tanggung jawab Anda. Kalau dashboard tiba-tiba error, datanya tidak muncul,
+              tidak bisa masuk, lupa kata sandi, atau ingin menambah jenis sampah baru:
+              <strong>jangan mengubah apa pun</strong>, cukup hubungi anggota KKN di bawah ini.
+            </p>
+            <div class="adm-bantuan-kartu">
+              <span class="adm-bantuan-ikon">👨‍💻</span>
+              <div>
+                <div class="adm-bantuan-nama bantuan-nama">—</div>
+                <div class="adm-bantuan-peran bantuan-peran">Anggota KKN</div>
+              </div>
+              <a class="tombol tombol-wa bantuan-wa" href="#" target="_blank" rel="noopener">💬 Chat WhatsApp</a>
+            </div>
+            <p>
+              Saat menghubungi, sebutkan <strong>tulisan apa yang muncul di layar</strong> dan
+              apa yang sedang Anda kerjakan waktu itu — supaya lebih cepat ditangani.
+              Data yang sudah tersimpan <strong>tidak hilang</strong> walaupun layarnya error.
+            </p>
           </div>
         </section>
 
@@ -667,10 +693,10 @@
               <div class="adm-catatan">
                 <strong>📌 Tolong dicatat sebelum menyimpan:</strong> tuliskan akun barunya di tempat
                 yang aman. Kata sandi disimpan dalam bentuk acak (tidak bisa dibaca siapa pun,
-                termasuk pembuat aplikasi ini), jadi <strong>tidak ada yang bisa memberitahukannya
-                kembali kalau lupa</strong>. Kalau sampai lupa, akun bisa dikembalikan ke akun bawaan
-                dengan menghapus baris di tab <strong>AkunAdmin</strong> pada Google Sheet bank sampah —
-                data warga tidak ada yang hilang.
+                termasuk yang membuat aplikasi ini), jadi <strong>tidak ada yang bisa
+                memberitahukannya kembali kalau lupa</strong>. Kalau sampai lupa, hubungi
+                <span class="bantuan-sebut">anggota KKN</span> untuk mengembalikan akunnya ke awal —
+                data warga, setoran, dan pencairan tidak ada yang hilang.
               </div>
 
               <p class="adm-akun-pesan tersembunyi" id="akPesan" role="alert"></p>
@@ -705,11 +731,13 @@
             <div class="adm-tanya">
               <details>
                 <summary>Apakah akun baru langsung berlaku di HP/laptop lain?</summary>
-                <p>Ya, selama akun tersimpan di <strong>Google Sheets</strong> (lihat keterangan
-                   di kotak abu-abu paling atas). Kalau di situ tertulis akun hanya berlaku di
-                   perangkat ini, berarti Apps Script di Google Sheet Anda masih versi lama —
-                   buka Apps Script ▸ <em>Deploy</em> ▸ <em>Manage deployments</em> ▸ ✏️ ▸
-                   <em>Version: New version</em> ▸ <em>Deploy</em>, lalu ganti akunnya sekali lagi.</p>
+                <p>Ya. Begitu tersimpan, akun barunya <strong>langsung berlaku di semua HP dan
+                   laptop</strong> yang dipakai membuka dashboard ini.</p>
+                <p>Kalau pada kotak keterangan di atas tertulis bahwa akunnya <em>hanya berlaku di
+                   perangkat ini</em>, berarti ada yang perlu dibereskan pada sistemnya. Anda tidak
+                   perlu memperbaikinya sendiri — cukup hubungi
+                   <span class="bantuan-sebut">anggota KKN</span>, lalu ganti akunnya sekali lagi
+                   sesudah dibereskan.</p>
               </details>
             </div>
             <div class="adm-tanya">
@@ -723,10 +751,12 @@
             <div class="adm-tanya">
               <details>
                 <summary>Bagaimana kalau saya lupa kata sandi baru?</summary>
-                <p>Buka Google Sheet bank sampah ▸ tab <strong>AkunAdmin</strong> ▸ hapus barisnya
-                   (baris di bawah judul). Akun otomatis kembali ke akun bawaan yang tertulis di
-                   <code>js/config.js</code>. Seluruh data warga, setoran, dan pencairan
-                   <strong>tetap aman</strong> — yang terhapus hanya catatan akunnya.</p>
+                <p>Kata sandi disimpan dalam bentuk acak, sehingga <strong>tidak ada seorang pun
+                   yang bisa membacanya kembali</strong> — termasuk yang membuat aplikasi ini.
+                   Jadi kalau sampai lupa, akunnya perlu dikembalikan ke akun awal.</p>
+                <p>Hubungi <span class="bantuan-sebut">anggota KKN</span> untuk mengembalikannya.
+                   Seluruh <strong>data warga, setoran, dan pencairan tetap aman</strong> —
+                   tidak ada satu pun yang hilang.</p>
               </details>
             </div>
             <div class="adm-tanya">
@@ -735,6 +765,34 @@
                 <p>Tidak sama sekali. Halaman warga (<em>Cek Bank Sampah</em>) tidak memakai
                    nama pengguna maupun kata sandi — warga cukup memasukkan ID Nasabahnya.</p>
               </details>
+            </div>
+            <div class="adm-tanya">
+              <details>
+                <summary>Dashboard bermasalah — datanya tidak muncul atau tidak bisa masuk?</summary>
+                <p>Tenang, <strong>data yang sudah tersimpan tidak hilang</strong>. Coba dulu tekan
+                   tombol <strong>↻ Muat Ulang</strong> di pojok kanan atas, atau tutup lalu buka
+                   kembali halaman ini.</p>
+                <p>Kalau masih bermasalah, <strong>jangan mengubah apa pun</strong> — cukup hubungi
+                   <span class="bantuan-sebut">anggota KKN</span> dan sebutkan tulisan apa yang
+                   muncul di layar. Urusan sistemnya biar beliau yang menangani.</p>
+              </details>
+            </div>
+          </div>
+
+          <div class="adm-kotak adm-bantuan-kotak">
+            <h2 class="adm-kotak-judul">🆘 Butuh Bantuan?</h2>
+            <p class="adm-kotak-ket">
+              Tugas Anda cukup <strong>mengelola data warga</strong>. Urusan sistem webnya —
+              termasuk kalau ada yang error, lupa kata sandi, atau ingin menambah jenis sampah
+              baru — ditangani oleh anggota KKN di bawah ini.
+            </p>
+            <div class="adm-bantuan-kartu">
+              <span class="adm-bantuan-ikon">👨‍💻</span>
+              <div>
+                <div class="adm-bantuan-nama bantuan-nama">—</div>
+                <div class="adm-bantuan-peran bantuan-peran">Anggota KKN</div>
+              </div>
+              <a class="tombol tombol-wa bantuan-wa" href="#" target="_blank" rel="noopener">💬 Chat WhatsApp</a>
             </div>
           </div>
         </section>
@@ -815,6 +873,7 @@
   <div id="toast" class="toast" role="status" aria-live="polite"></div>
 
   <script src="js/config.js"></script>
+  <script src="js/bantuan.js"></script>
   <script src="js/xlsx-export.js"></script>
   <script src="js/bank-sampah-storage.js"></script>
   <script src="js/bank-sampah-akun.js"></script>
