@@ -280,11 +280,18 @@ button { font-family: inherit; cursor: pointer; }
 .cta-bank-ikon { font-size: 3rem; line-height: 1; }
 .cta-bank-teks h2 { font-size: clamp(1.25rem, 4vw, 1.7rem); color: #fff; margin-bottom: 8px; }
 .cta-bank-teks p { color: #d3ecdd; font-size: .98rem; }
+.cta-bank-teks p + p { margin-top: 8px; }
 .cta-bank-teks strong { color: var(--kuning); }
 .cta-bank-tombol { white-space: nowrap; }
+.cta-bank-aksi { display: flex; flex-direction: column; gap: 9px; align-items: center; }
+.cta-bank-tombol-alt {
+  background: rgba(255,255,255,.16); border: 1px solid rgba(255,255,255,.34); box-shadow: none;
+}
+.cta-bank-tombol-alt:hover { background: rgba(255,255,255,.26); }
 
 @media (min-width: 820px) {
   .cta-bank { grid-template-columns: auto 1fr auto; text-align: left; gap: 24px; padding: 30px 34px; }
+  .cta-bank-aksi { align-items: stretch; }
 }
 
 /* ======================= PETA LOKASI BANK SAMPAH ========================= */

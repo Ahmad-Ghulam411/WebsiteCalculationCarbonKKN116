@@ -1,10 +1,13 @@
 /* ============================================================================
  *  PENYIMPANAN DATA BANK SAMPAH
  *  ----------------------------------------------------------------------------
- *  Menangani TIGA jenis data:
- *    1. NASABAH   — data warga yang menabung sampah (nama, NIK, alamat, dll.)
- *    2. SETORAN   — setiap kali warga menyetor sampah (kering/basah, berat, Rp)
- *    3. PENGAJUAN — permintaan warga untuk mencairkan pendapatannya
+ *  Menangani EMPAT jenis data:
+ *    1. NASABAH       — data warga yang menabung sampah (nama, NIK, alamat, dll.)
+ *    2. SETORAN       — setiap kali warga menyetor sampah (jenis, berat, Rp)
+ *    3. PENGAJUAN     — permintaan warga untuk mencairkan pendapatannya
+ *    4. SETORAN WARGA — catatan setoran yang DIISI SENDIRI OLEH WARGA beserta
+ *                       foto buktinya, menunggu disetujui/ditolak petugas.
+ *                       Setelah disetujui, barulah menjadi SETORAN resmi (2).
  *
  *  Sumber data:
  *    - Bila KONFIGURASI.BANK_SAMPAH.APPS_SCRIPT_URL diisi → Google Sheets
@@ -17,9 +20,10 @@
  * ========================================================================== */
 
 /* Kunci penyimpanan di perangkat */
-const KUNCI_BS_NASABAH   = 'bankSampahNasabah';
-const KUNCI_BS_SETORAN   = 'bankSampahSetoran';
-const KUNCI_BS_PENGAJUAN = 'bankSampahPengajuan';
+const KUNCI_BS_NASABAH       = 'bankSampahNasabah';
+const KUNCI_BS_SETORAN       = 'bankSampahSetoran';
+const KUNCI_BS_PENGAJUAN     = 'bankSampahPengajuan';
+const KUNCI_BS_SETORAN_WARGA = 'bankSampahSetoranWarga';
 
 /* ---------------------------------------------------------------------------
  * SKEMA KOLOM — urutan & judulnya HARUS sama dengan apps-script/CodeBankSampah.gs
@@ -62,10 +66,37 @@ const SKEMA_BS_PENGAJUAN = [
   { kunci: 'catatan',       judul: 'Catatan' },
 ];
 
+/* Catatan setoran yang diisi SENDIRI oleh warga (menunggu persetujuan petugas).
+ * Urutannya HARUS sama dengan KOLOM_SETORAN_WARGA di CodeBankSampah.gs */
+const SKEMA_BS_SETORAN_WARGA = [
+  { kunci: 'id',             judul: 'ID Catatan' },
+  { kunci: 'tanggal',        judul: 'Tanggal Isi' },
+  { kunci: 'idWarga',        judul: 'ID Nasabah' },
+  { kunci: 'nama',           judul: 'Nama Lengkap' },
+  { kunci: 'nik',            judul: 'NIK' },
+  { kunci: 'alamat',         judul: 'Alamat' },
+  { kunci: 'rt',             judul: 'RT' },
+  { kunci: 'rw',             judul: 'RW' },
+  { kunci: 'noHp',           judul: 'No. HP/WA' },
+  { kunci: 'terdaftar',      judul: 'Sudah Terdaftar' },
+  { kunci: 'jenis',          judul: 'Jenis Sampah' },
+  { kunci: 'jenisLain',      judul: 'Keterangan Lain-lain' },
+  { kunci: 'berat',          judul: 'Perkiraan Berat (kg)' },
+  { kunci: 'kantong',        judul: 'Jumlah Kantong' },
+  { kunci: 'catatan',        judul: 'Catatan Warga' },
+  { kunci: 'foto',           judul: 'Foto Bukti' },
+  { kunci: 'status',         judul: 'Status' },
+  { kunci: 'tanggalProses',  judul: 'Tanggal Diproses' },
+  { kunci: 'catatanPetugas', judul: 'Catatan Petugas' },
+  { kunci: 'idSetoran',      judul: 'ID Setoran Hasil' },
+];
+
 /* Nilai tetap yang dipakai di banyak tempat */
 const BS_JENIS = { KERING: 'Kering', BASAH: 'Basah' };
+const BS_JENIS_LAIN = 'Lain-lain';
 const BS_STATUS_CAIR = { BELUM: 'Belum Dicairkan', SUDAH: 'Sudah Dicairkan' };
 const BS_STATUS_AJU = { DIAJUKAN: 'Diajukan', DISETUJUI: 'Disetujui', DITOLAK: 'Ditolak' };
+const BS_STATUS_SETOR = { MENUNGGU: 'Menunggu', DISETUJUI: 'Disetujui', DITOLAK: 'Ditolak' };
 
 const BankSampah = (function () {
   'use strict';
@@ -208,6 +239,98 @@ const BankSampah = (function () {
   }
 
   /* =======================================================================
+   *  BANTU — mengirim data BESAR (setoran warga + foto bukti)
+   *  ---------------------------------------------------------------------
+   *  JSONP di atas memakai GET, jadi seluruh datanya ikut menempel di
+   *  alamat URL — panjangnya terbatas dan tidak mungkin memuat foto.
+   *  Untuk itu dipakai POST, dengan dua cara yang saling menutupi:
+   *
+   *    1. fetch()  — paling cepat & balasannya bisa langsung dibaca.
+   *                  Sengaja memakai URLSearchParams supaya jenis isinya
+   *                  "application/x-www-form-urlencoded", yaitu jenis yang
+   *                  TIDAK memicu pemeriksaan CORS tambahan oleh peramban.
+   *    2. <form> ke <iframe> tersembunyi — cara lama yang hampir selalu
+   *       berhasil (pengiriman formulir tidak dibatasi CORS), tetapi
+   *       balasannya tidak bisa dibaca. Karena itu, setelahnya kita
+   *       MEMERIKSA SENDIRI ke server apakah catatannya benar-benar masuk.
+   * ===================================================================== */
+
+  function jeda(ms) {
+    return new Promise(function (resolve) { setTimeout(resolve, ms); });
+  }
+
+  /** Percobaan pertama: POST biasa yang balasannya bisa dibaca. */
+  function postFetch(params) {
+    const url = urlServer();
+    if (!url || typeof fetch !== 'function' || typeof URLSearchParams !== 'function') {
+      return Promise.resolve(null);
+    }
+
+    const isi = new URLSearchParams();
+    Object.keys(params).forEach(function (k) {
+      const v = params[k];
+      isi.set(k, (v === null || v === undefined) ? '' : String(v));
+    });
+
+    return fetch(url, { method: 'POST', body: isi })
+      .then(function (r) { return r.json(); })
+      .then(function (resp) { return (resp && typeof resp === 'object') ? resp : null; })
+      .catch(function () { return null; }); // diblokir CORS / jaringan putus
+  }
+
+  /** Percobaan kedua: kirim lewat formulir tersembunyi (balasan tak terbaca). */
+  function postBingkai(params) {
+    const url = urlServer();
+    if (!url) return Promise.resolve(false);
+
+    return new Promise(function (resolve) {
+      const nama = 'bs_kirim_' + Date.now() + '_' + Math.floor(Math.random() * 100000);
+      const bingkai = document.createElement('iframe');
+      bingkai.name = nama;
+      bingkai.setAttribute('aria-hidden', 'true');
+      bingkai.style.display = 'none';
+      document.body.appendChild(bingkai);
+
+      const form = document.createElement('form');
+      form.action = url;
+      form.method = 'POST';
+      form.target = nama;
+      form.style.display = 'none';
+
+      Object.keys(params).forEach(function (k) {
+        // <textarea> dipakai karena isian foto bisa sangat panjang.
+        const kotak = document.createElement('textarea');
+        kotak.name = k;
+        const v = params[k];
+        kotak.value = (v === null || v === undefined) ? '' : String(v);
+        form.appendChild(kotak);
+      });
+
+      document.body.appendChild(form);
+
+      let selesai = false;
+      const beres = function (terkirim) {
+        if (selesai) return;
+        selesai = true;
+        setTimeout(function () {
+          if (form.parentNode) form.parentNode.removeChild(form);
+          if (bingkai.parentNode) bingkai.parentNode.removeChild(bingkai);
+        }, 1000);
+        resolve(terkirim);
+      };
+
+      bingkai.addEventListener('load', function () { beres(true); });
+      setTimeout(function () { beres(false); }, BATAS_TUNGGU_MS);
+
+      try {
+        form.submit();
+      } catch (e) {
+        beres(false);
+      }
+    });
+  }
+
+  /* =======================================================================
    *  BANTU — umum
    * ===================================================================== */
   function tanggalHariIni() {
@@ -261,6 +384,54 @@ const BankSampah = (function () {
   }
 
   /* =======================================================================
+   *  JENIS SAMPAH  (Botol Plastik, Kardus, Rak Telur, Gelas Plastik, …)
+   *  Seluruhnya diatur di KONFIGURASI.BANK_SAMPAH.JENIS — lihat js/config.js.
+   * ===================================================================== */
+
+  /** Daftar jenis sampah yang diterima bank sampah, apa adanya dari config. */
+  function daftarJenis() {
+    const daftar = cfg().JENIS;
+    return Array.isArray(daftar) && daftar.length ? daftar : [
+      { nama: BS_JENIS.KERING, ikon: '🧴', harga: cfg().HARGA_PER_KG.kering, ket: '' },
+      { nama: BS_JENIS.BASAH, ikon: '🍂', harga: cfg().HARGA_PER_KG.basah, ket: '' },
+    ];
+  }
+
+  /** Mencari keterangan satu jenis sampah menurut namanya (tanpa rewel huruf besar). */
+  function cariJenis(nama) {
+    const kunci = String(nama === null || nama === undefined ? '' : nama).trim().toLowerCase();
+    if (!kunci) return null;
+    return daftarJenis().filter(function (j) {
+      return String(j.nama).trim().toLowerCase() === kunci;
+    })[0] || null;
+  }
+
+  /** Harga per kg untuk satu jenis sampah. Jenis lama (Kering/Basah) tetap terlayani. */
+  function hargaJenis(nama) {
+    const j = cariJenis(nama);
+    if (j) return keAngka(j.harga);
+    const harga = cfg().HARGA_PER_KG || {};
+    return kelompokJenis(nama) === 'basah' ? keAngka(harga.basah) : keAngka(harga.kering);
+  }
+
+  /** Mengelompokkan jenis apa pun menjadi 'kering' atau 'basah'.
+   *  Dipakai agar riwayat lama (yang hanya mengenal dua kelompok) tetap terbaca. */
+  function kelompokJenis(nama) {
+    const teks = String(nama === null || nama === undefined ? '' : nama).toLowerCase();
+    if (teks.indexOf('basah') >= 0 || teks.indexOf('organik') >= 0) return 'basah';
+    const j = cariJenis(nama);
+    if (j && j.kelompok) return String(j.kelompok).toLowerCase();
+    return 'kering';
+  }
+
+  /** Nama jenis yang enak dibaca — "Lain-lain" ikut menyebut keterangannya. */
+  function labelJenis(jenis, jenisLain) {
+    const nama = String(jenis || '').trim() || '—';
+    const lain = String(jenisLain || '').trim();
+    return (lain && cariJenis(nama) && cariJenis(nama).isian) ? nama + ' (' + lain + ')' : nama;
+  }
+
+  /* =======================================================================
    *  MEMBACA DATA
    * ===================================================================== */
 
@@ -278,6 +449,7 @@ const BankSampah = (function () {
         nasabah: ambilLokal(KUNCI_BS_NASABAH),
         setoran: ambilLokal(KUNCI_BS_SETORAN),
         pengajuan: ambilLokal(KUNCI_BS_PENGAJUAN),
+        setoranWarga: ambilLokal(KUNCI_BS_SETORAN_WARGA),
       });
     }
 
@@ -290,6 +462,7 @@ const BankSampah = (function () {
           nasabah: Array.isArray(resp.nasabah) ? resp.nasabah : [],
           setoran: Array.isArray(resp.setoran) ? resp.setoran : [],
           pengajuan: Array.isArray(resp.pengajuan) ? resp.pengajuan : [],
+          setoranWarga: Array.isArray(resp.setoranWarga) ? resp.setoranWarga : [],
         };
       }
       return {
@@ -297,7 +470,7 @@ const BankSampah = (function () {
         sumber: 'sheet',
         tanpaBalasan: !!(resp && resp.tanpaBalasan),
         pesan: (resp && resp.pesan) || 'Tidak bisa menghubungi server bank sampah.',
-        nasabah: [], setoran: [], pengajuan: [],
+        nasabah: [], setoran: [], pengajuan: [], setoranWarga: [],
       };
     });
   }
@@ -372,16 +545,40 @@ const BankSampah = (function () {
     let belumCair = 0;
     let sudahCair = 0;
 
+    /* Rincian per jenis sampah. Seluruh jenis yang dikenal selalu ikut
+     * (walau nol) supaya tampilannya tidak "meloncat-loncat", ditambah
+     * jenis tak dikenal yang mungkin masih ada di riwayat lama. */
+    const perJenis = daftarJenis().map(function (j) {
+      return Object.assign({ nama: j.nama, ikon: j.ikon || '♻️', ket: j.ket || '', dikenal: true }, kosong);
+    });
+    const cariEmber = function (nama) {
+      const kunci = String(nama || '').trim().toLowerCase() || '—';
+      let ember = perJenis.filter(function (e) {
+        return String(e.nama).trim().toLowerCase() === kunci;
+      })[0];
+      if (!ember) {
+        ember = Object.assign({ nama: String(nama || '').trim() || '—', ikon: '♻️', ket: '', dikenal: false }, kosong);
+        perJenis.push(ember);
+      }
+      return ember;
+    };
+
     daftar.forEach(function (s) {
       const berat = keAngka(s.berat);
       const kantong = keAngka(s.kantong);
       const nilai = keAngka(s.pendapatan);
-      const ember = (String(s.jenis || '').toLowerCase().indexOf('basah') >= 0) ? basah : kering;
+      const ember = (kelompokJenis(s.jenis) === 'basah') ? basah : kering;
 
       ember.berat += berat;
       ember.kantong += kantong;
       ember.pendapatan += nilai;
       ember.jumlahSetoran += 1;
+
+      const rinci = cariEmber(s.jenis);
+      rinci.berat += berat;
+      rinci.kantong += kantong;
+      rinci.pendapatan += nilai;
+      rinci.jumlahSetoran += 1;
 
       pendapatanTotal += nilai;
       if (String(s.status || '') === BS_STATUS_CAIR.SUDAH) sudahCair += nilai;
@@ -400,6 +597,7 @@ const BankSampah = (function () {
       setoranTerakhir: daftar.length ? daftar[0] : null,
       kering: kering,
       basah: basah,
+      perJenis: perJenis,
       totalBerat: kering.berat + basah.berat,
       totalKantong: kering.kantong + basah.kantong,
       jumlahSetoran: daftar.length,
@@ -633,6 +831,226 @@ const BankSampah = (function () {
   }
 
   /* =======================================================================
+   *  PENDAFTARAN MANDIRI OLEH WARGA  (tanpa token — dipanggil dari
+   *  halaman warga saat yang mengisi belum jadi nasabah)
+   * ===================================================================== */
+  /**
+   * Mendaftarkan warga baru dari halaman warga dan mengembalikan
+   * ID Nasabahnya. Nomor ID sengaja dibuat SERVER, bukan browser, supaya
+   * dua warga yang mendaftar bersamaan tidak mendapat nomor yang sama.
+   * Bila NIK / No. HP-nya sudah pernah terdaftar, ID lama itulah yang
+   * dipakai kembali — jadi warga tidak punya dua ID.
+   */
+  function daftarMandiri(record) {
+    const data = Object.assign({}, record);
+    data.tanggalDaftar = data.tanggalDaftar || tanggalHariIni();
+    data.status = data.status || 'Aktif';
+    data.catatan = data.catatan || 'Mendaftar sendiri lewat halaman Bank Sampah';
+
+    if (!pakaiServer()) {
+      const daftar = ambilLokal(KUNCI_BS_NASABAH);
+      const lama = cocokNasabahLama(daftar, data);
+      if (lama) return Promise.resolve({ ok: true, pesan: 'Data lama dipakai kembali.', id: lama.id, lama: true });
+
+      data.id = idNasabahBaru(daftar);
+      daftar.push(data);
+      tulisLokal(KUNCI_BS_NASABAH, daftar);
+      return Promise.resolve({ ok: true, pesan: 'Nasabah baru terdaftar.', id: data.id });
+    }
+
+    // Aksi baca-tulis kecil — aman dipakai lewat JSONP seperti aksi lainnya.
+    return kirimAksi(Object.assign({ action: 'daftarMandiri' }, data));
+  }
+
+  /** Mencari nasabah yang sudah ada berdasarkan NIK, lalu No. HP + nama. */
+  function cocokNasabahLama(daftar, data) {
+    const nik = normalId(data.nik);
+    if (nik) {
+      const lewatNik = daftar.filter(function (n) { return normalId(n.nik) === nik; })[0];
+      if (lewatNik) return lewatNik;
+    }
+    const hp = String(data.noHp || '').replace(/[^0-9]/g, '');
+    const nama = String(data.nama || '').trim().toLowerCase();
+    if (!hp || !nama) return null;
+    return daftar.filter(function (n) {
+      return String(n.noHp || '').replace(/[^0-9]/g, '') === hp &&
+        String(n.nama || '').trim().toLowerCase() === nama;
+    })[0] || null;
+  }
+
+  /* =======================================================================
+   *  SETORAN YANG DICATAT SENDIRI OLEH WARGA (+ foto bukti)
+   * ===================================================================== */
+
+  /**
+   * Mengirim catatan setoran milik warga ke buku petugas.
+   * Karena membawa FOTO, pengirimannya lewat POST — lihat penjelasan pada
+   * postFetch()/postBingkai() di atas. ID catatannya dibuat di sini juga,
+   * supaya kalau balasan server hilang di jalan kita masih bisa memeriksa
+   * sendiri apakah catatannya sudah masuk.
+   *
+   * @returns {Promise<{ok:boolean, pesan:string, id:string}>}
+   */
+  function kirimSetoranWarga(record) {
+    const data = Object.assign({}, record);
+    data.id = data.id || idAcak('SW');
+    data.tanggal = data.tanggal || waktuSekarang();
+    data.status = BS_STATUS_SETOR.MENUNGGU;
+    data.tanggalProses = '';
+    data.catatanPetugas = '';
+    data.idSetoran = '';
+    data.idWarga = normalId(data.idWarga);
+
+    if (!pakaiServer()) {
+      const daftar = ambilLokal(KUNCI_BS_SETORAN_WARGA);
+      daftar.push(data);
+      if (!tulisLokal(KUNCI_BS_SETORAN_WARGA, daftar)) {
+        // Foto besar bisa membuat penyimpanan perangkat penuh — simpan tanpa foto.
+        daftar[daftar.length - 1] = Object.assign({}, data, { foto: '' });
+        tulisLokal(KUNCI_BS_SETORAN_WARGA, daftar);
+        return Promise.resolve({
+          ok: true, id: data.id,
+          pesan: 'Setoran tercatat, tetapi fotonya tidak muat di penyimpanan perangkat ini.',
+        });
+      }
+      return Promise.resolve({ ok: true, pesan: 'Setoran tercatat.', id: data.id });
+    }
+
+    const kiriman = Object.assign({ action: 'setorWarga' }, data);
+
+    return postFetch(kiriman).then(function (resp) {
+      if (resp && resp.ok) {
+        return { ok: true, pesan: resp.pesan || 'Setoran tercatat.', id: resp.id || data.id };
+      }
+      // Server menjawab dan MENOLAK — tidak perlu dicoba lagi.
+      if (resp && resp.pesan) return { ok: false, pesan: resp.pesan };
+
+      // Balasannya tidak terbaca (CORS/jaringan). Kirim ulang lewat formulir
+      // tersembunyi, lalu periksa sendiri hasilnya ke server.
+      return postBingkai(kiriman).then(function () {
+        return tungguSetoranWargaMasuk(data.id, 3);
+      });
+    });
+  }
+
+  /** Memeriksa berulang apakah catatan setoran warga sudah sampai di server. */
+  function tungguSetoranWargaMasuk(id, sisa) {
+    return jeda(2500).then(function () {
+      return jsonp({ action: 'cekSetorWarga', id: id }).then(function (resp) {
+        if (resp && resp.ok && resp.ada) {
+          return { ok: true, pesan: 'Setoran tercatat.', id: id };
+        }
+        if (sisa > 0) return tungguSetoranWargaMasuk(id, sisa - 1);
+        return {
+          ok: false,
+          tanpaBalasan: true,
+          id: id,
+          pesan: 'Server bank sampah belum menjawab. Catatan Anda bisa jadi TETAP masuk — ' +
+            'tetap kirim chat WhatsAppnya agar petugas tahu.',
+        };
+      });
+    });
+  }
+
+  /**
+   * Petugas menyetujui / menolak catatan setoran warga.
+   * Bila DISETUJUI, catatan itu diubah menjadi setoran resmi (masuk ke
+   * tabungan warga) memakai berat & harga yang sudah dipastikan petugas.
+   *
+   * @param {string} id      - ID catatan setoran warga
+   * @param {string} status  - BS_STATUS_SETOR.DISETUJUI | .DITOLAK
+   * @param {Object} [opsi]  - { berat, kantong, hargaPerKg, tanggal, catatan }
+   */
+  function prosesSetoranWarga(id, status, opsi) {
+    const pilihan = opsi || {};
+
+    if (!pakaiServer()) {
+      const daftar = ambilLokal(KUNCI_BS_SETORAN_WARGA);
+      const i = daftar.findIndex(function (s) { return String(s.id) === String(id); });
+      if (i < 0) return Promise.resolve({ ok: false, pesan: 'Catatan setoran tidak ditemukan.' });
+      if (String(daftar[i].status) !== BS_STATUS_SETOR.MENUNGGU) {
+        return Promise.resolve({ ok: false, pesan: 'Catatan ini sudah pernah diproses.' });
+      }
+
+      daftar[i].status = status;
+      daftar[i].tanggalProses = tanggalHariIni();
+      daftar[i].catatanPetugas = pilihan.catatan || '';
+
+      if (status !== BS_STATUS_SETOR.DISETUJUI) {
+        tulisLokal(KUNCI_BS_SETORAN_WARGA, daftar);
+        return Promise.resolve({ ok: true, pesan: 'Setoran warga ditolak.' });
+      }
+
+      const asli = daftar[i];
+      const berat = keAngka(pilihan.berat) || keAngka(asli.berat) ||
+        keAngka(asli.kantong) * (cfg().KG_PER_KANTONG || 3);
+      const harga = keAngka(pilihan.hargaPerKg) || hargaJenis(asli.jenis);
+
+      return simpanSetoran({
+        idWarga: asli.idWarga,
+        tanggal: pilihan.tanggal || tanggalHariIni(),
+        jenis: asli.jenis,
+        berat: Math.round(berat * 100) / 100,
+        kantong: keAngka(pilihan.kantong) || keAngka(asli.kantong),
+        hargaPerKg: harga,
+        pendapatan: Math.round(berat * harga),
+        catatan: catatanSetoranDari(asli),
+      }).then(function (hasil) {
+        daftar[i].idSetoran = hasil.id || '';
+        tulisLokal(KUNCI_BS_SETORAN_WARGA, daftar);
+        return { ok: true, pesan: 'Setoran warga disetujui & masuk ke tabungannya.' };
+      });
+    }
+
+    return kirimAksi({
+      action: 'prosesSetoranWarga',
+      token: cfg().token,
+      id: id,
+      status: status,
+      catatan: pilihan.catatan || '',
+      berat: pilihan.berat === undefined ? '' : pilihan.berat,
+      kantong: pilihan.kantong === undefined ? '' : pilihan.kantong,
+      hargaPerKg: pilihan.hargaPerKg === undefined ? '' : pilihan.hargaPerKg,
+      tanggal: pilihan.tanggal || '',
+    });
+  }
+
+  /** Menyusun catatan setoran resmi dari catatan yang ditulis warga. */
+  function catatanSetoranDari(asli) {
+    const bagian = ['Dicatat sendiri oleh warga'];
+    const lain = String(asli.jenisLain || '').trim();
+    if (lain) bagian.push('Lain-lain: ' + lain);
+    const catatan = String(asli.catatan || '').trim();
+    if (catatan) bagian.push(catatan);
+    return bagian.join(' · ');
+  }
+
+  function hapusSetoranWarga(id) {
+    if (!pakaiServer()) {
+      tulisLokal(KUNCI_BS_SETORAN_WARGA, ambilLokal(KUNCI_BS_SETORAN_WARGA).filter(function (s) {
+        return String(s.id) !== String(id);
+      }));
+      return Promise.resolve({ ok: true, pesan: 'Catatan setoran warga dihapus.' });
+    }
+    return kirimAksi({ action: 'hapusSetoranWarga', token: cfg().token, id: id });
+  }
+
+  /**
+   * Alamat gambar yang bisa dipasang di <img> / dibuka di tab baru.
+   * Isi kolom "foto" bisa berupa: data URL (mode perangkat), ID berkas
+   * Google Drive (mode Google Sheets), atau URL biasa.
+   */
+  function tautanFoto(foto, untukTampil) {
+    const teks = String(foto === null || foto === undefined ? '' : foto).trim();
+    if (!teks) return '';
+    if (teks.indexOf('data:') === 0) return teks;
+    if (/^https?:\/\//i.test(teks)) return teks;
+    return untukTampil
+      ? 'https://drive.google.com/thumbnail?id=' + encodeURIComponent(teks) + '&sz=w1200'
+      : 'https://drive.google.com/file/d/' + encodeURIComponent(teks) + '/view';
+  }
+
+  /* =======================================================================
    *  API PUBLIK
    * ===================================================================== */
   return {
@@ -660,11 +1078,26 @@ const BankSampah = (function () {
     prosesPengajuan: prosesPengajuan,
     hapusPengajuan: hapusPengajuan,
 
+    // setoran yang dicatat sendiri oleh warga (+ foto bukti)
+    daftarMandiri: daftarMandiri,
+    kirimSetoranWarga: kirimSetoranWarga,
+    prosesSetoranWarga: prosesSetoranWarga,
+    hapusSetoranWarga: hapusSetoranWarga,
+
+    // jenis sampah
+    daftarJenis: daftarJenis,
+    cariJenis: cariJenis,
+    hargaJenis: hargaJenis,
+    kelompokJenis: kelompokJenis,
+    labelJenis: labelJenis,
+
     // bantu tampilan
     rupiah: rupiah,
     kg: kg,
     keAngka: keAngka,
     normalId: normalId,
     tanggalHariIni: tanggalHariIni,
+    waktuSekarang: waktuSekarang,
+    tautanFoto: tautanFoto,
   };
 })();

@@ -158,11 +158,59 @@ const KONFIGURASI = {
     /* Awalan ID nasabah yang dibuat otomatis → BS-0001, BS-0002, … */
     PREFIX_ID: 'BS',
 
-    /* Harga beli sampah per kg (Rp). Dipakai untuk menghitung
-     * pendapatan warga secara otomatis saat petugas menimbang. */
+    /* ----------------------------------------------------------------
+     * JENIS SAMPAH YANG DITERIMA BANK SAMPAH
+     *
+     * Daftar inilah yang muncul di SEMUA tempat sekaligus:
+     *   - pilihan "Setoran Sampah" pada formulir warga (bank-sampah.html)
+     *   - pilihan & penyaring "Jenis Sampah" di dashboard petugas
+     *   - tabel "Perkiraan Harga Sampah" di halaman warga
+     *
+     * Menambah / menghapus jenis cukup dilakukan di sini.
+     *   nama   : ditulis apa adanya ke Google Sheets — JANGAN diubah
+     *            setelah ada data masuk, nanti riwayat lama tidak cocok.
+     *   harga  : harga beli per kg (Rp) → dipakai menghitung pendapatan warga.
+     *   ikon   : emoji untuk mempercantik tampilan.
+     *   ket    : keterangan singkat supaya warga tidak salah pilih.
+     *   isian  : true → warga wajib menuliskan keterangannya sendiri
+     *            (dipakai oleh "Lain-lain").
+     * ---------------------------------------------------------------- */
+    JENIS: [
+      { nama: 'Botol Plastik', ikon: '🍶', harga: 3000,
+        ket: 'Botol air mineral & botol minuman. Buang isinya, lalu keringkan.' },
+      { nama: 'Kardus', ikon: '📦', harga: 1500,
+        ket: 'Kardus bekas, dus mi instan, dus air mineral. Dilipat & jangan basah.' },
+      { nama: 'Rak Telur', ikon: '🥚', harga: 1000,
+        ket: 'Tatakan/rak telur dari kertas. Pastikan tidak berjamur.' },
+      { nama: 'Gelas Plastik', ikon: '🥤', harga: 2500,
+        ket: 'Gelas air mineral & gelas minuman. Lepas sedotan dan bilas dulu.' },
+      { nama: 'Lain-lain', ikon: '♻️', harga: 1000, isian: true,
+        ket: 'Jenis lain (kaleng, besi, kertas, dll.) — tuliskan keterangannya.' },
+    ],
+
+    /* Harga beli sampah per kg (Rp) untuk PENGELOMPOKAN LAMA
+     * (kering/basah). Masih dipakai supaya riwayat setoran yang sudah
+     * terlanjur tercatat sebagai "Kering"/"Basah" tetap terbaca. Setoran
+     * baru memakai daftar JENIS di atas. */
     HARGA_PER_KG: {
       kering: 2000, // plastik, kertas, kaleng, botol
       basah: 500,   // sisa dapur/organik untuk kompos
+    },
+
+    /* ----------------------------------------------------------------
+     * SETORAN MANDIRI OLEH WARGA (halaman bank-sampah.html)
+     *
+     * Warga — sudah terdaftar maupun belum — mencatat sendiri sampah yang
+     * disetor beserta FOTO BUKTINYA. Catatan itu masuk ke dashboard
+     * petugas untuk DISETUJUI atau DITOLAK, sekaligus disiapkan sebagai
+     * chat WhatsApp ke pengelola.
+     * ---------------------------------------------------------------- */
+    SETORAN_WARGA: {
+      /* Foto bukti dikecilkan dulu di HP warga sebelum dikirim, supaya
+       * hemat kuota dan tidak ditolak server. */
+      FOTO_MAKS_PIKSEL: 1000,  // sisi terpanjang foto (piksel)
+      FOTO_MUTU: 0.72,         // mutu JPEG 0–1 (makin kecil, makin ringan)
+      FOTO_MAKS_KB: 600,       // batas akhir ukuran foto yang dikirim (KB)
     },
 
     /* Perkiraan berat 1 kantong (kg) — dipakai bila petugas hanya

@@ -89,11 +89,17 @@
             <span class="adm-stat-angka" id="statPengajuan">0</span>
             <span class="adm-stat-label">Pengajuan Menunggu</span>
           </div>
+          <div class="adm-stat adm-stat-5">
+            <span class="adm-stat-ikon">📥</span>
+            <span class="adm-stat-angka" id="statSetorWarga">0</span>
+            <span class="adm-stat-label">Setoran Warga Menunggu</span>
+          </div>
         </div>
 
         <!-- Tab -->
         <div class="adm-tab-baris" role="tablist">
           <button type="button" class="adm-tab aktif" data-tab="warga">👥 Data Warga</button>
+          <button type="button" class="adm-tab" data-tab="masuk">📥 Setoran dari Warga <span class="bs-badge bs-badge-merah tersembunyi" id="lencanaSetorWarga">0</span></button>
           <button type="button" class="adm-tab" data-tab="setoran">⚖️ Setoran Sampah</button>
           <button type="button" class="adm-tab" data-tab="pencairan">💵 Pencairan <span class="bs-badge bs-badge-merah tersembunyi" id="lencanaPengajuan">0</span></button>
           <button type="button" class="adm-tab" data-tab="panduan">📖 Cara Pakai</button>
@@ -233,7 +239,60 @@
           </div>
         </section>
 
-        <!-- =================== TAB 2: SETORAN =================== -->
+        <!-- ============ TAB 2: SETORAN YANG DIISI SENDIRI OLEH WARGA ============ -->
+        <section class="adm-panel" id="panelMasuk">
+          <div class="adm-kotak">
+            <h2 class="adm-kotak-judul">📥 Setoran yang Dicatat Sendiri oleh Warga</h2>
+            <p class="adm-kotak-ket">
+              Warga — baik yang sudah terdaftar maupun belum — bisa mencatat sendiri setorannya
+              lewat halaman <a href="bank-sampah.html#setor" target="_blank" rel="noopener">Bank Sampah</a>
+              beserta <strong>foto bukti sampahnya</strong>. Catatan itu masuk ke sini dan
+              <strong>belum menambah tabungan warga</strong> sampai Anda menyetujuinya.
+              Klik <strong>“👁️ Periksa”</strong> untuk melihat fotonya, menimbang ulang, lalu
+              <strong>menyetujui</strong> atau <strong>menolak</strong>.
+            </p>
+
+            <div class="adm-filter">
+              <div class="adm-filter-judul">🔎 Penyaring Setoran Warga</div>
+              <div class="adm-filter-grid">
+                <div class="adm-field">
+                  <label for="fmCari">Cari</label>
+                  <input type="search" id="fmCari" placeholder="Nama / ID Nasabah / No. HP">
+                </div>
+                <div class="adm-field">
+                  <label for="fmStatus">Status</label>
+                  <select id="fmStatus">
+                    <option value="Menunggu">Menunggu Diperiksa</option>
+                    <option value="">Semua Status</option>
+                    <option value="Disetujui">Disetujui</option>
+                    <option value="Ditolak">Ditolak</option>
+                  </select>
+                </div>
+                <div class="adm-field">
+                  <label for="fmJenis">Jenis Sampah</label>
+                  <select id="fmJenis"><option value="">Semua Jenis</option></select>
+                </div>
+                <div class="adm-field">
+                  <label for="fmUrut">Urutkan</label>
+                  <select id="fmUrut">
+                    <option value="baru">Terbaru</option>
+                    <option value="lama">Terlama</option>
+                    <option value="nama">Nama warga (A → Z)</option>
+                  </select>
+                </div>
+              </div>
+              <div class="adm-filter-aksi">
+                <button type="button" class="tombol tombol-kecil tombol-batal" id="btnResetMasuk">↺ Bersihkan Penyaring</button>
+                <button type="button" class="tombol tombol-kecil tombol-excel" id="btnUnduhMasuk">⬇️ Unduh Excel</button>
+                <span class="adm-filter-info" id="infoJumlahMasuk"></span>
+              </div>
+            </div>
+
+            <div id="tabelMasuk"></div>
+          </div>
+        </section>
+
+        <!-- =================== TAB 3: SETORAN =================== -->
         <section class="adm-panel" id="panelSetoran">
 
           <div class="adm-kotak">
@@ -256,10 +315,15 @@
                 </div>
                 <div class="adm-field">
                   <label for="sJenis">Jenis Sampah <span class="wajib">*</span></label>
-                  <select id="sJenis">
-                    <option value="Kering">Kering — plastik, kertas, kaleng, botol</option>
-                    <option value="Basah">Basah — sisa dapur, sayur, daun</option>
-                  </select>
+                  <!-- Pilihannya diisi js/admin-bank-sampah.js dari
+                       KONFIGURASI.BANK_SAMPAH.JENIS di js/config.js -->
+                  <select id="sJenis"></select>
+                  <small>Menambah / mengubah jenis sampah cukup di <strong>js/config.js</strong>.</small>
+                </div>
+                <div class="adm-field">
+                  <label for="sJenisLain">Keterangan Lain-lain</label>
+                  <input type="text" id="sJenisLain" placeholder="Contoh: kaleng bekas, besi tua" disabled>
+                  <small>Terbuka hanya bila jenisnya <strong>Lain-lain</strong>. Ikut tersimpan di kolom Catatan.</small>
                 </div>
                 <div class="adm-field">
                   <label for="sHarga">Harga per kg (Rp)</label>
@@ -315,11 +379,7 @@
                 </div>
                 <div class="adm-field">
                   <label for="fsJenis">Jenis Sampah</label>
-                  <select id="fsJenis">
-                    <option value="">Semua Jenis</option>
-                    <option value="Kering">Kering</option>
-                    <option value="Basah">Basah</option>
-                  </select>
+                  <select id="fsJenis"><option value="">Semua Jenis</option></select>
                 </div>
                 <div class="adm-field">
                   <label for="fsStatus">Status Pencairan</label>
@@ -442,12 +502,20 @@
             <ol class="adm-langkah">
               <li><strong>Warga baru mendaftar?</strong> Buka tab <strong>👥 Data Warga</strong>, isi nama
                   (wajib), NIK, alamat, RT/RW, dan No. HP, lalu klik <em>Simpan Data Warga</em>.
-                  Sistem membuatkan ID Nasabah otomatis, misalnya <strong>BS-0001</strong>.</li>
+                  Sistem membuatkan ID Nasabah otomatis, misalnya <strong>BS-0001</strong>.
+                  <em>Warga juga bisa mendaftar sendiri</em> saat mencatat setoran dari HP-nya —
+                  ID Nasabahnya tetap dibuatkan otomatis.</li>
               <li><strong>Catat ID Nasabah di buku tabungan warga.</strong> ID inilah yang mereka
                   pakai untuk mengecek tabungannya sendiri dari HP.</li>
-              <li><strong>Warga menyetor sampah?</strong> Buka tab <strong>⚖️ Setoran Sampah</strong>,
-                  pilih namanya, pilih jenis sampah (kering/basah), isi berat hasil timbangan,
-                  lalu <em>Simpan Setoran</em>. Pendapatan warga dihitung otomatis.</li>
+              <li><strong>Warga mengirim catatan setoran dari HP?</strong> Catatannya masuk ke tab
+                  <strong>📥 Setoran dari Warga</strong> lengkap dengan <strong>foto buktinya</strong>.
+                  Klik <em>👁️ Periksa</em>, cocokkan dengan sampah yang dibawa, timbang, lalu
+                  <em>✅ Setujui</em> — setoran langsung masuk ke tabungan warga.
+                  Kalau tidak sesuai, klik <em>✖️ Tolak</em>.</li>
+              <li><strong>Warga menyetor langsung di sekretariat?</strong> Buka tab
+                  <strong>⚖️ Setoran Sampah</strong>, pilih namanya, pilih jenis sampah
+                  (Botol Plastik, Kardus, Rak Telur, Gelas Plastik, atau Lain-lain), isi berat hasil
+                  timbangan, lalu <em>Simpan Setoran</em>. Pendapatan warga dihitung otomatis.</li>
               <li><strong>Warga mengajukan pencairan?</strong> Pengajuannya masuk ke tab
                   <strong>💵 Pencairan</strong>. Serahkan uangnya, lalu klik
                   <em>✅ Setujui &amp; Tandai Cair</em>.</li>
@@ -495,10 +563,24 @@
             </div>
             <div class="adm-tanya">
               <details>
-                <summary>Sampah Kering vs Sampah Basah</summary>
-                <p><strong>Kering</strong> = plastik, kertas, kardus, kaleng, botol — bisa dijual ke
-                   pengepul dengan harga lebih tinggi. <strong>Basah</strong> = sisa dapur, sayur,
-                   kulit buah, daun — diolah menjadi kompos.</p>
+                <summary>Jenis sampah yang diterima</summary>
+                <p>Bank sampah Kampung Baru menerima <strong>Botol Plastik</strong>,
+                   <strong>Kardus</strong>, <strong>Rak Telur</strong>, <strong>Gelas Plastik</strong>,
+                   dan <strong>Lain-lain</strong> (kaleng, besi, kertas, dsb. — keterangannya ditulis
+                   di kolom tersendiri). Setiap jenis punya harga per kg sendiri yang terisi otomatis.
+                   Daftar jenis &amp; harganya diatur di berkas <strong>js/config.js</strong> bagian
+                   <strong>BANK_SAMPAH.JENIS</strong>, dan langsung ikut berubah di halaman warga.</p>
+              </details>
+            </div>
+            <div class="adm-tanya">
+              <details>
+                <summary>Setoran dari Warga (menunggu persetujuan)</summary>
+                <p>Setoran yang <strong>dicatat sendiri oleh warga</strong> dari HP-nya
+                   <strong>belum menambah tabungan</strong> siapa pun. Angka berat yang mereka isi
+                   hanya <em>perkiraan</em>, dan fotonya perlu Anda periksa dulu. Baru setelah Anda
+                   klik <strong>✅ Setujui</strong> (dengan berat hasil timbangan yang sebenarnya),
+                   catatan itu berubah menjadi setoran resmi di tab
+                   <strong>⚖️ Setoran Sampah</strong>.</p>
               </details>
             </div>
             <div class="adm-tanya">
@@ -535,6 +617,65 @@
       <button class="modal-tutup" id="modalWargaTutup" aria-label="Tutup">&times;</button>
       <h3 class="modal-judul" id="modalWargaJudul">Rincian Warga</h3>
       <div id="modalWargaIsi"></div>
+    </div>
+  </div>
+
+  <!-- ============ MODAL PERIKSA SETORAN YANG DIKIRIM WARGA ============ -->
+  <div id="modalMasuk" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-labelledby="modalMasukJudul">
+    <div class="modal-latar" id="modalMasukLatar"></div>
+    <div class="modal-kotak adm-modal-kotak">
+      <button class="modal-tutup" id="modalMasukTutup" aria-label="Tutup">&times;</button>
+      <h3 class="modal-judul" id="modalMasukJudul">Periksa Setoran Warga</h3>
+
+      <div id="modalMasukIsi"></div>
+
+      <div class="adm-setuju-kotak" id="modalMasukAksi">
+        <h4 class="adm-setuju-judul">✅ Setujui &amp; Masukkan ke Tabungan Warga</h4>
+        <p class="adm-setuju-ket">
+          Timbang dulu sampahnya, lalu isi <strong>berat sebenarnya</strong> di bawah.
+          Angka dari warga hanya perkiraan. Setelah disetujui, setoran ini langsung
+          menambah tabungan warga tersebut.
+        </p>
+
+        <div class="adm-form-grid adm-form-grid-3">
+          <div class="adm-field">
+            <label for="mBerat">Berat Hasil Timbangan (kg)</label>
+            <input type="number" id="mBerat" min="0" step="0.1" inputmode="decimal">
+          </div>
+          <div class="adm-field">
+            <label for="mKantong">Jumlah Kantong</label>
+            <input type="number" id="mKantong" min="0" step="1" inputmode="numeric">
+          </div>
+          <div class="adm-field">
+            <label for="mHarga">Harga per kg (Rp)</label>
+            <input type="number" id="mHarga" min="0" step="100" inputmode="numeric">
+          </div>
+          <div class="adm-field">
+            <label for="mTanggal">Tanggal Setor</label>
+            <input type="date" id="mTanggal">
+          </div>
+          <div class="adm-field adm-field-lebar">
+            <label for="mCatatan">Catatan Petugas</label>
+            <input type="text" id="mCatatan" placeholder="Contoh: sudah ditimbang ulang, botol dalam keadaan bersih">
+          </div>
+        </div>
+
+        <div class="adm-hitung">
+          <div>
+            <div class="adm-hitung-label">Berat yang dipakai</div>
+            <div class="adm-hitung-nilai" id="mHitungBerat">0 kg</div>
+          </div>
+          <div>
+            <div class="adm-hitung-label">Pendapatan untuk warga</div>
+            <div class="adm-hitung-nilai" id="mHitungRp">Rp 0</div>
+          </div>
+        </div>
+
+        <div class="adm-form-aksi">
+          <button type="button" class="tombol" id="btnSetujuiMasuk">✅ Setujui &amp; Masukkan ke Tabungan</button>
+          <button type="button" class="tombol tombol-kecil tombol-batal" id="btnTolakMasuk">✖️ Tolak Setoran</button>
+        </div>
+      </div>
     </div>
   </div>
 

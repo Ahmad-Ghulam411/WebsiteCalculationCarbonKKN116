@@ -32,6 +32,7 @@
     wiringNavigasi();
     wiringForm();
     wiringModalCair();
+    wiringSetorWarga();
     setTahunFooter();
     isiIdAwal();
   }
@@ -117,23 +118,12 @@
   function isiDaftarHarga() {
     const wadah = $('bsDaftarHarga');
     if (!wadah) return;
-    const harga = KONFIGURASI.BANK_SAMPAH.HARGA_PER_KG;
-    const daftar = [
-      {
-        ikon: '🧴', nama: 'Sampah Kering', nilai: harga.kering,
-        ket: 'Botol plastik, gelas plastik, kardus, kertas, kaleng, besi',
-      },
-      {
-        ikon: '🍂', nama: 'Sampah Basah', nilai: harga.basah,
-        ket: 'Sisa sayur, kulit buah, nasi, daun — diolah jadi kompos',
-      },
-    ];
-    wadah.innerHTML = daftar.map(function (h) {
+    wadah.innerHTML = BankSampah.daftarJenis().map(function (j) {
       return '<div class="bs-harga-item">' +
-        '<div class="bs-harga-ikon">' + h.ikon + '</div>' +
-        '<div class="bs-harga-nama">' + h.nama + '</div>' +
-        '<div class="bs-harga-nilai">' + BankSampah.rupiah(h.nilai) + ' <small>/ kg</small></div>' +
-        '<div class="bs-harga-isi">' + h.ket + '</div>' +
+        '<div class="bs-harga-ikon">' + escHtml(j.ikon || '♻️') + '</div>' +
+        '<div class="bs-harga-nama">' + escHtml(j.nama) + '</div>' +
+        '<div class="bs-harga-nilai">' + BankSampah.rupiah(j.harga) + ' <small>/ kg</small></div>' +
+        '<div class="bs-harga-isi">' + escHtml(j.ket || '') + '</div>' +
         '</div>';
     }).join('');
   }
@@ -280,13 +270,7 @@
     $('bsTotalKantong').textContent = angkaRamah(r.totalKantong) + ' kantong';
     $('bsJumlahSetoran').textContent = r.jumlahSetoran + ' kali';
 
-    $('bsKeringBerat').textContent = angkaRamah(r.kering.berat) + ' kg';
-    $('bsKeringKantong').textContent = angkaRamah(r.kering.kantong) + ' kantong';
-    $('bsKeringRp').textContent = BankSampah.rupiah(r.kering.pendapatan);
-
-    $('bsBasahBerat').textContent = angkaRamah(r.basah.berat) + ' kg';
-    $('bsBasahKantong').textContent = angkaRamah(r.basah.kantong) + ' kantong';
-    $('bsBasahRp').textContent = BankSampah.rupiah(r.basah.pendapatan);
+    aturRincianJenis(r.perJenis);
 
     /* --- Pendapatan --- */
     $('bsUangTotal').textContent = BankSampah.rupiah(r.pendapatanTotal);
@@ -304,6 +288,35 @@
   function kotakKecil(label, nilai) {
     return '<div class="bs-kotak-kecil"><span class="bs-label-kecil">' + label + '</span>' +
       '<strong>' + nilai + '</strong></div>';
+  }
+
+  /** Kartu rincian tiap jenis sampah (Botol Plastik, Kardus, …). */
+  function aturRincianJenis(perJenis) {
+    const wadah = $('bsRincianJenis');
+    if (!wadah) return;
+
+    // Jenis yang belum pernah disetor warga ini tidak perlu memenuhi layar —
+    // kecuali memang belum ada setoran sama sekali, supaya tetap terlihat
+    // sampah apa saja yang diterima bank sampah.
+    const semua = perJenis || [];
+    const adaIsi = semua.some(function (j) { return j.jumlahSetoran > 0; });
+    const tampil = adaIsi ? semua.filter(function (j) { return j.jumlahSetoran > 0; }) : semua;
+
+    if (!tampil.length) {
+      wadah.innerHTML = '<p class="bs-kosong">Belum ada rincian jenis sampah.</p>';
+      return;
+    }
+
+    wadah.innerHTML = tampil.map(function (j) {
+      return '<div class="bs-jenis' + (j.jumlahSetoran ? '' : ' bs-jenis-sepi') + '">' +
+        '<div class="bs-jenis-ikon">' + escHtml(j.ikon || '♻️') + '</div>' +
+        '<div class="bs-jenis-nama">' + escHtml(j.nama) + '</div>' +
+        '<div class="bs-jenis-ket">' + escHtml(j.ket || 'Jenis dari catatan lama') + '</div>' +
+        '<div class="bs-jenis-baris"><span>Berat</span><strong>' + angkaRamah(j.berat) + ' kg</strong></div>' +
+        '<div class="bs-jenis-baris"><span>Kantong</span><strong>' + angkaRamah(j.kantong) + '</strong></div>' +
+        '<div class="bs-jenis-baris"><span>Pendapatan</span><strong>' + BankSampah.rupiah(j.pendapatan) + '</strong></div>' +
+        '</div>';
+    }).join('');
   }
 
   function aturTombolCair(r) {
@@ -542,7 +555,11 @@
 
   /** Menyalin isi pesan — untuk warga yang tidak memakai WhatsApp. */
   function salinPesanWa() {
-    if (!pesanWaAktif) return;
+    salinTeks(pesanWaAktif);
+  }
+
+  function salinTeks(teks) {
+    if (!teks) return;
 
     const beritahu = function (berhasil) {
       toast(berhasil
@@ -551,13 +568,13 @@
     };
 
     if (navigator.clipboard && navigator.clipboard.writeText) {
-      navigator.clipboard.writeText(pesanWaAktif).then(
+      navigator.clipboard.writeText(teks).then(
         function () { beritahu(true); },
-        function () { beritahu(salinCaraLama(pesanWaAktif)); }
+        function () { beritahu(salinCaraLama(teks)); }
       );
       return;
     }
-    beritahu(salinCaraLama(pesanWaAktif));
+    beritahu(salinCaraLama(teks));
   }
 
   function salinCaraLama(teks) {
@@ -576,6 +593,547 @@
     } catch (e) {
       return false;
     }
+  }
+
+  /* =====================================================================
+   *  MENCATAT SETORAN SAMPAH — DIISI SENDIRI OLEH WARGA
+   *  ---------------------------------------------------------------------
+   *  Alurnya:
+   *    1. Warga memilih "sudah terdaftar" (isi ID Nasabah/NIK) atau
+   *       "belum terdaftar" (ID Nasabahnya dibuatkan otomatis).
+   *    2. Mengisi data diri, jenis sampah, perkiraan berat/kantong,
+   *       dan MEMOTRET sampahnya sebagai bukti.
+   *    3. Catatan + fotonya dikirim ke buku petugas dengan status
+   *       "Menunggu" — petugas yang menyetujui atau menolaknya.
+   *    4. Sekaligus muncul kotak berisi chat WhatsApp siap kirim untuk
+   *       pengelola bank sampah.
+   * =================================================================== */
+
+  let fotoSetoran = null;      // { dataUrl, ukuranKb } foto yang sudah dikecilkan
+  let wargaTerdaftar = null;   // hasil "Cek" ID Nasabah/NIK
+  let pesanSetorWa = '';       // isi chat setoran yang sedang disiapkan
+
+  function wiringSetorWarga() {
+    const form = $('formSetorWarga');
+    if (!form) return;
+
+    isiPilihanJenis();
+
+    document.querySelectorAll('input[name="swTerdaftar"]').forEach(function (r) {
+      r.addEventListener('change', aturTampilanTerdaftar);
+    });
+    aturTampilanTerdaftar();
+
+    const tombolCek = $('swCekId');
+    if (tombolCek) tombolCek.addEventListener('click', cekIdNasabah);
+
+    const isianId = $('swId');
+    if (isianId) {
+      isianId.addEventListener('input', function () {
+        wargaTerdaftar = null;         // ID berubah → hasil cek sebelumnya tidak berlaku lagi
+        pesanKe('swPesanId', '');
+      });
+      isianId.addEventListener('keydown', function (ev) {
+        if (ev.key === 'Enter') { ev.preventDefault(); cekIdNasabah(); }
+      });
+    }
+
+    const berkas = $('swFoto');
+    if (berkas) berkas.addEventListener('change', pilihFoto);
+    const hapusFotoBtn = $('swFotoHapus');
+    if (hapusFotoBtn) hapusFotoBtn.addEventListener('click', hapusFoto);
+
+    form.addEventListener('submit', function (ev) {
+      ev.preventDefault();
+      kirimSetoran();
+    });
+
+    wiringModalSetor();
+  }
+
+  /** Kartu pilihan jenis sampah — isinya mengikuti js/config.js. */
+  function isiPilihanJenis() {
+    const wadah = $('swJenisPilih');
+    if (!wadah) return;
+
+    wadah.innerHTML = BankSampah.daftarJenis().map(function (j, i) {
+      const id = 'swJenis' + i;
+      return '<label class="bs-jenis-kartu" for="' + id + '">' +
+        '<input type="radio" name="swJenis" id="' + id + '" value="' + escHtml(j.nama) + '"' +
+          (j.isian ? ' data-isian="1"' : '') + '>' +
+        '<span class="bs-jenis-kartu-isi">' +
+          '<span class="bs-jenis-kartu-ikon" aria-hidden="true">' + escHtml(j.ikon || '♻️') + '</span>' +
+          '<strong>' + escHtml(j.nama) + '</strong>' +
+          '<small>' + escHtml(j.ket || '') + '</small>' +
+          '<span class="bs-jenis-kartu-harga">' + BankSampah.rupiah(j.harga) + ' / kg</span>' +
+        '</span></label>';
+    }).join('');
+
+    wadah.querySelectorAll('input[name="swJenis"]').forEach(function (r) {
+      r.addEventListener('change', function () {
+        const perluIsian = r.checked && r.getAttribute('data-isian') === '1';
+        $('swKotakLain').classList.toggle('tersembunyi', !perluIsian);
+        if (perluIsian) $('swJenisLain').focus();
+      });
+    });
+  }
+
+  function statusTerdaftar() {
+    const dipilih = document.querySelector('input[name="swTerdaftar"]:checked');
+    return dipilih ? dipilih.value : 'ya';
+  }
+
+  function jenisTerpilih() {
+    const dipilih = document.querySelector('input[name="swJenis"]:checked');
+    return dipilih ? dipilih.value : '';
+  }
+
+  function aturTampilanTerdaftar() {
+    const sudah = statusTerdaftar() === 'ya';
+    $('swKotakId').classList.toggle('tersembunyi', !sudah);
+    $('swInfoBaru').classList.toggle('tersembunyi', sudah);
+    if (!sudah) { wargaTerdaftar = null; pesanKe('swPesanId', ''); }
+  }
+
+  function pesanKe(id, teks, jenis) {
+    const p = $(id);
+    if (!p) return;
+    p.textContent = teks || '';
+    p.className = 'bs-pesan' + (teks ? ' tampil' : '') + (jenis ? ' bs-pesan-' + jenis : '');
+  }
+
+  /* ---------------------------------------------------------------------
+   *  Mencari data warga yang sudah terdaftar (ID Nasabah atau NIK)
+   * ------------------------------------------------------------------- */
+  function cekIdNasabah() {
+    const id = BankSampah.normalId($('swId').value);
+    if (!id) {
+      pesanKe('swPesanId', 'Mohon isi dulu ID Nasabah atau NIK Anda.', 'salah');
+      $('swId').focus();
+      return Promise.resolve(null);
+    }
+
+    const tombol = $('swCekId');
+    tombol.disabled = true;
+    pesanKe('swPesanId', '⏳ Sedang mencari data Anda…', 'proses');
+
+    return BankSampah.cekWarga(id).then(function (hasil) {
+      tombol.disabled = false;
+
+      if (!hasil.ok || !hasil.nasabah) {
+        wargaTerdaftar = null;
+        pesanKe('swPesanId', hasil.tanpaBalasan
+          ? '❌ Server bank sampah belum menjawab. Periksa koneksi internet lalu coba lagi.'
+          : '❌ Data tidak ditemukan. Periksa lagi ID/NIK Anda — atau pilih ' +
+            '"🆕 Belum terdaftar" di atas kalau memang baru pertama kali menyetor.', 'salah');
+        return null;
+      }
+
+      wargaTerdaftar = hasil.nasabah;
+      isiDariNasabah(hasil.nasabah);
+      pesanKe('swPesanId', '✅ Selamat datang kembali, ' + (hasil.nasabah.nama || 'warga') +
+        '! ID Nasabah Anda ' + hasil.nasabah.id + '. Data di bawah sudah terisi — ' +
+        'silakan perbaiki bila ada yang berubah.', 'proses');
+      return hasil.nasabah;
+    });
+  }
+
+  /** Mengisi formulir dengan data warga yang sudah tersimpan. */
+  function isiDariNasabah(n) {
+    const isi = function (id, nilai) {
+      const e = $(id);
+      if (e && !String(e.value).trim()) e.value = nilai || '';
+    };
+    // Nama & alamat sengaja ditimpa, sisanya hanya bila masih kosong.
+    $('swNama').value = n.nama || $('swNama').value;
+    $('swAlamat').value = n.alamat || $('swAlamat').value;
+    isi('swRt', n.rt);
+    isi('swRw', n.rw);
+    isi('swHp', n.noHp);
+  }
+
+  /* ---------------------------------------------------------------------
+   *  Foto bukti — dikecilkan dulu di HP warga supaya hemat kuota
+   * ------------------------------------------------------------------- */
+  function pilihFoto(ev) {
+    const berkas = ev.target.files && ev.target.files[0];
+    if (!berkas) return;
+
+    pesanKe('swPesan', '⏳ Menyiapkan foto…', 'proses');
+    kecilkanFoto(berkas).then(
+      function (hasil) {
+        fotoSetoran = hasil;
+        $('swFotoGambar').src = hasil.dataUrl;
+        $('swFotoInfo').textContent = '✅ Foto siap dikirim (± ' + hasil.ukuranKb + ' KB)';
+        $('swFotoPratinjau').classList.remove('tersembunyi');
+        $('swFotoLabel').classList.add('tersembunyi');
+        pesanKe('swPesan', '');
+      },
+      function (galat) {
+        fotoSetoran = null;
+        ev.target.value = '';
+        pesanKe('swPesan', '❌ ' + galat.message, 'salah');
+      }
+    );
+  }
+
+  function hapusFoto() {
+    fotoSetoran = null;
+    $('swFoto').value = '';
+    $('swFotoGambar').removeAttribute('src');
+    $('swFotoPratinjau').classList.add('tersembunyi');
+    $('swFotoLabel').classList.remove('tersembunyi');
+    pesanKe('swPesan', '');
+  }
+
+  /** Perkiraan ukuran (KB) sebuah gambar dalam bentuk data URL. */
+  function ukuranKb(dataUrl) {
+    const potong = dataUrl.indexOf('base64,');
+    const panjang = potong >= 0 ? dataUrl.length - potong - 7 : dataUrl.length;
+    return (panjang * 3 / 4) / 1024;
+  }
+
+  /**
+   * Mengecilkan foto memakai <canvas>: sisi terpanjang dipangkas ke ukuran
+   * pada KONFIGURASI…SETORAN_WARGA, lalu mutunya diturunkan bertahap sampai
+   * ukurannya cukup ringan untuk dikirim lewat jaringan HP.
+   */
+  function kecilkanFoto(berkas) {
+    return new Promise(function (resolve, tolak) {
+      if (!/^image\//.test(berkas.type || '')) {
+        tolak(new Error('Berkas yang dipilih bukan foto. Pilih gambar JPG atau PNG, ya.'));
+        return;
+      }
+      if (berkas.size > 25 * 1024 * 1024) {
+        tolak(new Error('Fotonya terlalu besar (lebih dari 25 MB). Coba potret ulang dengan mutu lebih rendah.'));
+        return;
+      }
+
+      const pengaturan = KONFIGURASI.BANK_SAMPAH.SETORAN_WARGA || {};
+      const maksSisi = pengaturan.FOTO_MAKS_PIKSEL || 1000;
+      const maksKb = pengaturan.FOTO_MAKS_KB || 600;
+      let mutu = pengaturan.FOTO_MUTU || 0.72;
+
+      const pembaca = new FileReader();
+      pembaca.onerror = function () { tolak(new Error('Fotonya tidak bisa dibaca. Coba pilih foto lain.')); };
+      pembaca.onload = function () {
+        const gambar = new Image();
+        gambar.onerror = function () { tolak(new Error('Fotonya tidak bisa dibuka. Coba pilih foto lain.')); };
+        gambar.onload = function () {
+          try {
+            const skala = Math.min(1, maksSisi / Math.max(gambar.width, gambar.height));
+            const lebar = Math.max(1, Math.round(gambar.width * skala));
+            const tinggi = Math.max(1, Math.round(gambar.height * skala));
+
+            const kanvas = document.createElement('canvas');
+            kanvas.width = lebar;
+            kanvas.height = tinggi;
+            const kuas = kanvas.getContext('2d');
+            kuas.fillStyle = '#ffffff';        // foto PNG tembus pandang → jangan jadi hitam
+            kuas.fillRect(0, 0, lebar, tinggi);
+            kuas.drawImage(gambar, 0, 0, lebar, tinggi);
+
+            let hasil = kanvas.toDataURL('image/jpeg', mutu);
+            while (ukuranKb(hasil) > maksKb && mutu > 0.32) {
+              mutu -= 0.12;
+              hasil = kanvas.toDataURL('image/jpeg', mutu);
+            }
+            resolve({ dataUrl: hasil, ukuranKb: Math.round(ukuranKb(hasil)) });
+          } catch (e) {
+            tolak(new Error('Fotonya gagal disiapkan. Coba potret ulang, ya.'));
+          }
+        };
+        gambar.src = pembaca.result;
+      };
+      pembaca.readAsDataURL(berkas);
+    });
+  }
+
+  /** base64 "web-safe" (+ → -, / → _) supaya isinya tidak rusak saat dikirim. */
+  function base64Websafe(dataUrl) {
+    const potong = String(dataUrl || '').indexOf('base64,');
+    const isi = potong >= 0 ? dataUrl.slice(potong + 7) : String(dataUrl || '');
+    return isi.replace(/\+/g, '-').replace(/\//g, '_');
+  }
+
+  /* ---------------------------------------------------------------------
+   *  Mengirim setoran
+   * ------------------------------------------------------------------- */
+  function kirimSetoran() {
+    const data = {
+      nama: $('swNama').value.trim(),
+      alamat: $('swAlamat').value.trim(),
+      rt: $('swRt').value.trim(),
+      rw: $('swRw').value.trim(),
+      noHp: $('swHp').value.trim(),
+      jenis: jenisTerpilih(),
+      jenisLain: $('swJenisLain').value.trim(),
+      berat: BankSampah.keAngka($('swBerat').value),
+      kantong: BankSampah.keAngka($('swKantong').value),
+      catatan: $('swCatatan').value.trim(),
+    };
+
+    const salah = periksaIsian(data);
+    if (salah) {
+      pesanKe('swPesan', '⚠️ ' + salah.pesan, 'salah');
+      const kolom = $(salah.kolom);
+      if (kolom) { kolom.focus(); kolom.scrollIntoView({ behavior: 'smooth', block: 'center' }); }
+      return;
+    }
+
+    const tombol = $('swKirim');
+    const labelAsli = tombol.textContent;
+    tombol.disabled = true;
+    tombol.textContent = '⏳ Mengirim…';
+    pesanKe('swPesan', '⏳ Setoran Anda sedang dikirim ke petugas. Mohon jangan tutup halaman ini…', 'proses');
+
+    const selesai = function () {
+      tombol.disabled = false;
+      tombol.textContent = labelAsli;
+    };
+
+    // Langkah 1 — pastikan warganya punya ID Nasabah.
+    siapkanIdNasabah(data).then(function (hasilId) {
+      if (!hasilId.ok) {
+        selesai();
+        pesanKe('swPesan', '❌ ' + hasilId.pesan, 'salah');
+        return;
+      }
+
+      // Langkah 2 — kirim catatan setoran beserta fotonya.
+      const kiriman = Object.assign({}, data, {
+        idWarga: hasilId.id,
+        nik: hasilId.nik || '',
+        terdaftar: hasilId.baru ? 'Tidak' : 'Ya',
+        foto: base64Websafe(fotoSetoran.dataUrl),
+        fotoTipe: 'image/jpeg',
+      });
+
+      return BankSampah.kirimSetoranWarga(kiriman).then(function (hasil) {
+        selesai();
+
+        if (!hasil.ok && !hasil.tanpaBalasan) {
+          pesanKe('swPesan', '❌ ' + hasil.pesan, 'salah');
+          return;
+        }
+
+        pesanKe('swPesan', '');
+        pesanSetorWa = susunPesanSetorWa(kiriman, hasil.id, hasilId.baru);
+        bukaModalSetor(hasilId, hasil);
+      });
+    }).catch(function () {
+      selesai();
+      pesanKe('swPesan', '❌ Setoran gagal dikirim. Periksa koneksi internet Anda, lalu coba lagi.', 'salah');
+    });
+  }
+
+  /** Memeriksa isian formulir. Mengembalikan null bila semuanya sudah benar. */
+  function periksaIsian(data) {
+    if (statusTerdaftar() === 'ya' && !BankSampah.normalId($('swId').value)) {
+      return { kolom: 'swId', pesan: 'Isi ID Nasabah atau NIK Anda dulu. Belum punya? Pilih "🆕 Belum terdaftar".' };
+    }
+    if (!data.nama) return { kolom: 'swNama', pesan: 'Nama lengkap wajib diisi.' };
+    if (!data.alamat) return { kolom: 'swAlamat', pesan: 'Alamat wajib diisi.' };
+    if (!data.noHp) return { kolom: 'swHp', pesan: 'No. HP / WA wajib diisi agar petugas bisa menghubungi Anda.' };
+    if (!/^[0-9+\-\s()]{8,}$/.test(data.noHp)) {
+      return { kolom: 'swHp', pesan: 'No. HP / WA sepertinya belum benar. Contoh: 0812xxxxxxx.' };
+    }
+    if (!data.jenis) {
+      return { kolom: 'swJenisPilih', pesan: 'Pilih dulu jenis sampah yang Anda setorkan.' };
+    }
+    const keterangan = BankSampah.cariJenis(data.jenis);
+    if (keterangan && keterangan.isian && !data.jenisLain) {
+      return { kolom: 'swJenisLain', pesan: 'Karena memilih "Lain-lain", tuliskan dulu sampah apa yang Anda setorkan.' };
+    }
+    if (data.berat <= 0 && data.kantong <= 0) {
+      return { kolom: 'swBerat', pesan: 'Isi perkiraan berat (kg) atau jumlah kantongnya — salah satu saja cukup.' };
+    }
+    if (!fotoSetoran) {
+      return { kolom: 'swFoto', pesan: 'Foto bukti sampah wajib disertakan. Tekan "Ambil / Pilih Foto Sampah".' };
+    }
+    return null;
+  }
+
+  /**
+   * Memastikan warga punya ID Nasabah sebelum setorannya dicatat:
+   *   - sudah terdaftar → dicari lewat ID Nasabah / NIK yang diisi
+   *   - belum terdaftar → didaftarkan sekarang, ID barunya dibuat server
+   * @returns {Promise<{ok:boolean, id:string, nik:string, baru:boolean, pesan:string}>}
+   */
+  function siapkanIdNasabah(data) {
+    if (statusTerdaftar() === 'ya') {
+      const diisi = BankSampah.normalId($('swId').value);
+      const sudahDicek = wargaTerdaftar &&
+        (BankSampah.normalId(wargaTerdaftar.id) === diisi || BankSampah.normalId(wargaTerdaftar.nik) === diisi);
+
+      const janji = sudahDicek ? Promise.resolve(wargaTerdaftar)
+        : BankSampah.cekWarga(diisi).then(function (h) { return (h.ok && h.nasabah) ? h.nasabah : null; });
+
+      return janji.then(function (n) {
+        if (!n) {
+          return {
+            ok: false,
+            pesan: 'ID Nasabah / NIK "' + diisi + '" tidak ditemukan. Periksa lagi, atau pilih ' +
+              '"🆕 Belum terdaftar" kalau Anda memang baru pertama kali menyetor.',
+          };
+        }
+        wargaTerdaftar = n;
+        return { ok: true, id: n.id, nik: n.nik || '', baru: false };
+      });
+    }
+
+    // Belum terdaftar → daftarkan sekarang juga.
+    return BankSampah.daftarMandiri({
+      nama: data.nama,
+      nik: '',
+      alamat: data.alamat,
+      rt: data.rt,
+      rw: data.rw,
+      noHp: data.noHp,
+    }).then(function (hasil) {
+      if (!hasil.ok || !hasil.id) {
+        return {
+          ok: false,
+          pesan: (hasil.pesan || 'Pendaftaran gagal.') +
+            ' Setoran belum bisa dicatat. Coba lagi sebentar, atau hubungi petugas lewat WhatsApp.',
+        };
+      }
+      return { ok: true, id: hasil.id, nik: '', baru: !hasil.lama };
+    });
+  }
+
+  /* ---------------------------------------------------------------------
+   *  Isi chat WhatsApp untuk pengelola
+   * ------------------------------------------------------------------- */
+  function susunPesanSetorWa(data, idCatatan, wargaBaru) {
+    const lokasi = KONFIGURASI.BANK_SAMPAH.LOKASI || {};
+    const namaTempat = lokasi.nama || 'Bank Sampah Kampung Baru';
+    const harga = BankSampah.hargaJenis(data.jenis);
+    const beratPakai = data.berat > 0
+      ? data.berat
+      : data.kantong * (KONFIGURASI.BANK_SAMPAH.KG_PER_KANTONG || 3);
+
+    const baris = [];
+    baris.push('*CATATAN SETORAN SAMPAH*');
+    baris.push(namaTempat + ' — Kota Parepare');
+    baris.push('');
+    baris.push('Assalamu alaikum, Pak/Bu. Saya baru saja mencatat setoran sampah lewat halaman ' +
+      'Bank Sampah Kampung Baru. Berikut datanya:');
+    baris.push('');
+
+    baris.push('*A. DATA WARGA*');
+    baris.push('• Nama: ' + (data.nama || '-'));
+    baris.push('• ID Nasabah: ' + (data.idWarga || '-') + (wargaBaru ? ' (nasabah baru)' : ''));
+    if (String(data.nik || '').trim()) baris.push('• NIK: ' + data.nik);
+    baris.push('• Alamat: ' + (data.alamat || '-'));
+    baris.push('• RT/RW: ' + ((data.rt || '-') + ' / ' + (data.rw || '-')));
+    baris.push('• No. HP/WA: ' + (data.noHp || '-'));
+    baris.push('');
+
+    baris.push('*B. SAMPAH YANG DISETOR*');
+    baris.push('• Jenis: ' + BankSampah.labelJenis(data.jenis, data.jenisLain));
+    if (data.berat > 0) baris.push('• Perkiraan berat: ' + angkaRamah(data.berat) + ' kg');
+    if (data.kantong > 0) baris.push('• Jumlah kantong: ' + angkaRamah(data.kantong));
+    if (String(data.catatan || '').trim()) baris.push('• Catatan: ' + data.catatan);
+    baris.push('• Foto bukti: sudah ikut terkirim ke dashboard petugas ✅');
+    baris.push('');
+
+    baris.push('*C. PERKIRAAN PENDAPATAN*');
+    baris.push('• Harga acuan: ' + BankSampah.rupiah(harga) + ' / kg');
+    baris.push('• Perkiraan: ' + BankSampah.rupiah(beratPakai * harga));
+    baris.push('_(angka pastinya mengikuti timbangan petugas)_');
+    baris.push('');
+
+    baris.push('Tanggal & jam: ' + waktuRamahSekarang());
+    if (idCatatan) baris.push('Nomor catatan: ' + idCatatan);
+    baris.push('');
+    baris.push('Mohon setoran saya diperiksa dan disetujui, ya Pak/Bu. Terima kasih banyak 🙏');
+    baris.push('');
+    baris.push('_Pesan ini dibuat otomatis dari halaman Bank Sampah Kampung Baru._');
+
+    return baris.join('\n');
+  }
+
+  /* ---------------------------------------------------------------------
+   *  Kotak "setoran terkirim"
+   * ------------------------------------------------------------------- */
+  function bukaModalSetor(hasilId, hasilKirim) {
+    const modal = $('modalSetor');
+
+    const pratinjau = $('setorPratinjau');
+    if (pratinjau) pratinjau.textContent = pesanSetorWa;
+    const kirim = $('setorKirim');
+    if (kirim) kirim.href = tautanWa(pesanSetorWa);
+
+    // Warga baru perlu tahu ID Nasabahnya untuk mengecek tabungan nanti.
+    const kotakId = $('setorIdBaru');
+    if (kotakId) {
+      kotakId.classList.toggle('tersembunyi', !hasilId.id);
+      $('setorIdNilai').textContent = hasilId.id || '—';
+    }
+
+    const ket = $('setorKet');
+    if (ket) {
+      ket.innerHTML = hasilKirim.tanpaBalasan
+        ? 'Server bank sampah <strong>belum sempat menjawab</strong>, jadi catatan Anda belum ' +
+          'bisa dipastikan masuk. <strong>Tetap kirim chat WhatsApp di bawah</strong> supaya ' +
+          'petugas tahu setoran Anda.'
+        : 'Catatan setoran Anda sudah masuk ke dashboard petugas dan sedang ' +
+          '<strong>menunggu persetujuan</strong>. Langkah terakhir: kirim chat ke pengelola ' +
+          'supaya beliau langsung tahu.';
+    }
+
+    if (!modal) {
+      window.open(tautanWa(pesanSetorWa), '_blank', 'noopener');
+      return;
+    }
+    modal.classList.add('tampil');
+    modal.setAttribute('aria-hidden', 'false');
+
+    try { localStorage.setItem(KUNCI_ID_TERAKHIR, BankSampah.normalId(hasilId.id)); } catch (e) {}
+  }
+
+  function tutupModalSetor() {
+    const modal = $('modalSetor');
+    if (!modal) return;
+    modal.classList.remove('tampil');
+    modal.setAttribute('aria-hidden', 'true');
+  }
+
+  function wiringModalSetor() {
+    const modal = $('modalSetor');
+    if (!modal) return;
+
+    const tutup = $('setorTutup');
+    const latar = $('setorLatar');
+    if (tutup) tutup.addEventListener('click', tutupModalSetor);
+    if (latar) latar.addEventListener('click', tutupModalSetor);
+    document.addEventListener('keydown', function (ev) {
+      if (ev.key === 'Escape' && modal.classList.contains('tampil')) tutupModalSetor();
+    });
+
+    const salin = $('setorSalin');
+    if (salin) salin.addEventListener('click', function () { salinTeks(pesanSetorWa); });
+
+    const lagi = $('setorLagi');
+    if (lagi) {
+      lagi.addEventListener('click', function () {
+        tutupModalSetor();
+        bersihkanFormSetor();
+        document.getElementById('setor').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      });
+    }
+  }
+
+  /** Mengosongkan bagian setorannya saja — data diri sengaja dibiarkan,
+   *  supaya warga yang menyetor beberapa jenis tidak mengetik ulang. */
+  function bersihkanFormSetor() {
+    const terpilih = document.querySelector('input[name="swJenis"]:checked');
+    if (terpilih) terpilih.checked = false;
+    $('swKotakLain').classList.add('tersembunyi');
+    ['swJenisLain', 'swBerat', 'swKantong', 'swCatatan'].forEach(function (id) { $(id).value = ''; });
+    hapusFoto();
+    pesanKe('swPesan', '');
   }
 
 })();
