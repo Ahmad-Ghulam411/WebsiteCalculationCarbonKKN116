@@ -569,6 +569,62 @@ function catatanSetoranDari(data) {
 /* ==========================================================================
  *  FOTO BUKTI — disimpan di Google Drive, sheet hanya menyimpan ID berkasnya
  * ======================================================================== */
+
+/**
+ * ⚠️ JALANKAN FUNGSI INI SEKALI SEBELUM WARGA MULAI MENGIRIM FOTO. ⚠️
+ *
+ * KENAPA PERLU?
+ *   Web App ini di-deploy dengan "Execute as: Me", jadi ia berjalan memakai
+ *   akun Google ANDA. Warga membukanya tanpa login. Karena itu kotak izin
+ *   Google TIDAK MUNGKIN muncul di HP warga — izinnya harus ANDA berikan
+ *   sendiri dari editor Apps Script. Selama izin Drive belum diberikan,
+ *   setoran warga TETAP tercatat tetapi kolom "Foto Bukti"-nya kosong.
+ *
+ * CARA MENJALANKAN (cukup sekali seumur proyek):
+ *   1. Buka Google Sheet bank sampah ▸ menu Extensions ▸ Apps Script.
+ *   2. Di bar atas editor, pada kotak pilihan di sebelah tombol ▶ Run,
+ *      pilih  siapkanIzinFoto
+ *   3. Klik ▶ Run.
+ *   4. Muncul kotak "Authorization required" ▸ Review permissions ▸
+ *      pilih akun Google Anda ▸ Advanced ▸ "Go to … (unsafe)" ▸ Allow.
+ *      (Tulisan "unsafe" itu wajar — Google menandai semua skrip buatan
+ *       sendiri yang belum diverifikasi, bukan berarti berbahaya.)
+ *   5. Lihat panel "Execution log" di bawah editor. Kalau berhasil, akan
+ *      muncul tautan folder "Foto Setoran Bank Sampah" di Drive Anda.
+ *
+ * Sesudah itu, foto dari warga akan tersimpan otomatis tanpa diminta izin lagi.
+ */
+function siapkanIzinFoto() {
+  var folder = ambilFolderFoto();
+
+  // Membuat lalu membuang berkas percobaan — sekaligus membuktikan bahwa
+  // izin "buat berkas" dan "bagikan tautan" benar-benar sudah aktif.
+  var uji = folder.createFile(
+    Utilities.newBlob('Berkas percobaan izin bank sampah.', 'text/plain', 'uji-izin.txt'));
+
+  var pesanBerbagi;
+  try {
+    uji.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW);
+    pesanBerbagi = '✅ Berbagi lewat tautan AKTIF — foto bisa tampil di dashboard petugas.';
+  } catch (izin) {
+    pesanBerbagi = '⚠️ Akun ini TIDAK BOLEH berbagi berkas ke publik (biasanya akun ' +
+      'sekolah/kantor). Fotonya tetap tersimpan, tetapi pratinjaunya di dashboard ' +
+      'mungkin kosong — petugas masih bisa membukanya sambil masuk memakai akun ini.';
+  }
+  uji.setTrashed(true);
+
+  var laporan = [
+    '✅ Izin Google Drive sudah aktif untuk skrip bank sampah.',
+    pesanBerbagi,
+    '📁 Folder foto: ' + folder.getUrl(),
+    'Silakan coba kirim satu setoran dari halaman warga, lalu periksa kolom ' +
+      '"Foto Bukti" di tab SetoranWarga — sekarang harus terisi.',
+  ].join('\n');
+
+  Logger.log(laporan);
+  return laporan;
+}
+
 /**
  * Menyimpan foto kiriman warga ke Google Drive.
  * Isi foto dikirim browser dalam bentuk base64 "web-safe" (memakai - dan _
@@ -604,10 +660,19 @@ function simpanFotoDrive(isiBase64, tipe, idCatatan, namaWarga) {
     } catch (izin) {
       // Sebagian akun sekolah/kantor melarang berbagi ke publik. Fotonya tetap
       // tersimpan — petugas bisa membukanya selama masuk dengan akun pemilik.
+      console.warn('Foto tersimpan tetapi tidak bisa dibagikan lewat tautan: ' + izin);
     }
     return berkas.getId();
   } catch (err) {
-    // Foto gagal disimpan tidak boleh membatalkan setorannya.
+    /* Foto gagal disimpan TIDAK BOLEH membatalkan setoran warga — lebih baik
+     * catatannya masuk tanpa foto daripada hilang sama sekali.
+     *
+     * Penyebab tersering: izin Google Drive belum diberikan. Perbaikannya:
+     * jalankan fungsi siapkanIzinFoto() sekali dari editor Apps Script.
+     * Pesan di bawah bisa dibaca di menu "Executions" (⏱️) Apps Script. */
+    console.error('GAGAL menyimpan foto setoran ke Drive: ' + err +
+      ' — jalankan fungsi siapkanIzinFoto() sekali dari editor Apps Script ' +
+      'untuk memberi izin Drive, lalu coba lagi.');
     return '';
   }
 }

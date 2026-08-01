@@ -326,20 +326,39 @@ dan **SetoranWarga** (catatan setoran kiriman warga + foto buktinya).
 > Anda **wajib** melakukan **Deploy ▸ Manage deployments ▸ (pensil) ▸
 > Version: New version ▸ Deploy**. Kalau tidak, Web App masih menjalankan kode lama.
 
-#### 📷 Izin Google Drive untuk foto bukti setoran
+#### 📷 Izin Google Drive untuk foto bukti setoran — **WAJIB, jalankan sekali**
 
 Foto yang dikirim warga **tidak** ditaruh di dalam spreadsheet (kepanjangan),
 melainkan disimpan sebagai berkas gambar di **Google Drive milik pemilik Apps
 Script**, di folder **“Foto Setoran Bank Sampah”** yang dibuat otomatis. Yang
 tercatat di kolom *Foto Bukti* hanyalah **ID berkasnya**.
 
-Karena itu, saat **foto pertama** masuk, Google akan meminta **izin tambahan**:
+> ❗ **Kotak izin Google tidak akan pernah muncul di HP warga.** Web App ini
+> di-deploy dengan *Execute as: **Me***, jadi ia berjalan memakai **akun Anda**,
+> sementara warga membukanya tanpa login — Google tidak punya siapa pun untuk
+> dimintai izin di sana. **Izinnya harus Anda berikan sendiri dari editor Apps
+> Script.** Selama itu belum dilakukan, setoran warga **tetap tercatat** tetapi
+> kolom *Foto Bukti*-nya **kosong**.
 
-1. Buka Apps Script ▸ jalankan/kirim setoran pertama.
-2. Muncul **Review permissions** → pilih akun Google Anda →
-   **Advanced** → **Go to … (unsafe)** → **Allow**.
-3. Setelah itu foto otomatis dibagikan sebagai *"siapa saja yang punya tautan
-   bisa melihat"*, supaya bisa tampil di dashboard petugas.
+**Cara memberi izinnya (cukup sekali seumur proyek):**
+
+1. Buka Google Sheet bank sampah ▸ menu **Extensions ▸ Apps Script**.
+2. Di bar atas editor, pada kotak pilihan di sebelah tombol **▶ Run**, pilih
+   fungsi **`siapkanIzinFoto`**.
+3. Klik **▶ Run**.
+4. Muncul **Authorization required** → **Review permissions** → pilih akun
+   Google Anda → **Advanced** → **Go to … (unsafe)** → **Allow**.
+   *(Tulisan “unsafe” itu wajar — Google menandai semua skrip buatan sendiri
+   yang belum diverifikasi, bukan berarti berbahaya.)*
+5. Lihat panel **Execution log** di bawah editor. Kalau berhasil akan muncul
+   tautan folder **“Foto Setoran Bank Sampah”** di Drive Anda.
+
+Setelah itu, kirim satu setoran percobaan dari halaman warga lalu periksa kolom
+**Foto Bukti** di tab **SetoranWarga** — sekarang harus terisi.
+
+**Kalau kolom Foto Bukti masih kosong**, buka Apps Script ▸ menu **⏱️ Executions**
+dan lihat baris `doPost` yang terbaru. Pesan `GAGAL menyimpan foto setoran ke
+Drive: …` di situ akan menyebutkan penyebabnya.
 
 > Kalau akun Google Anda milik sekolah/kantor yang **melarang berbagi ke publik**,
 > fotonya tetap tersimpan dan bisa dibuka petugas selama mereka masuk memakai
