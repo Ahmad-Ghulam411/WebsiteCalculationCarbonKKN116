@@ -101,6 +101,19 @@
    zona, jalan, serta jalur evakuasi tidak tergambar sama sekali. */
 .leaflet-container svg { max-width: none !important; max-height: none !important; }
 
+/* Saat sebuah jalan / zona / jalur diklik, peramban menaruh fokus pada elemen
+   SVG-nya dan menggambar kotak garis hitam sebesar kotak pembatas elemen itu —
+   di peta hasilnya terlihat seperti kotak nyasar. Outline-nya dimatikan untuk
+   klik tetikus, tetapi tetap ditampilkan bagi pengguna papan ketik
+   (`:focus-visible`) supaya navigasi keyboard tidak kehilangan penanda fokus. */
+.leaflet-container path.leaflet-interactive:focus,
+.leaflet-container .leaflet-marker-icon:focus,
+.leaflet-container .leaflet-popup-content-wrapper:focus { outline: none; }
+.leaflet-container path.leaflet-interactive:focus-visible {
+  outline: 3px solid var(--hijau-tua);
+  outline-offset: 2px;
+}
+
 /* Kontrol Leaflet di kanan atas digeser turun agar tidak tertimpa kotak peringatan */
 .leaflet-top.leaflet-right { padding-top: 82px; }
 
