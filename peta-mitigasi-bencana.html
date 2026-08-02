@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Peta Mitigasi Bencana Kelurahan Kampung Baru, Kecamatan Bacukiki Barat, Kota Parepare. Peta interaktif zona rawan tsunami, banjir rob, dan gelombang pasang lengkap dengan jalur evakuasi menuju titik kumpul.">
+  <meta name="theme-color" content="#1b7a43">
+  <title>Peta Mitigasi Bencana Kampung Baru — Kecamatan Bacukiki Barat, Kota Parepare</title>
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
+
+  <!-- Leaflet disertakan lokal (bukan CDN) agar peta tetap terbuka
+       walau jaringan sedang bermasalah — penting untuk halaman kebencanaan. -->
+  <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
+
+  <link rel="stylesheet" href="css/styles.css">
+  <link rel="stylesheet" href="css/peta-mitigasi.css">
+</head>
+<body>
+
+  <!-- ============================== HEADER ============================== -->
+  <header class="hero hero-mini">
+    <div class="hero-bg" aria-hidden="true"></div>
+
+    <nav class="nav">
+      <a class="nav-merek" href="index.html">
+        <span class="logo-wrap">
+          <img class="logo" src="assets/logo-parepare.png" alt="Logo Kota Parepare"
+               onerror="this.style.display='none';">
+        </span>
+        <span class="nav-judul">Kampung Baru<small>Kota Parepare</small></span>
+      </a>
+
+      <button class="nav-toggle" id="navToggle" aria-label="Buka menu">
+        <span></span><span></span><span></span>
+      </button>
+
+      <ul class="nav-menu" id="navMenu">
+        <li><a href="index.html">Beranda</a></li>
+        <li><a href="index.html#hitung">Hitung Jejak Karbon</a></li>
+        <li><a href="bank-sampah.html">♻️ Cek Bank Sampah</a></li>
+        <li><a href="peta-mitigasi-bencana.html" class="aktif">🗺️ Peta Mitigasi Bencana</a></li>
+        <li><a href="#instruksi">Instruksi Evakuasi</a></li>
+        <li><a href="#darurat">Nomor Darurat</a></li>
+      </ul>
+    </nav>
+
+    <div class="hero-isi">
+      <span class="hero-lencana">🌊 Siaga Bencana · Kelurahan Kampung Baru</span>
+      <h1>Peta Mitigasi Bencana<br>Kelurahan Kampung Baru</h1>
+      <p class="hero-teks">
+        Kecamatan Bacukiki Barat, Kota Parepare — fokus bencana:
+        <strong>Tsunami, Banjir Rob, dan Gelombang Pasang</strong>.
+        Peta di bawah ini menunjukkan zona rawan bencana di wilayah kita, jalur evakuasi
+        di sepanjang jalan, dan lokasi titik kumpul yang aman.
+        <strong>Klik di bagian mana pun pada peta</strong> untuk melihat titik koordinat,
+        zona wilayahnya, dan petunjuk arah menuju titik kumpul.
+      </p>
+      <p class="hero-teks">
+        <a class="tombol tombol-kecil" href="#peta">🗺️ Lihat Peta Sekarang</a>
+      </p>
+    </div>
+
+    <svg class="hero-gelombang" viewBox="0 0 1440 120" preserveAspectRatio="none" aria-hidden="true">
+      <path d="M0,64 C240,120 480,0 720,32 C960,64 1200,120 1440,72 L1440,120 L0,120 Z"></path>
+    </svg>
+  </header>
+
+  <main>
+
+    <!-- ============================ PETA UTAMA ============================ -->
+    <section class="seksi" id="peta">
+      <div class="wadah-peta">
+
+        <span class="seksi-label">Peta Interaktif</span>
+        <h2 class="seksi-judul">Zona Rawan Bencana &amp; Jalur Evakuasi</h2>
+        <p class="seksi-intro">
+          Peta ini menampilkan wilayah <strong>Kelurahan Kampung Baru</strong> beserta sebagian
+          kelurahan tetangga di sisi kiri dan kanan sebagai pembanding batas wilayah.
+          Warna menunjukkan tingkat risiko, panah hijau menunjukkan arah evakuasi, dan
+          lingkaran biru menandai titik kumpul.
+        </p>
+
+        <!-- Ringkasan angka -->
+        <div class="pm-ringkas">
+          <div class="pm-ringkas-item is-merah">
+            <div class="pm-ringkas-label">Zona Merah</div>
+            <div class="pm-ringkas-angka">5,32 Ha</div>
+            <div class="pm-ringkas-ket">11,6% wilayah · 0–9 mdpl</div>
+          </div>
+          <div class="pm-ringkas-item is-kuning">
+            <div class="pm-ringkas-label">Zona Kuning</div>
+            <div class="pm-ringkas-angka">12,62 Ha</div>
+            <div class="pm-ringkas-ket">27,5% wilayah · 9–15 mdpl</div>
+          </div>
+          <div class="pm-ringkas-item is-hijau">
+            <div class="pm-ringkas-label">Zona Hijau</div>
+            <div class="pm-ringkas-angka">27,95 Ha</div>
+            <div class="pm-ringkas-ket">60,9% wilayah · &gt; 15 mdpl</div>
+          </div>
+          <div class="pm-ringkas-item is-tk">
+            <div class="pm-ringkas-label">Titik Kumpul</div>
+            <div class="pm-ringkas-angka">± 15 mdpl</div>
+            <div class="pm-ringkas-ket">Jl. Kesuma Timur · zona hijau</div>
+          </div>
+        </div>
+
+        <!-- Kerangka peta -->
+        <div class="pm-peta-bingkai">
+          <div class="pm-peta-kepala">
+            <h3>Peta Mitigasi Bencana Kelurahan Kampung Baru</h3>
+            <p>Kec. Bacukiki Barat, Kota Parepare · Fokus: Tsunami, Banjir Rob, Gelombang Pasang</p>
+          </div>
+
+          <div class="pm-peringatan">
+            <b>⚠️ Zona Merah</b>
+            Risiko tinggi tsunami &amp; rob — segera evakuasi ke jalur aman.
+          </div>
+
+          <div id="petaMitigasi" role="application"
+               aria-label="Peta interaktif zona rawan bencana dan jalur evakuasi Kelurahan Kampung Baru"></div>
+        </div>
+
+        <!-- Alat bantu peta -->
+        <div class="pm-alat">
+          <button type="button" class="pm-tombol-alat" id="pmSeluruh">🔍 Lihat Seluruh Wilayah</button>
+          <button type="button" class="pm-tombol-alat" id="pmKeTitikKumpul">📍 Ke Titik Kumpul</button>
+          <button type="button" class="pm-tombol-alat" id="pmPosisiSaya">🧭 Di Zona Mana Saya?</button>
+          <button type="button" class="pm-tombol-alat" id="pmGantiDasar">🗺️ Tampilan Peta Jalan</button>
+          <button type="button" class="pm-tombol-alat" id="pmLayarPenuh">⛶ Layar Penuh</button>
+          <span class="pm-alat-petunjuk">
+            💡 Klik jalan, zona warna, atau area mana pun untuk melihat koordinat &amp; petunjuk evakuasi.
+          </span>
+        </div>
+
+      </div>
+    </section>
+
+    <!-- ========================= INSTRUKSI EVAKUASI ========================= -->
+    <section class="seksi seksi-alt" id="instruksi">
+      <div class="wadah">
+        <span class="seksi-label">Yang Harus Dilakukan</span>
+        <h2 class="seksi-judul">Instruksi Evakuasi</h2>
+        <p class="seksi-intro">
+          Saat bencana terjadi, <strong>waktu sangat menentukan</strong>. Gelombang tsunami bisa
+          mencapai pantai hanya dalam hitungan menit setelah gempa. Ikuti langkah berikut
+          dengan tenang dan berurutan.
+        </p>
+
+        <div class="pm-instruksi">
+          <div class="pm-instruksi-item">
+            <div class="pm-instruksi-nomor" aria-hidden="true"></div>
+            <div class="pm-instruksi-teks">
+              <h3>🌊 Kenali Tandanya</h3>
+              <p>
+                Jika merasakan <strong>gempa kuat</strong> (sulit berdiri), gempa lama lebih dari
+                30 detik, air laut tiba-tiba surut jauh, atau ada
+                <strong>peringatan dini tsunami</strong> dari BMKG —
+                <strong>segera evakuasi</strong>. Jangan menunggu perintah tambahan.
+              </p>
+            </div>
+          </div>
+
+          <div class="pm-instruksi-item">
+            <div class="pm-instruksi-nomor" aria-hidden="true"></div>
+            <div class="pm-instruksi-teks">
+              <h3>🏃 Ikuti Jalur Evakuasi</h3>
+              <p>
+                Semua jalan di Kampung Baru sudah berpanah hijau — cukup
+                <strong>ikuti panah terdekat</strong> menuju <strong>Jl. Kesuma Timur</strong>.
+                Panah selalu mengarah <strong>menjauhi pantai ke tempat yang lebih tinggi</strong>.
+                <strong>Jalan kaki lebih aman</strong> daripada berkendara — jalan bisa macet
+                atau tertutup material.
+              </p>
+            </div>
+          </div>
+
+          <div class="pm-instruksi-item">
+            <div class="pm-instruksi-nomor" aria-hidden="true"></div>
+            <div class="pm-instruksi-teks">
+              <h3>📍 Menuju Titik Kumpul</h3>
+              <p>
+                Berkumpul di <strong>lapangan/area terbuka sekitar Jl. Kesuma Timur</strong>
+                (± 15 mdpl, zona hijau). Bantu <strong>lansia, anak-anak, ibu hamil, dan
+                penyandang disabilitas</strong>. Jangan kembali ke rumah untuk mengambil barang.
+              </p>
+            </div>
+          </div>
+
+          <div class="pm-instruksi-item">
+            <div class="pm-instruksi-nomor" aria-hidden="true"></div>
+            <div class="pm-instruksi-teks">
+              <h3>📢 Tetap Tenang &amp; Menunggu</h3>
+              <p>
+                Ikuti arahan petugas BPBD/aparat kelurahan. Pantau informasi resmi
+                <strong>BMKG dan BPBD</strong>. <strong>Jangan kembali</strong> ke zona merah
+                sebelum ada pernyataan aman resmi — gelombang susulan bisa lebih besar.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ====================== LEGENDA / PENJELASAN ZONA ====================== -->
+    <section class="seksi" id="legenda">
+      <div class="wadah">
+        <span class="seksi-label">Informasi Legenda Map</span>
+        <h2 class="seksi-judul">Arti Warna &amp; Simbol pada Peta</h2>
+        <p class="seksi-intro">
+          Pembagian zona disusun dari <strong>ketinggian lahan (DEM)</strong> dan
+          <strong>jarak dari garis pantai</strong>, lalu dicocokkan dengan kelas bahaya
+          Kelurahan Kampung Baru pada Dokumen Kajian Risiko Bencana Kota Parepare 2022–2026.
+        </p>
+
+        <div class="pm-zona-grid">
+          <div class="pm-zona-kartu">
+            <div class="pm-zona-kepala" style="background:linear-gradient(135deg,#e53935,#8e1616)">
+              <h3>🔴 Zona Merah — Risiko Tinggi</h3>
+              <p>Tsunami · Banjir Rob · Gelombang Pasang &amp; Abrasi</p>
+            </div>
+            <div class="pm-zona-isi">
+              <dl>
+                <dt>Luas</dt><dd>5,32 Ha (11,6% wilayah)</dd>
+                <dt>Ketinggian</dt><dd>0 – 9 mdpl</dd>
+                <dt>Lokasi</dt><dd>Jalur pesisir sisi barat, sekitar Jl. Bau Massepe &amp; Jl. Mattiro Tasi</dd>
+              </dl>
+              <p class="pm-zona-aksi">
+                <b>Tindakan:</b> Wajib <b>segera evakuasi</b> begitu ada gempa kuat atau peringatan
+                dini tsunami. Jangan menunggu air terlihat naik.
+              </p>
+            </div>
+          </div>
+
+          <div class="pm-zona-kartu">
+            <div class="pm-zona-kepala" style="background:linear-gradient(135deg,#f2b705,#a37700)">
+              <h3>🟡 Zona Kuning — Risiko Sedang</h3>
+              <p>Banjir &amp; Genangan</p>
+            </div>
+            <div class="pm-zona-isi">
+              <dl>
+                <dt>Luas</dt><dd>12,62 Ha (27,5% wilayah)</dd>
+                <dt>Ketinggian</dt><dd>9 – 15 mdpl</dd>
+                <dt>Lokasi</dt><dd>Bagian tengah kelurahan, sekitar Jl. H. Agussalim &amp; Jl. H.P. Cara</dd>
+              </dl>
+              <p class="pm-zona-aksi">
+                <b>Tindakan:</b> <b>Siaga.</b> Amankan barang berharga ke tempat tinggi dan bersiap
+                evakuasi bila air terus naik atau ada perintah petugas.
+              </p>
+            </div>
+          </div>
+
+          <div class="pm-zona-kartu">
+            <div class="pm-zona-kepala" style="background:linear-gradient(135deg,#4caf50,#1b5e20)">
+              <h3>🟢 Zona Hijau — Risiko Rendah</h3>
+              <p>Aman dari bahaya utama</p>
+            </div>
+            <div class="pm-zona-isi">
+              <dl>
+                <dt>Luas</dt><dd>27,95 Ha (60,9% wilayah)</dd>
+                <dt>Ketinggian</dt><dd>&gt; 15 mdpl</dd>
+                <dt>Lokasi</dt><dd>Bagian timur yang lebih tinggi, sekitar Jl. Kesuma Timur &amp; Jl. Lasiming</dd>
+              </dl>
+              <p class="pm-zona-aksi">
+                <b>Tindakan:</b> Area <b>tujuan evakuasi</b> — titik kumpul berada di zona ini.
+                Bantu warga dari zona merah dan kuning saat evakuasi.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <h3 class="seksi-judul" style="font-size:1.25rem;margin-top:36px;margin-bottom:12px">
+          Simbol Lain pada Peta
+        </h3>
+        <div class="kartu-grid kartu-grid-4">
+          <div class="kartu kartu-mini">
+            <div class="kartu-ikon">➤</div>
+            <h3>Jalur Evakuasi</h3>
+            <p>
+              Garis hijau berpanah di sepanjang jalan. Arah panah menunjukkan
+              arah lari menuju titik kumpul. <strong>Seluruh jalan di wilayah
+              Kampung Baru sudah diberi arah evakuasi</strong>, jadi dari titik mana
+              pun warga tinggal mengikuti panah terdekat menuju Jl. Kesuma Timur.
+            </p>
+          </div>
+          <div class="kartu kartu-mini">
+            <div class="kartu-ikon">🏃</div>
+            <h3>Titik Kumpul</h3>
+            <p>
+              Lingkaran biru berdenyut. Lapangan/area terbuka sekitar Jl. Kesuma Timur pada
+              koordinat <strong data-tk-koordinat>-4.019402, 119.626271</strong>.
+              <a data-tk-gmaps href="https://maps.app.goo.gl/mxeoUcmU68TUK8HQ7"
+                 target="_blank" rel="noopener">Buka di Google Maps ↗</a>
+            </p>
+          </div>
+          <div class="kartu kartu-mini">
+            <div class="kartu-ikon"><span class="pm-ikon-batas" aria-hidden="true"></span></div>
+            <h3>Batas Kelurahan</h3>
+            <p>
+              Garis <strong>putus-putus merah</strong> menandai batas Kelurahan Kampung Baru.
+              Garis putih tipis adalah batas kelurahan tetangga di kiri dan kanan
+              (Labukkang, Ujung Bulu, Tiro Sompe, Cappa Galung, Lompoe).
+            </p>
+          </div>
+          <div class="kartu kartu-mini">
+            <div class="kartu-ikon">🛣️</div>
+            <h3>Jalan Lokal</h3>
+            <p>
+              Garis putih dengan nama jalan. <strong>Klik salah satu jalan</strong> untuk melihat
+              koordinat, zona wilayahnya, jarak dan arah menuju titik kumpul.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- ============================ DATA KRB ============================ -->
+    <section class="seksi seksi-alt" id="data">
+      <div class="wadah">
+        <span class="seksi-label">Dasar Penyusunan</span>
+        <h2 class="seksi-judul">Kelas Bahaya Kelurahan Kampung Baru</h2>
+        <p class="seksi-intro">
+          Angka berikut dikutip dari <strong>Dokumen Kajian Risiko Bencana Kota Parepare
+          Tahun 2022–2026</strong> (BPBD Kota Parepare) khusus untuk Kelurahan Kampung Baru.
+          Bahaya <strong>tsunami berkelas TINGGI</strong> — inilah alasan utama peta mitigasi
+          ini disusun.
+        </p>
+
+        <div class="pm-tabel-bungkus">
+          <table class="pm-tabel">
+            <thead>
+              <tr>
+                <th>Jenis Bahaya</th>
+                <th>Luas Terpapar</th>
+                <th>Rincian Kelas</th>
+                <th>Kelas Bahaya</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Tsunami</strong></td>
+                <td>5,49 Ha</td>
+                <td>Rendah 1,98 · Sedang 1,17 · Tinggi 2,34 Ha</td>
+                <td><span class="pm-lencana-kelas pm-kelas-tinggi">TINGGI</span></td>
+              </tr>
+              <tr>
+                <td>Gelombang Ekstrim &amp; Abrasi</td>
+                <td>10,98 Ha</td>
+                <td>Seluruhnya kelas sedang</td>
+                <td><span class="pm-lencana-kelas pm-kelas-sedang">SEDANG</span></td>
+              </tr>
+              <tr>
+                <td>Banjir</td>
+                <td>2,40 Ha</td>
+                <td>Rendah 0,81 · Sedang 1,59 Ha</td>
+                <td><span class="pm-lencana-kelas pm-kelas-sedang">SEDANG</span></td>
+              </tr>
+              <tr>
+                <td>Kekeringan</td>
+                <td>497,00 Ha</td>
+                <td>Seluruhnya kelas sedang</td>
+                <td><span class="pm-lencana-kelas pm-kelas-sedang">SEDANG</span></td>
+              </tr>
+              <tr>
+                <td>Gempa Bumi</td>
+                <td>48,06 Ha</td>
+                <td>Seluruhnya kelas rendah</td>
+                <td><span class="pm-lencana-kelas pm-kelas-rendah">RENDAH</span></td>
+              </tr>
+              <tr>
+                <td>Kebakaran Hutan &amp; Lahan</td>
+                <td>48,33 Ha</td>
+                <td>Seluruhnya kelas rendah</td>
+                <td><span class="pm-lencana-kelas pm-kelas-rendah">RENDAH</span></td>
+              </tr>
+              <tr>
+                <td>Tanah Longsor</td>
+                <td>—</td>
+                <td>Tidak ada area terpapar tercatat</td>
+                <td><span class="pm-lencana-kelas pm-kelas-rendah">RENDAH</span></td>
+              </tr>
+              <tr>
+                <td>Banjir Bandang</td>
+                <td>—</td>
+                <td>Tidak ada area terpapar tercatat</td>
+                <td><span class="pm-lencana-kelas pm-kelas-rendah">RENDAH</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+
+        <p class="pm-catatan">
+          <strong>Catatan:</strong> Luas Kelurahan Kampung Baru hasil pengukuran batas wilayah
+          adalah <strong>45,92 Ha</strong>, sejalan dengan angka 48,06 Ha pada dokumen KRB.
+          Zona merah pada peta ini seluas <strong>5,32 Ha</strong> — hampir sama dengan luas
+          bahaya tsunami 5,49 Ha dalam dokumen resmi.
+        </p>
+      </div>
+    </section>
+
+    <!-- =========================== NOMOR DARURAT =========================== -->
+    <section class="seksi" id="darurat">
+      <div class="wadah">
+        <span class="seksi-label">Saat Darurat</span>
+        <h2 class="seksi-judul">Nomor Emergency</h2>
+        <p class="seksi-intro">
+          Simpan nomor-nomor berikut di ponsel Anda. <strong>Ketuk nomornya</strong> untuk
+          langsung menelepon dari HP.
+        </p>
+
+        <div class="pm-darurat-grid">
+          <a class="pm-darurat is-utama" href="tel:112">
+            <span class="pm-darurat-ikon">📞</span>
+            <span>
+              <span class="pm-darurat-nomor">112</span>
+              <span class="pm-darurat-nama">Call Center Darurat<br>Kota Parepare</span>
+            </span>
+          </a>
+          <a class="pm-darurat" href="tel:042121001">
+            <span class="pm-darurat-ikon">🏢</span>
+            <span>
+              <span class="pm-darurat-nomor">(0421) 21001</span>
+              <span class="pm-darurat-nama">BPBD Kota Parepare</span>
+            </span>
+          </a>
+          <a class="pm-darurat" href="tel:110">
+            <span class="pm-darurat-ikon">👮</span>
+            <span>
+              <span class="pm-darurat-nomor">110</span>
+              <span class="pm-darurat-nama">Polisi</span>
+            </span>
+          </a>
+          <a class="pm-darurat" href="tel:119">
+            <span class="pm-darurat-ikon">🚑</span>
+            <span>
+              <span class="pm-darurat-nomor">119</span>
+              <span class="pm-darurat-nama">Ambulans / PSC</span>
+            </span>
+          </a>
+          <a class="pm-darurat" href="tel:113">
+            <span class="pm-darurat-ikon">🚒</span>
+            <span>
+              <span class="pm-darurat-nomor">113</span>
+              <span class="pm-darurat-nama">Damkar</span>
+            </span>
+          </a>
+          <a class="pm-darurat" href="tel:115">
+            <span class="pm-darurat-ikon">🛟</span>
+            <span>
+              <span class="pm-darurat-nomor">115</span>
+              <span class="pm-darurat-nama">Basarnas</span>
+            </span>
+          </a>
+        </div>
+
+        <p class="pm-catatan">
+          <strong>Sebelum menelepon, siapkan:</strong> lokasi kejadian (nama jalan atau titik
+          koordinat — bisa Anda salin dari peta di atas), jenis kejadian, jumlah korban bila ada,
+          dan nomor Anda yang bisa dihubungi kembali.
+        </p>
+      </div>
+    </section>
+
+    <!-- ====================== KETERANGAN / SUMBER DATA ====================== -->
+    <section class="seksi seksi-alt" id="keterangan">
+      <div class="wadah">
+        <span class="seksi-label">Keterangan</span>
+        <h2 class="seksi-judul">Sumber Data &amp; Cara Membaca Peta</h2>
+
+        <div class="kartu-grid" style="grid-template-columns:1fr;gap:18px">
+          <div class="pm-sumber">
+            <h3>📚 Sumber Data</h3>
+            <ul>
+              <li>
+                <strong>Dokumen Kajian Risiko Bencana Kota Parepare Tahun 2022–2026</strong> —
+                BPBD Kota Parepare. Sumber kelas bahaya, luas area terpapar, dan penduduk terpapar
+                per kelurahan.
+              </li>
+              <li>
+                <strong>Titik Lokasi Rawan Bencana Kota Parepare</strong> — rekapitulasi
+                kelurahan rawan bencana per jenis bencana (Dokumen KRB 2022–2026).
+              </li>
+              <li>
+                <strong>Album Peta Kajian Risiko Bencana Kota Parepare</strong> — acuan
+                tampilan kartografi dan pembagian kelas risiko.
+              </li>
+              <li>
+                <strong>Batas wilayah kelurahan &amp; jaringan jalan</strong> — OpenStreetMap
+                (diambil melalui Overpass API), diverifikasi terhadap citra satelit.
+              </li>
+              <li>
+                <strong>Model elevasi permukaan (DEM)</strong> — SRTM 30 m, dipakai untuk
+                menentukan batas ketinggian tiap zona.
+              </li>
+              <li>
+                <strong>Citra satelit latar peta</strong> — Esri World Imagery (Maxar,
+                Earthstar Geographics).
+              </li>
+              <li>
+                <strong>Titik kumpul</strong> — koordinat -4.019402, 119.626271, hasil
+                penetapan lapangan tim KKN Gel. 116 bersama aparat Kelurahan Kampung Baru.
+              </li>
+            </ul>
+          </div>
+
+          <div class="pm-sumber">
+            <h3>🧭 Cara Membaca &amp; Memakai Peta</h3>
+            <ul>
+              <li><strong>Klik area berwarna</strong> → penjelasan zona, ancaman, luas, dan tindakan yang harus dilakukan.</li>
+              <li><strong>Klik garis jalan</strong> → nama jalan, koordinat, zona, jarak dan arah ke titik kumpul.</li>
+              <li><strong>Klik garis hijau berpanah</strong> → panjang jalur, perkiraan waktu jalan kaki, dan jalan yang dilewati.</li>
+              <li><strong>Klik di mana saja</strong> → koordinat titik tersebut, zona wilayahnya, serta petunjuk arah ke titik kumpul.</li>
+              <li><strong>Tombol “Di Zona Mana Saya?”</strong> → memakai GPS perangkat untuk menunjukkan posisi dan zona Anda saat ini.</li>
+              <li><strong>Tombol “Layar Penuh”</strong> → memperbesar peta satu layar penuh; tekan <kbd>Esc</kbd> untuk keluar.</li>
+              <li><strong>Kotak legenda</strong> di kanan bawah peta dapat dipakai untuk menyalakan atau mematikan tiap lapisan peta.</li>
+            </ul>
+          </div>
+        </div>
+
+        <p class="pm-catatan">
+          <strong>Penting:</strong> Peta ini adalah <strong>alat bantu edukasi dan panduan
+          evakuasi mandiri</strong> bagi warga, bukan dokumen resmi tata ruang. Batas zona
+          merupakan pendekatan berbasis ketinggian lahan dan data kajian risiko, sehingga
+          kondisi di lapangan bisa berbeda. <strong>Selalu utamakan informasi dan arahan resmi
+          dari BMKG, BPBD Kota Parepare, serta aparat kelurahan.</strong>
+          Bila ada koreksi batas wilayah, nama jalan, atau lokasi titik kumpul, silakan
+          sampaikan kepada aparat Kelurahan Kampung Baru agar peta dapat diperbarui.
+        </p>
+
+        <p class="seksi-intro" style="margin-top:22px;text-align:center;font-family:'Poppins',sans-serif;
+                  font-weight:700;color:var(--hijau-tua);font-size:1.12rem">
+          Siaga Bencana, Selamatkan Jiwa! · #KampungBaruTangguh
+        </p>
+      </div>
+    </section>
+
+  </main>
+
+  <!-- ============================== FOOTER ============================== -->
+  <footer class="footer">
+    <div class="wadah footer-isi">
+      <div class="footer-kolom">
+        <h3>📞 Kontak Darurat</h3>
+        <p>Call Center Darurat: <a href="tel:112">112</a></p>
+        <p>BPBD Kota Parepare: <a href="tel:042121001">(0421) 21001</a></p>
+        <p>Basarnas: <a href="tel:115">115</a> · Damkar: <a href="tel:113">113</a></p>
+        <p>📍 Titik Kumpul: <span data-tk-koordinat>-4.019402, 119.626271</span></p>
+      </div>
+      <div class="footer-kolom">
+        <h3>🌏 Tentang Program</h3>
+        <p>Peta Mitigasi Bencana Kelurahan Kampung Baru disusun oleh mahasiswa
+           KKN Gel. 116 Tematik Perubahan Iklim Kelurahan Kampung Baru bersama
+           aparat Kelurahan Kampung Baru dan BPBD Kota Parepare, sebagai bagian dari
+           upaya kesiapsiagaan bencana warga Kampung Baru, Kota Parepare.</p>
+      </div>
+      <div class="footer-kolom">
+        <h3>🔗 Tautan</h3>
+        <p><a href="index.html">Beranda</a></p>
+        <p><a href="index.html#hitung">Hitung Jejak Karbon</a></p>
+        <p><a href="bank-sampah.html">♻️ Cek Bank Sampah</a></p>
+        <p><a href="#peta">🗺️ Peta Mitigasi</a></p>
+        <p><a href="#instruksi">🏃 Instruksi Evakuasi</a></p>
+        <p><a data-tk-gmaps href="https://maps.app.goo.gl/mxeoUcmU68TUK8HQ7"
+              target="_blank" rel="noopener">📍 Titik Kumpul di Google Maps</a></p>
+      </div>
+    </div>
+    <div class="footer-bawah">
+      <p>&copy; <span id="tahunFooter">2026</span> Kampung Baru, Kota Parepare ·
+         Siaga Bencana, Selamatkan Jiwa 💚</p>
+    </div>
+  </footer>
+
+  <script src="vendor/leaflet/leaflet.js"></script>
+  <script src="data/peta-mitigasi-data.js"></script>
+  <script src="js/peta-mitigasi.js"></script>
+  <script>
+    // Menu responsif + tahun footer (mandiri, tanpa bergantung pada main.js)
+    (function () {
+      var tombol = document.getElementById('navToggle');
+      var menu = document.getElementById('navMenu');
+      if (tombol && menu) {
+        tombol.addEventListener('click', function () {
+          menu.classList.toggle('buka');
+          tombol.classList.toggle('aktif');
+        });
+        menu.addEventListener('click', function (e) {
+          if (e.target.tagName === 'A') {
+            menu.classList.remove('buka');
+            tombol.classList.remove('aktif');
+          }
+        });
+      }
+      var th = document.getElementById('tahunFooter');
+      if (th) th.textContent = new Date().getFullYear();
+    })();
+  </script>
+</body>
+</html>
