@@ -7,6 +7,11 @@
   <meta name="theme-color" content="#1b7a43">
   <title>Peta Mitigasi Bencana Kampung Baru — Kecamatan Bacukiki Barat, Kota Parepare</title>
 
+  <!-- Ikon situs: tab peramban, penanda favorit, dan pintasan layar utama ponsel -->
+  <link rel="icon" type="image/png" sizes="32x32" href="assets/logo-kkarbon-32.png">
+  <link rel="icon" type="image/png" sizes="192x192" href="assets/logo-kkarbon-192.png">
+  <link rel="apple-touch-icon" href="assets/logo-kkarbon-180.png">
+
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
   <link href="https://fonts.googleapis.com/css2?family=Nunito:wght@400;600;700;800&family=Poppins:wght@600;700;800&display=swap" rel="stylesheet">
@@ -27,7 +32,7 @@
     <nav class="nav">
       <a class="nav-merek" href="index.html">
         <span class="logo-wrap">
-          <img class="logo" src="assets/logo-parepare.png" alt="Logo Kota Parepare"
+          <img class="logo" src="assets/logo-kkarbon-192.png" alt="Logo Kalkulator Jejak Karbon Kampung Baru"
                onerror="this.style.display='none';">
         </span>
         <span class="nav-judul">Kampung Baru<small>Kota Parepare</small></span>
@@ -118,6 +123,19 @@
             <b>⚠️ Zona Merah</b>
             Risiko tinggi tsunami &amp; rob — segera evakuasi ke jalur aman.
           </div>
+
+          <!-- Tombol keluar layar penuh.
+               Tombol "⛶ Layar Penuh" ada di bilah alat DI BAWAH peta, sehingga
+               begitu bingkai ini menutupi seluruh layar tombol tersebut ikut
+               tertutup. Di ponsel warga jadi tidak menemukan cara keluar dari
+               peta. Karena itu tombol "✕" ini diletakkan DI DALAM bingkai dan
+               hanya tampil saat mode layar penuh aktif (diatur lewat CSS
+               `.pm-peta-bingkai.is-penuh`). -->
+          <button type="button" class="pm-keluar-penuh" id="pmKeluarPenuh"
+                  aria-label="Keluar dari mode layar penuh">
+            <span class="pm-keluar-tanda" aria-hidden="true">✕</span>
+            <span>Keluar</span>
+          </button>
 
           <div id="petaMitigasi" role="application"
                aria-label="Peta interaktif zona rawan bencana dan jalur evakuasi Kelurahan Kampung Baru"></div>
@@ -513,7 +531,9 @@
               <li><strong>Klik garis hijau berpanah</strong> → panjang jalur, perkiraan waktu jalan kaki, dan jalan yang dilewati.</li>
               <li><strong>Klik di mana saja</strong> → koordinat titik tersebut, zona wilayahnya, serta petunjuk arah ke titik kumpul.</li>
               <li><strong>Tombol “Di Zona Mana Saya?”</strong> → memakai GPS perangkat untuk menunjukkan posisi dan zona Anda saat ini.</li>
-              <li><strong>Tombol “Layar Penuh”</strong> → memperbesar peta satu layar penuh; tekan <kbd>Esc</kbd> untuk keluar.</li>
+              <li><strong>Tombol “Layar Penuh”</strong> → memperbesar peta satu layar penuh. Untuk keluar,
+                  tekan tombol <strong>“✕ Keluar”</strong> di pojok kanan atas peta (atau tombol
+                  <kbd>Esc</kbd> bila memakai komputer).</li>
               <li><strong>Kotak legenda</strong> di kanan bawah peta dapat dipakai untuk menyalakan atau mematikan tiap lapisan peta.</li>
             </ul>
           </div>

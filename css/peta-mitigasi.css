@@ -54,7 +54,43 @@
   z-index: 1;
 }
 .pm-peta-bingkai.is-penuh { position: fixed; inset: 0; border-radius: 0; border-width: 0; z-index: 3000; }
-.pm-peta-bingkai.is-penuh #petaMitigasi { height: 100vh; }
+/* Tinggi peta mengikuti bingkainya (yang sudah persis seukuran layar), bukan
+   `100vh`. Di ponsel `100vh` menghitung layar seolah bilah alamat peramban
+   tersembunyi, sehingga sisi bawah peta terpotong keluar layar. */
+.pm-peta-bingkai.is-penuh #petaMitigasi { height: 100%; }
+
+/* ------------------- Tombol keluar dari mode layar penuh ------------------- */
+/* Tombol "⛶ Layar Penuh" berada di bilah alat di bawah peta, jadi saat bingkai
+   peta menutupi seluruh layar tombol itu ikut tertutup — di ponsel warga tidak
+   punya cara keluar selain menutup halaman. Tombol ini duduk di dalam bingkai
+   dan hanya muncul selama mode layar penuh aktif. */
+.pm-keluar-penuh { display: none; }
+.pm-peta-bingkai.is-penuh .pm-keluar-penuh {
+  display: inline-flex; align-items: center; gap: 8px;
+  position: absolute;
+  top: calc(12px + env(safe-area-inset-top));
+  right: calc(12px + env(safe-area-inset-right));
+  /* Di atas seluruh kontrol dan popup Leaflet (tertinggi 1000) supaya tetap
+     bisa ditekan walau ada popup yang terbuka. */
+  z-index: 1100;
+  min-height: 44px; padding: 0 16px;   /* 44px = ambang nyaman untuk jempol */
+  background: rgba(17, 27, 22, .82); color: #fff;
+  border: 2px solid rgba(255, 255, 255, .92); border-radius: 999px;
+  backdrop-filter: blur(4px);
+  font-family: 'Poppins', sans-serif; font-weight: 800; font-size: .84rem; line-height: 1;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, .45);
+  transition: background var(--trans), transform var(--trans);
+}
+.pm-peta-bingkai.is-penuh .pm-keluar-penuh:hover { background: var(--zona-merah); transform: translateY(-1px); }
+.pm-peta-bingkai.is-penuh .pm-keluar-penuh:focus-visible {
+  background: var(--zona-merah); outline: 3px solid #fff; outline-offset: 2px;
+}
+.pm-keluar-tanda { font-size: 1.05rem; }
+
+/* Kotak peringatan dan kontrol Leaflet di kanan atas digeser turun supaya tidak
+   tertimpa tombol keluar (keduanya sama-sama menempel di sudut kanan atas). */
+.pm-peta-bingkai.is-penuh .pm-peringatan { top: calc(68px + env(safe-area-inset-top)); }
+.pm-peta-bingkai.is-penuh .leaflet-top.leaflet-right { padding-top: 150px; }
 
 /* Pita judul di atas peta (meniru kepala peta cetak) */
 .pm-peta-kepala {
@@ -114,8 +150,9 @@
   outline-offset: 2px;
 }
 
-/* Kontrol Leaflet di kanan atas digeser turun agar tidak tertimpa kotak peringatan */
-.leaflet-top.leaflet-right { padding-top: 82px; }
+/* Kontrol Leaflet di kanan atas digeser turun agar tidak tertimpa kotak
+   peringatan — jarak ini harus melebihi tinggi kotak peringatan (± 146 px). */
+.leaflet-top.leaflet-right { padding-top: 94px; }
 
 .pm-kontrol {
   background: rgba(255, 255, 255, .96); border-radius: 12px;
@@ -374,13 +411,18 @@
   .pm-peta-kepala p { display: none; }
   .pm-peringatan { max-width: 132px; font-size: .68rem; padding: 7px 9px; line-height: 1.3; }
   .pm-alat-petunjuk { display: none; }
-  .leaflet-top.leaflet-right { padding-top: 74px; }
+  /* Kotak peringatan lebih sempit di sini sehingga teksnya memakai lebih banyak
+     baris — kotaknya jadi lebih tinggi daripada di layar besar. */
+  .leaflet-top.leaflet-right { padding-top: 96px; }
   .pm-kontrol { font-size: .74rem; max-width: 200px; }
   .pm-kontrol-isi { max-height: 40vh; }
   .pm-kontrol-saklar { font-size: .72rem; }
   .pm-swatch { width: 16px; height: 11px; }
   .pm-alat { gap: 6px; padding: 10px; }
   .pm-tombol-alat { font-size: .78rem; padding: 7px 12px; }
+  /* Pergeseran yang sama seperti di layar besar (+56px), dihitung dari jarak
+     bawaan layar kecil. */
+  .pm-peta-bingkai.is-penuh .leaflet-top.leaflet-right { padding-top: 152px; }
 }
 
 /* --------------------- Popup ringkas untuk layar kecil --------------------- */
