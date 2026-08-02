@@ -689,6 +689,19 @@ Setiap kali Anda **push** perubahan ke branch, Vercel otomatis men-*deploy*
 ulang. Berkas `vercel.json` sudah menyertakan pengaturan *clean URLs* dan
 *caching* untuk `assets/`, `css/`, dan `js/`.
 
+> **Penting saat mengubah tampilan.** Halaman `.html` selalu diambil baru dari
+> server, sedangkan berkas di `css/` dan `js/` boleh disimpan peramban. Dulu
+> keduanya bisa berpasangan salah — HTML baru dengan CSS lama dari *cache* —
+> dan itu sempat membuat tombol "✕ Keluar" di peta mitigasi muncul polos serta
+> mendorong judul peta sampai terpotong. Dua pengaman dipakai sekarang:
+>
+> 1. `vercel.json` menyetel `Cache-Control: public, max-age=0, must-revalidate`
+>    untuk `/css/` dan `/js/`, jadi peramban selalu memastikan berkasnya masih
+>    yang terbaru sebelum memakainya.
+> 2. `peta-mitigasi-bencana.html` memanggil berkas petanya dengan penanda versi
+>    (`css/peta-mitigasi.css?v=3` dan `js/peta-mitigasi.js?v=3`).
+>    **Naikkan angka `?v=` itu setiap kali salah satu berkas tersebut diubah.**
+
 ### Alternatif (lewat terminal)
 ```bash
 npm i -g vercel   # sekali saja

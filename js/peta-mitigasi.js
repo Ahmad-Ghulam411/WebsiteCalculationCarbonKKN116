@@ -211,21 +211,136 @@
   L.control.zoom({ position: 'topright' }).addTo(peta);
   L.control.scale({ position: 'bottomleft', imperial: false, maxWidth: 190 }).addTo(peta);
 
+  /* ---------------------------------- ukuran bilah keterangan di atas peta ---
+     Judul peta, tombol "✕ Keluar", dan kotak peringatan duduk di satu bilah
+     melayang (.pm-peta-atas). Tinggi bilah itu berubah-ubah: teks peringatan
+     berpindah baris di layar sempit, tombol keluar muncul hanya saat layar
+     penuh, dan judulnya memendek saat layar diputar.
+
+     Dua hal harus mengikuti tinggi itu, dan dulu keduanya memakai angka tetap
+     yang gampang meleset (sehingga tombol zoom sempat tertimpa kotak
+     peringatan):
+       - kontrol Leaflet di kanan atas → lewat --pm-atas-kanan (dipakai CSS);
+       - ruang aman geseran otomatis popup → lewat aturRuangPopup(). */
+  var bilahAtas = bingkai && bingkai.querySelector('.pm-peta-atas');
+  var bilahKanan = bingkai && bingkai.querySelector('.pm-peta-atas-kanan');
+
+  function tinggiBilah(el) {
+    return el ? Math.round(el.getBoundingClientRect().height) : 0;
+  }
+
+  /** Tulis ukuran hanya bila berubah — menulis nilai yang sama akan memicu
+      ResizeObserver di atas berulang tanpa guna. */
+  function setUkuran(nama, nilai) {
+    if (bingkai.style.getPropertyValue(nama) === nilai) return;
+    bingkai.style.setProperty(nama, nilai);
+  }
+
+  function ukurBilahAtas() {
+    if (!bingkai || !bilahKanan) return;
+    setUkuran('--pm-atas-kanan', tinggiBilah(bilahKanan) + 'px');
+  }
+
+  /* Kotak legenda tumbuh dari sudut kanan bawah ke atas, sedangkan tombol zoom
+     dan penunjuk arah utara turun dari sudut kanan atas. Di peta yang pendek
+     (layar laptop tanpa mode layar penuh) keduanya bertemu di tengah dan
+     legenda menutupi tombol zoom. Tinggi maksimal isi legenda karena itu
+     dibatasi sisa ruang yang benar-benar ada di bawah kontrol tersebut, bukan
+     sekadar sekian persen tinggi jendela. Nilai dari CSS (58vh / 40vh) tetap
+     berlaku sebagai batas atas — lihat aturan `min()` di css/peta-mitigasi.css. */
+  function ukurRuangLegenda() {
+    if (!bingkai) return;
+    var kontrol = bingkai.querySelector('.pm-kontrol');
+    var isi = kontrol && kontrol.querySelector('.pm-kontrol-isi');
+    var kananAtas = bingkai.querySelector('.leaflet-top.leaflet-right');
+    if (!kontrol || !isi || !kananAtas) return;
+    // bagian legenda selain daftar isinya (judul + jarak tepi)
+    var rangka = kontrol.offsetHeight - isi.offsetHeight;
+    var sisa = kananAtas.getBoundingClientRect().bottom;
+    sisa = bingkai.getBoundingClientRect().bottom - sisa - rangka - 34;
+    setUkuran('--pm-legenda-isi', Math.max(120, Math.round(sisa)) + 'px');
+  }
+
   /* Saat popup dibuka Leaflet menggeser peta agar popup masuk layar. Ruang
      amannya diperbesar supaya popup tidak berhenti di balik pita judul,
-     kotak peringatan, atau legenda. Di ponsel ruangnya jauh lebih tipis:
-     petanya pendek dan geseran otomatis sering tertahan setMaxBounds, jadi
-     kedua kotak di atas peta disembunyikan sementara (lihat popupopen). */
+     kotak peringatan, atau legenda — dan sekarang dihitung dari tinggi bilah
+     yang sebenarnya, bukan angka tetap. Di ponsel ruangnya sengaja dibiarkan
+     tipis: petanya pendek dan geseran otomatis sering tertahan setMaxBounds,
+     jadi kotak yang tertimpa disamarkan saja (lihat aturTumpangTindih). */
   function aturRuangPopup() {
     var kecil = layarKecil();
+    // +24px: jarak bilah dari tepi atas peta ditambah sedikit sela.
+    var atas = kecil ? 16 : Math.max(96, tinggiBilah(bilahAtas) + 24);
     L.Popup.mergeOptions({
-      autoPanPaddingTopLeft: L.point(10, kecil ? 16 : 96),
+      autoPanPaddingTopLeft: L.point(10, atas),
       autoPanPaddingBottomRight: L.point(10, kecil ? 44 : 24)
     });
   }
-  aturRuangPopup();
-  if (MQ_KECIL.addEventListener) MQ_KECIL.addEventListener('change', aturRuangPopup);
-  else if (MQ_KECIL.addListener) MQ_KECIL.addListener(aturRuangPopup);
+
+  /* ------------------------------------- judul vs popup yang sedang terbuka --
+     Leaflet menggeser peta agar popup tidak berhenti di balik bilah keterangan,
+     tetapi geseran itu bisa mentok di batas wilayah peta (setMaxBounds) atau di
+     tepi layar ponsel. Kalau sampai mentok, popup berhenti tepat di atas judul
+     peta dan kedua teks itu saling menumpuk sehingga sama-sama tidak terbaca.
+     Karena itu tumpang tindihnya diukur langsung: kotak yang benar-benar
+     tertimpa saja yang disamarkan sementara (lihat css/peta-mitigasi.css),
+     sisanya tetap terlihat. */
+  var kotakJudul = bingkai && bingkai.querySelector('.pm-peta-kepala');
+  var kotakPeringatan = bingkai && bingkai.querySelector('.pm-peringatan');
+
+  /* Popup yang sedang terbuka dicatat lewat peristiwa Leaflet, bukan dicari
+     dengan querySelector('.leaflet-popup'): popup yang baru ditutup masih
+     tertinggal sesaat di halaman selama animasi pudarnya, sehingga pencarian
+     bisa mengukur popup yang salah. */
+  var popupAktif = null;
+
+  function bertabrakan(kotak, el) {
+    if (!kotak || !el) return false;
+    var b = el.getBoundingClientRect();
+    var sela = 6;   // sedikit jarak nafas supaya teks tidak berdempetan
+    return kotak.left < b.right + sela && kotak.right > b.left - sela &&
+           kotak.top < b.bottom + sela && kotak.bottom > b.top - sela;
+  }
+
+  var tundaTumpang = false;
+  function aturTumpangTindih() {
+    if (!bingkai || tundaTumpang) return;
+    tundaTumpang = true;
+    var jalankan = function () {
+      tundaTumpang = false;
+      var el = popupAktif && popupAktif.getElement();
+      var kotak = el ? el.getBoundingClientRect() : null;
+      bingkai.classList.toggle('tumpang-judul', bertabrakan(kotak, kotakJudul));
+      bingkai.classList.toggle('tumpang-peringatan', bertabrakan(kotak, kotakPeringatan));
+    };
+    if (window.requestAnimationFrame) window.requestAnimationFrame(jalankan);
+    else jalankan();
+  }
+
+  /** Ukur ulang bilah lalu sesuaikan jarak kontrol peta dan ruang popup. */
+  function segarkanBilahAtas() {
+    ukurBilahAtas();
+    ukurRuangLegenda();
+    aturRuangPopup();
+    aturTumpangTindih();
+  }
+
+  segarkanBilahAtas();
+  if (MQ_KECIL.addEventListener) MQ_KECIL.addEventListener('change', segarkanBilahAtas);
+  else if (MQ_KECIL.addListener) MQ_KECIL.addListener(segarkanBilahAtas);
+  window.addEventListener('resize', segarkanBilahAtas);
+  window.addEventListener('orientationchange', segarkanBilahAtas);
+  /* Teks bisa berpindah baris tanpa jendela berubah ukuran — misalnya saat
+     huruf web selesai dimuat atau tombol keluar muncul. ResizeObserver
+     menangkap perubahan itu; peramban lama cukup mengandalkan pemicu di atas. */
+  if (window.ResizeObserver && bilahAtas) {
+    var pengamatBilah = new ResizeObserver(segarkanBilahAtas);
+    pengamatBilah.observe(bilahAtas);
+    if (bilahKanan) pengamatBilah.observe(bilahKanan);
+  }
+  if (document.fonts && document.fonts.ready && document.fonts.ready.then) {
+    document.fonts.ready.then(segarkanBilahAtas);
+  }
 
   /* Tiap lapisan gambar diberi pane sendiri dengan z-index tetap. Tanpa ini,
      mematikan lalu menyalakan kembali sebuah lapisan akan menaruhnya paling
@@ -626,10 +741,7 @@
   });
 
   peta.on('popupopen', function (ev) {
-    /* Selagi popup terbuka, pita judul dan kotak peringatan disembunyikan
-       (hanya di layar kecil, lewat CSS) supaya keduanya tidak menutupi kepala
-       popup dan peta terasa lebih lega. */
-    if (bingkai) bingkai.classList.add('ada-popup');
+    popupAktif = ev.popup;
 
     /* Jaring pengaman: popup tidak pernah boleh lebih tinggi daripada petanya
        sendiri — misalnya saat ponsel dipakai mendatar sehingga peta jadi
@@ -640,8 +752,16 @@
       ev.popup.options.maxHeight = batas;
       ev.popup.update();
     }
+    aturTumpangTindih();
   });
-  peta.on('popupclose', function () { if (bingkai) bingkai.classList.remove('ada-popup'); });
+  peta.on('popupclose', function (ev) {
+    if (popupAktif === ev.popup) popupAktif = null;
+    aturTumpangTindih();
+  });
+  /* Popup ikut bergerak saat peta digeser, jadi tumpang tindihnya diperiksa
+     ulang selama pergerakan — dipadatkan ke satu pemeriksaan per gambar layar
+     supaya tidak memberatkan. */
+  peta.on('move zoom moveend zoomend resize', aturTumpangTindih);
 
   // tombol "Tunjukkan titik kumpul" di dalam popup mana pun
   peta.on('popupopen', function (ev) {
@@ -740,6 +860,15 @@
   });
   peta.addControl(new Utara());
 
+  /* Kotak legenda dan penunjuk utara baru ada di halaman sekarang, jadi ruang
+     yang tersisa untuk legenda diukur ulang di sini. Legenda juga ikut diamati:
+     tingginya berubah saat dilipat/dibuka warga. */
+  segarkanBilahAtas();
+  if (window.ResizeObserver) {
+    var kotakLegenda = bingkai && bingkai.querySelector('.pm-kontrol');
+    if (kotakLegenda) new ResizeObserver(ukurRuangLegenda).observe(kotakLegenda);
+  }
+
   /* --------------------------------------------------------------- 9. tombol alat */
 
   // Batas tampilan: kelurahan + sedikit wilayah tetangga di kiri dan kanan.
@@ -789,10 +918,20 @@
      berada di bawah peta sehingga tertutup begitu peta memenuhi layar, dan di
      ponsel tidak ada tombol Esc — tanpa "✕" warga terjebak di dalam peta. */
   var tblPenuh = document.getElementById('pmLayarPenuh');
+  var tblKeluar = document.getElementById('pmKeluarPenuh');
+  // Halaman selalu dibuka di luar mode layar penuh — samakan keadaan tombolnya.
+  if (tblKeluar) tblKeluar.hidden = !bingkai.classList.contains('is-penuh');
 
   function aturLayarPenuh(penuh) {
     if (bingkai.classList.contains('is-penuh') === penuh) return;
     bingkai.classList.toggle('is-penuh', penuh);
+    /* Tombol "✕ Keluar" hanya ada artinya di mode layar penuh. Di luar itu ia
+       disembunyikan lewat atribut `hidden`, bukan sekadar aturan CSS: atribut
+       ini tetap dipatuhi peramban walau css/peta-mitigasi.css belum termuat
+       atau versinya masih yang lama dari cache. Tanpa itu tombol tampil polos
+       di sudut peta dan — karena ikut mengambil ruang di dalam bingkai —
+       mendorong isi peta sampai judul di atasnya terpotong. */
+    if (tblKeluar) tblKeluar.hidden = !penuh;
     if (tblPenuh) {
       tblPenuh.textContent = penuh ? '✕ Keluar Layar Penuh' : '⛶ Layar Penuh';
       tblPenuh.classList.toggle('is-aktif', penuh);
@@ -800,7 +939,9 @@
     }
     // halaman di belakang peta dikunci supaya tidak ikut tergulir
     document.body.style.overflow = penuh ? 'hidden' : '';
-    setTimeout(function () { peta.invalidateSize(); }, 220);
+    // tombol keluar yang muncul/hilang mengubah tinggi bilah keterangan
+    segarkanBilahAtas();
+    setTimeout(function () { peta.invalidateSize(); segarkanBilahAtas(); }, 220);
   }
 
   /** Keluar layar penuh lalu kembalikan fokus ke tombolnya, sekaligus menarik

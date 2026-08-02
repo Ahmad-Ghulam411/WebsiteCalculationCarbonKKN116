@@ -44,7 +44,15 @@
 
 /* -------------------------- Kerangka peta --------------------------------- */
 .pm-peta-bingkai {
-  position: relative; border-radius: var(--radius); overflow: hidden;
+  position: relative; border-radius: var(--radius);
+  /* `overflow: hidden` memang memotong isi yang meluber, tetapi kotaknya masih
+     BISA digulir oleh peramban sendiri — misalnya ketika sesuatu di dalam peta
+     mendapat fokus. Kalau itu terjadi, judul peta dan kotak peringatan di
+     dalamnya ikut terseret ke atas lalu terpotong, tanpa ada batang gulir yang
+     bisa dipakai warga untuk mengembalikannya. `overflow: clip` memotong tanpa
+     pernah bisa digulir. Baris `hidden` di atasnya adalah cadangan untuk
+     peramban lama yang belum mengenal `clip`. */
+  overflow: hidden; overflow: clip;
   box-shadow: var(--bayang-lg); border: 3px solid var(--hijau-tua); background: #cfd8dc;
 }
 #petaMitigasi {
@@ -59,20 +67,56 @@
    tersembunyi, sehingga sisi bawah peta terpotong keluar layar. */
 .pm-peta-bingkai.is-penuh #petaMitigasi { height: 100%; }
 
+/* ------------------ Bilah keterangan melayang di atas peta ------------------ */
+/* Judul peta, tombol keluar layar penuh, dan kotak peringatan dulu dipaku satu
+   per satu ke sudut bingkai dengan `top`/`right` berangka tetap. Begitu salah
+   satu teksnya bertambah baris (layar sempit, layar diputar, atau masuk mode
+   layar penuh) kotak-kotak itu saling menimpa dan judulnya ikut terpotong.
+   Sekarang ketiganya dikumpulkan di satu bilah: sisi kiri untuk judul, sisi
+   kanan untuk tombol keluar dan peringatan yang ditumpuk ke bawah. Tata
+   letaknya dihitung peramban, jadi tidak ada lagi angka yang bisa meleset. */
+/* z-index 640 di sini menaruh SELURUH bilah di atas kotak peta (#petaMitigasi
+   ber-z-index 1) berikut seluruh isinya — termasuk popup. Itulah yang membuat
+   tombol "✕ Keluar" tetap bisa ditekan walau ada popup terbuka, tanpa perlu
+   angka susun sendiri di tiap kotak. */
+.pm-peta-atas {
+  position: absolute; inset: 0 0 auto 0; z-index: 640;
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 10px;
+  padding: 12px;
+  /* Bilahnya sendiri tembus sentuhan supaya peta tetap bisa digeser di
+     sela-sela kotak; hanya kotak di dalamnya yang menerima klik. */
+  pointer-events: none;
+}
+.pm-peta-atas > * { pointer-events: auto; }
+/* Kolom kanan: tombol keluar di atas, kotak peringatan di bawahnya. */
+.pm-peta-atas-kanan {
+  display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
+  pointer-events: none;
+}
+.pm-peta-atas-kanan > * { pointer-events: auto; }
+/* Di mode layar penuh bilah menempel ke tepi layar, jadi perlu menghindari
+   poni/sudut membulat ponsel. */
+.pm-peta-bingkai.is-penuh .pm-peta-atas {
+  padding: calc(12px + env(safe-area-inset-top))
+           calc(12px + env(safe-area-inset-right)) 0
+           calc(12px + env(safe-area-inset-left));
+}
+
 /* ------------------- Tombol keluar dari mode layar penuh ------------------- */
 /* Tombol "⛶ Layar Penuh" berada di bilah alat di bawah peta, jadi saat bingkai
    peta menutupi seluruh layar tombol itu ikut tertutup — di ponsel warga tidak
    punya cara keluar selain menutup halaman. Tombol ini duduk di dalam bingkai
-   dan hanya muncul selama mode layar penuh aktif. */
-.pm-keluar-penuh { display: none; }
-.pm-peta-bingkai.is-penuh .pm-keluar-penuh {
-  display: inline-flex; align-items: center; gap: 8px;
-  position: absolute;
-  top: calc(12px + env(safe-area-inset-top));
-  right: calc(12px + env(safe-area-inset-right));
-  /* Di atas seluruh kontrol dan popup Leaflet (tertinggi 1000) supaya tetap
-     bisa ditekan walau ada popup yang terbuka. */
-  z-index: 1100;
+   dan hanya muncul selama mode layar penuh aktif.
+
+   Penyembunyiannya berlapis tiga supaya tombol ini tidak pernah lagi nongol di
+   luar mode layar penuh:
+     1. atribut `hidden` di HTML, dipasang/dilepas js/peta-mitigasi.js — tetap
+        dipatuhi peramban walau berkas gaya ini gagal dimuat atau versinya
+        masih yang lama dari cache;
+     2. aturan `[hidden]` di bawah, agar gaya tombol tidak menimpa poin 1;
+     3. aturan `:not(.is-penuh)`, jaring pengaman bila skrip tidak berjalan. */
+.pm-keluar-penuh {
+  display: inline-flex; align-items: center; gap: 8px; flex: none;
   min-height: 44px; padding: 0 16px;   /* 44px = ambang nyaman untuk jempol */
   background: rgba(17, 27, 22, .82); color: #fff;
   border: 2px solid rgba(255, 255, 255, .92); border-radius: 999px;
@@ -81,20 +125,24 @@
   box-shadow: 0 4px 16px rgba(0, 0, 0, .45);
   transition: background var(--trans), transform var(--trans);
 }
-.pm-peta-bingkai.is-penuh .pm-keluar-penuh:hover { background: var(--zona-merah); transform: translateY(-1px); }
-.pm-peta-bingkai.is-penuh .pm-keluar-penuh:focus-visible {
+.pm-keluar-penuh[hidden] { display: none; }
+.pm-peta-bingkai:not(.is-penuh) .pm-keluar-penuh { display: none; }
+.pm-keluar-penuh:hover { background: var(--zona-merah); transform: translateY(-1px); }
+.pm-keluar-penuh:focus-visible {
   background: var(--zona-merah); outline: 3px solid #fff; outline-offset: 2px;
 }
 .pm-keluar-tanda { font-size: 1.05rem; }
 
-/* Kotak peringatan dan kontrol Leaflet di kanan atas digeser turun supaya tidak
-   tertimpa tombol keluar (keduanya sama-sama menempel di sudut kanan atas). */
-.pm-peta-bingkai.is-penuh .pm-peringatan { top: calc(68px + env(safe-area-inset-top)); }
-.pm-peta-bingkai.is-penuh .leaflet-top.leaflet-right { padding-top: 150px; }
+/* Kontrol Leaflet di kanan atas (zoom & arah utara) digeser turun sejauh tinggi
+   kolom kanan bilah di atasnya. Tingginya diukur js/peta-mitigasi.js lalu
+   ditaruh di --pm-atas-kanan, jadi jaraknya ikut menyesuaikan saat teks
+   peringatan berpindah baris atau tombol keluar muncul/hilang. Angka cadangan
+   dipakai selama skrip belum sempat mengukur. */
+.leaflet-top.leaflet-right { padding-top: calc(var(--pm-atas-kanan, 92px) + 22px); }
 
 /* Pita judul di atas peta (meniru kepala peta cetak) */
 .pm-peta-kepala {
-  position: absolute; top: 12px; left: 12px; z-index: 640;
+  flex: 0 1 auto; min-width: 0;
   background: rgba(255, 255, 255, .95); backdrop-filter: blur(4px);
   border-radius: 12px; padding: 10px 14px; box-shadow: var(--bayang);
   border-left: 5px solid var(--hijau); max-width: min(60%, 420px);
@@ -106,12 +154,23 @@
 
 /* Peringatan zona merah */
 .pm-peringatan {
-  position: absolute; top: 12px; right: 12px; z-index: 640;
   background: linear-gradient(135deg, #e53935, #b71c1c); color: #fff;
   border-radius: 12px; padding: 9px 14px; box-shadow: var(--bayang);
   max-width: 210px; font-size: .78rem; line-height: 1.35; font-weight: 600;
 }
 .pm-peringatan b { display: block; font-family: 'Poppins', sans-serif; font-size: .9rem; margin-bottom: 2px; }
+
+/* Popup yang terbuka kadang berhenti tepat di atas judul peta atau kotak
+   peringatan — geseran otomatis Leaflet bisa mentok di batas wilayah peta atau
+   di tepi layar ponsel. Kalau itu terjadi, dua teks bertumpuk dan sama-sama
+   tidak terbaca. js/peta-mitigasi.js mengukur tumpang tindihnya lalu memasang
+   kelas di bawah pada kotak yang benar-benar tertimpa saja; begitu popup
+   ditutup atau peta digeser menjauh, kotaknya muncul kembali. Tempatnya tidak
+   ikut bergeser (hanya disamarkan) supaya tombol "✕ Keluar" di sebelahnya
+   tetap diam di tempat. */
+.pm-peta-kepala, .pm-peringatan { transition: opacity var(--trans); }
+.pm-peta-bingkai.tumpang-judul .pm-peta-kepala,
+.pm-peta-bingkai.tumpang-peringatan .pm-peringatan { opacity: 0; pointer-events: none; }
 
 /* Alat bantu di bawah peta */
 .pm-alat {
@@ -150,10 +209,6 @@
   outline-offset: 2px;
 }
 
-/* Kontrol Leaflet di kanan atas digeser turun agar tidak tertimpa kotak
-   peringatan — jarak ini harus melebihi tinggi kotak peringatan (± 146 px). */
-.leaflet-top.leaflet-right { padding-top: 94px; }
-
 .pm-kontrol {
   background: rgba(255, 255, 255, .96); border-radius: 12px;
   box-shadow: 0 3px 14px rgba(0, 0, 0, .28); padding: 8px 12px 10px;
@@ -167,7 +222,11 @@
   color: var(--hijau-tua); text-transform: uppercase; letter-spacing: .5px;
 }
 .pm-kontrol-tanda { transition: transform var(--trans); font-size: .9rem; }
-.pm-kontrol-isi { max-height: 58vh; overflow-y: auto; }
+/* Daftar legenda dibatasi dua-duanya: sekian persen tinggi jendela (supaya
+   tidak mendominasi layar) DAN sisa ruang nyata di bawah tombol zoom / penunjuk
+   utara, yang diukur js/peta-mitigasi.js ke --pm-legenda-isi. Tanpa batas kedua
+   itu legenda menutupi tombol zoom di peta yang pendek. */
+.pm-kontrol-isi { max-height: min(58vh, var(--pm-legenda-isi, 58vh)); overflow-y: auto; }
 .pm-kontrol.is-lipat .pm-kontrol-isi { display: none; }
 .pm-kontrol.is-lipat { padding-bottom: 8px; }
 .pm-kontrol.is-lipat .pm-kontrol-tanda { transform: rotate(-90deg); }
@@ -407,22 +466,27 @@
 @media (max-width: 700px) {
   /* Di layar kecil peta perlu ruang sebesar mungkin */
   #petaMitigasi { height: clamp(430px, 68vh, 620px); }
+  .pm-peta-atas { padding: 8px; gap: 8px; }
+  .pm-peta-atas-kanan { gap: 8px; }
+  .pm-peta-bingkai.is-penuh .pm-peta-atas {
+    padding: calc(8px + env(safe-area-inset-top))
+             calc(8px + env(safe-area-inset-right)) 0
+             calc(8px + env(safe-area-inset-left));
+  }
   .pm-peta-kepala { max-width: 52%; padding: 7px 10px; }
   .pm-peta-kepala p { display: none; }
   .pm-peringatan { max-width: 132px; font-size: .68rem; padding: 7px 9px; line-height: 1.3; }
+  .pm-keluar-penuh { padding: 0 13px; font-size: .8rem; }
   .pm-alat-petunjuk { display: none; }
-  /* Kotak peringatan lebih sempit di sini sehingga teksnya memakai lebih banyak
-     baris — kotaknya jadi lebih tinggi daripada di layar besar. */
-  .leaflet-top.leaflet-right { padding-top: 96px; }
   .pm-kontrol { font-size: .74rem; max-width: 200px; }
-  .pm-kontrol-isi { max-height: 40vh; }
+  .pm-kontrol-isi { max-height: min(40vh, var(--pm-legenda-isi, 40vh)); }
   .pm-kontrol-saklar { font-size: .72rem; }
   .pm-swatch { width: 16px; height: 11px; }
   .pm-alat { gap: 6px; padding: 10px; }
   .pm-tombol-alat { font-size: .78rem; padding: 7px 12px; }
-  /* Pergeseran yang sama seperti di layar besar (+56px), dihitung dari jarak
-     bawaan layar kecil. */
-  .pm-peta-bingkai.is-penuh .leaflet-top.leaflet-right { padding-top: 152px; }
+  /* Kotak peringatan lebih sempit di sini sehingga teksnya memakai lebih banyak
+     baris — angka cadangannya ikut dinaikkan. Selebihnya diukur oleh skrip. */
+  .leaflet-top.leaflet-right { padding-top: calc(var(--pm-atas-kanan, 96px) + 16px); }
 }
 
 /* --------------------- Popup ringkas untuk layar kecil --------------------- */
@@ -456,13 +520,6 @@
   }
   .leaflet-container a.leaflet-popup-close-button:hover,
   .leaflet-container a.leaflet-popup-close-button:focus { color: #fff; }
-
-  /* Selagi popup terbuka, pita judul dan kotak peringatan disingkirkan supaya
-     tidak menutupi kepala popup — di layar sekecil ini Leaflet tidak selalu
-     bisa menggeser peta cukup jauh untuk menghindarinya. */
-  .pm-peta-kepala, .pm-peringatan { transition: opacity var(--trans); }
-  .pm-peta-bingkai.ada-popup .pm-peta-kepala,
-  .pm-peta-bingkai.ada-popup .pm-peringatan { opacity: 0; pointer-events: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -471,7 +528,7 @@
 }
 
 @media print {
-  .nav, .pm-alat, .footer, .pm-peringatan { display: none !important; }
+  .nav, .pm-alat, .footer, .pm-peringatan, .pm-keluar-penuh { display: none !important; }
   .pm-peta-bingkai { box-shadow: none; }
   #petaMitigasi { height: 520px; }
 }
