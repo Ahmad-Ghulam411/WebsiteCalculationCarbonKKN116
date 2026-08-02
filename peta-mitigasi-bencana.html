@@ -20,8 +20,16 @@
        walau jaringan sedang bermasalah — penting untuk halaman kebencanaan. -->
   <link rel="stylesheet" href="vendor/leaflet/leaflet.css">
 
+  <!-- Angka `?v=` di belakang berkas gaya & skrip peta adalah penanda versi.
+       Halaman HTML selalu diambil baru dari server, sedangkan berkas di /css/
+       dan /js/ boleh disimpan peramban. Tanpa penanda ini, HTML baru bisa
+       berpasangan dengan CSS lama dari cache — itulah yang membuat tombol
+       "✕ Keluar" sempat muncul polos di atas peta dan mendorong judul peta
+       sampai terpotong. Menaikkan angkanya memaksa peramban mengambil versi
+       terbaru seketika. NAIKKAN ANGKA INI setiap css/peta-mitigasi.css atau
+       js/peta-mitigasi.js diubah. -->
   <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/peta-mitigasi.css">
+  <link rel="stylesheet" href="css/peta-mitigasi.css?v=3">
 </head>
 <body>
 
@@ -114,28 +122,47 @@
 
         <!-- Kerangka peta -->
         <div class="pm-peta-bingkai">
-          <div class="pm-peta-kepala">
-            <h3>Peta Mitigasi Bencana Kelurahan Kampung Baru</h3>
-            <p>Kec. Bacukiki Barat, Kota Parepare · Fokus: Tsunami, Banjir Rob, Gelombang Pasang</p>
-          </div>
 
-          <div class="pm-peringatan">
-            <b>⚠️ Zona Merah</b>
-            Risiko tinggi tsunami &amp; rob — segera evakuasi ke jalur aman.
-          </div>
+          <!-- Bilah keterangan di atas peta.
+               Judul, tombol keluar, dan kotak peringatan dikumpulkan dalam satu
+               bilah melayang (bukan tiga kotak yang masing-masing dipaku ke
+               sudut). Dengan begitu ketiganya tidak pernah saling menimpa
+               walau teksnya bertambah baris, layar diputar, atau peta masuk
+               mode layar penuh. Bilahnya sendiri tembus klik — hanya kotak di
+               dalamnya yang menerima sentuhan — supaya peta tetap bisa digeser
+               di sela-selanya. -->
+          <div class="pm-peta-atas">
+            <div class="pm-peta-kepala">
+              <h3>Peta Mitigasi Bencana Kelurahan Kampung Baru</h3>
+              <p>Kec. Bacukiki Barat, Kota Parepare · Fokus: Tsunami, Banjir Rob, Gelombang Pasang</p>
+            </div>
 
-          <!-- Tombol keluar layar penuh.
-               Tombol "⛶ Layar Penuh" ada di bilah alat DI BAWAH peta, sehingga
-               begitu bingkai ini menutupi seluruh layar tombol tersebut ikut
-               tertutup. Di ponsel warga jadi tidak menemukan cara keluar dari
-               peta. Karena itu tombol "✕" ini diletakkan DI DALAM bingkai dan
-               hanya tampil saat mode layar penuh aktif (diatur lewat CSS
-               `.pm-peta-bingkai.is-penuh`). -->
-          <button type="button" class="pm-keluar-penuh" id="pmKeluarPenuh"
-                  aria-label="Keluar dari mode layar penuh">
-            <span class="pm-keluar-tanda" aria-hidden="true">✕</span>
-            <span>Keluar</span>
-          </button>
+            <div class="pm-peta-atas-kanan">
+              <!-- Tombol keluar layar penuh.
+                   Tombol "⛶ Layar Penuh" ada di bilah alat DI BAWAH peta,
+                   sehingga begitu bingkai ini menutupi seluruh layar tombol
+                   tersebut ikut tertutup. Di ponsel warga jadi tidak menemukan
+                   cara keluar dari peta. Karena itu tombol "✕" ini diletakkan
+                   DI DALAM bingkai.
+
+                   Penyembunyiannya memakai atribut `hidden` (dipasang di sini,
+                   dilepas/dipasang lagi oleh js/peta-mitigasi.js), BUKAN hanya
+                   aturan CSS: atribut ini tetap dipatuhi peramban walau
+                   css/peta-mitigasi.css gagal dimuat atau versinya masih yang
+                   lama dari cache. Tanpa itu tombol muncul sebagai tombol polos
+                   di atas peta dan ikut mendorong isi bingkai. -->
+              <button type="button" class="pm-keluar-penuh" id="pmKeluarPenuh" hidden
+                      aria-label="Keluar dari mode layar penuh">
+                <span class="pm-keluar-tanda" aria-hidden="true">✕</span>
+                <span>Keluar</span>
+              </button>
+
+              <div class="pm-peringatan">
+                <b>⚠️ Zona Merah</b>
+                Risiko tinggi tsunami &amp; rob — segera evakuasi ke jalur aman.
+              </div>
+            </div>
+          </div>
 
           <div id="petaMitigasi" role="application"
                aria-label="Peta interaktif zona rawan bencana dan jalur evakuasi Kelurahan Kampung Baru"></div>
@@ -594,7 +621,7 @@
 
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="data/peta-mitigasi-data.js"></script>
-  <script src="js/peta-mitigasi.js"></script>
+  <script src="js/peta-mitigasi.js?v=3"></script>
   <script>
     // Menu responsif + tahun footer (mandiri, tanpa bergantung pada main.js)
     (function () {
