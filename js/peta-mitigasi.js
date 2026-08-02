@@ -783,17 +783,40 @@
     }
   });
 
-  var tblPenuh = tombol('pmLayarPenuh', function () {
-    bingkai.classList.toggle('is-penuh');
-    var penuh = bingkai.classList.contains('is-penuh');
-    tblPenuh.textContent = penuh ? '✕ Keluar Layar Penuh' : '⛶ Layar Penuh';
-    tblPenuh.classList.toggle('is-aktif', penuh);
+  /* --- mode layar penuh -----------------------------------------------------
+     Ada tiga jalan keluar: tombol "✕ Keluar" di dalam peta, tombol layar penuh
+     di bilah alat, dan tombol Esc. Tombol "✕" yang paling penting: bilah alat
+     berada di bawah peta sehingga tertutup begitu peta memenuhi layar, dan di
+     ponsel tidak ada tombol Esc — tanpa "✕" warga terjebak di dalam peta. */
+  var tblPenuh = document.getElementById('pmLayarPenuh');
+
+  function aturLayarPenuh(penuh) {
+    if (bingkai.classList.contains('is-penuh') === penuh) return;
+    bingkai.classList.toggle('is-penuh', penuh);
+    if (tblPenuh) {
+      tblPenuh.textContent = penuh ? '✕ Keluar Layar Penuh' : '⛶ Layar Penuh';
+      tblPenuh.classList.toggle('is-aktif', penuh);
+      tblPenuh.setAttribute('aria-pressed', penuh ? 'true' : 'false');
+    }
+    // halaman di belakang peta dikunci supaya tidak ikut tergulir
     document.body.style.overflow = penuh ? 'hidden' : '';
     setTimeout(function () { peta.invalidateSize(); }, 220);
+  }
+
+  /** Keluar layar penuh lalu kembalikan fokus ke tombolnya, sekaligus menarik
+      tampilan halaman balik ke area peta supaya jelas peta belum hilang. */
+  function keluarLayarPenuh() {
+    aturLayarPenuh(false);
+    if (tblPenuh) tblPenuh.focus();
+  }
+
+  tombol('pmLayarPenuh', function () {
+    aturLayarPenuh(!bingkai.classList.contains('is-penuh'));
   });
+  tombol('pmKeluarPenuh', keluarLayarPenuh);
 
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && bingkai.classList.contains('is-penuh')) tblPenuh.click();
+    if (e.key === 'Escape' && bingkai.classList.contains('is-penuh')) keluarLayarPenuh();
   });
 
   var penandaSaya = null;

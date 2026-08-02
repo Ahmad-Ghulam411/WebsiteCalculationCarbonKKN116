@@ -654,9 +654,18 @@ Angka faktor emisi memakai data resmi pemerintah agar dapat dipertanggungjawabka
 
 ## 🖼️ Mengganti Logo & Foto Latar
 
-Lihat **`assets/README.md`**. Ringkasnya: taruh `logo-parepare.png` dan
-`latar-parepare.jpg` di folder `assets/`. Bila belum ada, website tetap tampil
-rapi memakai emblem & gradien bawaan.
+Lihat **`assets/README.md`**. Ringkasnya:
+
+- **`LogoKKarbon.png`** — logo resmi website. Dipakai sebagai logo di menu atas
+  sekaligus ikon situs (gambar kecil di tab peramban dan pintasan layar utama
+  ponsel). Halaman web memanggil salinan kecilnya — `logo-kkarbon-32.png`,
+  `logo-kkarbon-180.png`, dan `logo-kkarbon-192.png` — agar tetap ringan. Bila
+  logo diganti, salinan itu perlu dibuat ulang; perintahnya ada di
+  `assets/README.md`.
+- **`latar-parepare.jpg`** — foto latar hero.
+
+Bila berkasnya belum ada, website tetap tampil rapi memakai emblem & gradien
+bawaan.
 
 ---
 
