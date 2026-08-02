@@ -17,7 +17,7 @@
  *         c. AKUN BAWAAN di js/config.js — dipakai selama akun belum pernah
  *            diganti sama sekali.
  *
- *    3. Pemeriksaan saat masuk & aksi mengganti akun.
+ *    3. Pemeriksaan saat masuk, pilihan "Ingatkan Saya", & aksi mengganti akun.
  *
  *  ⚠️  SUPAYA AKUN BARU BERLAKU DI SEMUA PERANGKAT, apps-script/CodeBankSampah.gs
  *      WAJIB di-deploy ulang (Deploy ▸ Manage deployments ▸ ✏️ ▸ Version:
@@ -33,6 +33,9 @@
 
 /* Kunci penyimpanan cadangan akun di perangkat */
 const KUNCI_BS_AKUN = 'bankSampahAkunPetugas';
+
+/* Kunci penyimpanan pilihan "Ingatkan Saya" di perangkat */
+const KUNCI_BS_INGAT = 'bankSampahIngatPetugas';
 
 const AkunPetugas = (function () {
   'use strict';
@@ -225,6 +228,125 @@ const AkunPetugas = (function () {
   /** Akun yang berlaku di perangkat ini: cadangan bila ada, kalau tidak yang bawaan. */
   function akunBerlaku() { return akunPerangkat() || akunBawaan(); }
 
+  /* =======================================================================
+   *  2b) "INGATKAN SAYA" — tetap masuk walau website ditutup
+   *  ---------------------------------------------------------------------
+   *  Biasanya petugas hanya dianggap "sedang masuk" selama tab-nya terbuka
+   *  (sessionStorage). Kalau kotak "Ingatkan Saya" dicentang, satu catatan
+   *  kecil ditinggal di perangkat supaya kunjungan berikutnya bisa langsung
+   *  masuk tanpa mengetik ulang.
+   *
+   *  Yang disimpan HANYA nama pengguna + SIDIK sandinya (SHA-256), persis
+   *  seperti cadangan akun di atas — kata sandi aslinya tidak pernah ikut
+   *  tersimpan dan tidak bisa dikembalikan dari sidik itu.
+   *
+   *  CATATAN JUJUR: sidik ini tetap bisa dibaca oleh siapa pun yang memegang
+   *  perangkatnya, dan cukup untuk masuk ke dashboard. Karena itu kotaknya
+   *  diberi peringatan agar TIDAK dicentang di HP/laptop yang dipakai
+   *  bersama-sama. Ingatan ini dibuang saat petugas menekan "🚪 Keluar",
+   *  saat masa berlakunya habis, dan saat server menolak akunnya (mis.
+   *  kata sandinya sudah diganti dari perangkat lain).
+   * ===================================================================== */
+
+  /* Berapa lama ingatan bertahan. Setiap kali berhasil dipakai masuk,
+   * masa berlakunya diperpanjang lagi dari hari itu. */
+  const INGAT_HARI = 30;
+  const INGAT_MS = INGAT_HARI * 24 * 60 * 60 * 1000;
+
+  const POLA_SIDIK = /^[0-9a-f]{64}$/;
+
+  /** Membuang ingatan "Ingatkan Saya" di perangkat ini. */
+  function lupakanIngatan() {
+    try { localStorage.removeItem(KUNCI_BS_INGAT); return true; } catch (e) { return false; }
+  }
+
+  /**
+   * Ingatan yang masih berlaku di perangkat ini — null bila tidak ada.
+   * Catatan yang rusak atau sudah kedaluwarsa langsung dibuang di sini,
+   * jadi pemanggilnya tidak perlu mengurus pembersihan.
+   */
+  function bacaIngatan() {
+    let isi;
+    try {
+      isi = JSON.parse(localStorage.getItem(KUNCI_BS_INGAT) || 'null');
+    } catch (e) {
+      lupakanIngatan();
+      return null;
+    }
+    if (!isi || typeof isi !== 'object') return null;
+
+    const user = rapikanUser(isi.username);
+    const sidik = String(isi.sidik || '').trim().toLowerCase();
+    const berlaku = Number(isi.berlaku);
+
+    if (!user || !POLA_SIDIK.test(sidik) || !isFinite(berlaku) || berlaku <= 0) {
+      lupakanIngatan();
+      return null;
+    }
+    if (Date.now() >= berlaku) {           // sudah lewat 30 hari
+      lupakanIngatan();
+      return null;
+    }
+    return { username: user, sidik: sidik, berlaku: berlaku };
+  }
+
+  /** Menyimpan / memperpanjang ingatan. false bila penyimpanan browser menolak. */
+  function simpanIngatan(username, sidik) {
+    const user = rapikanUser(username);
+    const jari = String(sidik || '').trim().toLowerCase();
+    if (!user || !POLA_SIDIK.test(jari)) return false;
+
+    const sekarang = Date.now();
+    try {
+      localStorage.setItem(KUNCI_BS_INGAT, JSON.stringify({
+        username: user, sidik: jari, dibuat: sekarang, berlaku: sekarang + INGAT_MS,
+      }));
+      return true;
+    } catch (e) {
+      console.warn('"Ingatkan Saya" tidak bisa disimpan di perangkat ini:', e);
+      return false;
+    }
+  }
+
+  /** Dipakai layar masuk saat kotak "Ingatkan Saya" dicentang. */
+  function ingat(user, sandi) {
+    return simpanIngatan(user, hash(user, sandi));
+  }
+
+  /** Keterangan singkat untuk layar "masuk otomatis" — sidiknya TIDAK ikut. */
+  function infoIngatan() {
+    const ingatan = bacaIngatan();
+    return ingatan ? { username: ingatan.username, berlaku: ingatan.berlaku } : null;
+  }
+
+  /** Menyegarkan ingatan sesudah akun diganti — HANYA bila petugas memang
+   *  sedang memakainya, supaya penggantian akun tidak diam-diam
+   *  menghidupkan "Ingatkan Saya" yang tidak pernah dicentang. */
+  function perbaruiIngatan(username, sidik) {
+    if (bacaIngatan()) simpanIngatan(username, sidik);
+  }
+
+  /**
+   * true bila ingatan yang sedang diperiksa MASIH ingatan yang tersimpan.
+   *
+   * Pemeriksaan ke Google Sheets bisa makan waktu sampai satu menit, dan
+   * selama itu petugas mungkin sudah menekan "Masuk dengan akun lain" —
+   * atau malah sudah masuk memakai akun yang berbeda. Jawaban yang datang
+   * TERLAMBAT tidak boleh menghidupkan kembali ingatan yang sudah dibuang,
+   * dan tidak boleh menimpa/menghapus ingatan yang baru.
+   */
+  function ingatanMasihSama(ingatan) {
+    const kini = bacaIngatan();
+    return !!kini && kini.sidik === ingatan.sidik &&
+      kunciUser(kini.username) === kunciUser(ingatan.username);
+  }
+
+  /** Memperpanjang masa berlaku ingatan sesudah berhasil dipakai masuk. */
+  function perpanjangIngatan(ingatan, username) {
+    if (!ingatanMasihSama(ingatan)) return;
+    simpanIngatan(rapikanUser(username) || ingatan.username, ingatan.sidik);
+  }
+
   function waktuSekarang() {
     const d = new Date();
     const p = function (n) { return String(n).padStart(2, '0'); };
@@ -348,6 +470,106 @@ const AkunPetugas = (function () {
     });
   }
 
+  const PESAN_INGAT_KEDALUWARSA =
+    'Akun petugas sudah diganti, jadi "Ingatkan Saya" yang lama tidak berlaku lagi. ' +
+    'Silakan masuk memakai akun yang terbaru.';
+
+  /**
+   * MASUK OTOMATIS — dipakai saat halaman dibuka dan petugas pernah
+   * mencentang "Ingatkan Saya" di perangkat ini.
+   *
+   * Sidik yang tersimpan diperiksa ULANG persis seperti saat mengetik kata
+   * sandi, jadi ingatan lama tidak bisa dipakai lagi begitu akunnya diganti:
+   *   - Google Sheets menjawab "salah" → ingatan DIBUANG, petugas diminta
+   *     masuk memakai akun terbaru.
+   *   - Google Sheets tidak menjawab   → dicocokkan dengan catatan akun di
+   *     perangkat ini (ingatan TIDAK dibuang, siapa tahu servernya cuma
+   *     sedang sibuk).
+   *
+   * @returns {Promise<{ok:boolean, alasan:string, pesan:string,
+   *                    username:string, sumber:string, catatan:string}>}
+   *          alasan: '' berhasil · 'kosong' tidak ada ingatan ·
+   *                  'ditolak' ingatan sudah tidak berlaku (sudah dibuang) ·
+   *                  'gagal' belum bisa dipastikan (ingatan dibiarkan)
+   */
+  function masukTersimpan() {
+    const ingatan = bacaIngatan();
+    if (!ingatan) {
+      return Promise.resolve({
+        ok: false, alasan: 'kosong', sumber: '', username: '',
+        catatan: '', bawaan: false, pesan: '',
+      });
+    }
+
+    if (!pakaiServer()) return Promise.resolve(hasilIngatPerangkat(ingatan, ''));
+
+    return BankSampah.panggilServerBaca(paramAkun({
+      action: 'masukAdmin',
+      akunUser: ingatan.username,
+      akunSidik: ingatan.sidik,
+    })).then(function (resp) {
+      /* Jawaban yang datang terlambat tidak boleh mengubah catatan apa pun
+       * bila ingatannya sudah berganti/dibuang selagi menunggu. */
+      const masihSama = ingatanMasihSama(ingatan);
+
+      if (resp && resp.ok) {
+        const nama = rapikanUser(resp.username) || ingatan.username;
+        /* Cadangan akun di perangkat disamakan dengan keadaan di server —
+         * sama persis seperti pada masuk() di atas. */
+        if (masihSama) {
+          if (resp.tersimpan) {
+            simpanPerangkat({ username: nama, sidik: ingatan.sidik, diubah: resp.diubah || '' });
+          } else {
+            lupakanPerangkat();
+          }
+          perpanjangIngatan(ingatan, ingatan.username);
+        }
+        return {
+          ok: true, alasan: '', sumber: 'server', catatan: '',
+          bawaan: !resp.tersimpan, username: nama, pesan: '',
+        };
+      }
+      if (resp && resp.salah) {
+        if (masihSama) lupakanIngatan();
+        return {
+          ok: false, alasan: 'ditolak', sumber: 'server', username: ingatan.username,
+          catatan: '', bawaan: false, pesan: PESAN_INGAT_KEDALUWARSA,
+        };
+      }
+      return hasilIngatPerangkat(ingatan, alasanServer(resp));
+    });
+  }
+
+  /** Memeriksa ingatan tanpa server — dicocokkan dengan akun di perangkat ini. */
+  function hasilIngatPerangkat(ingatan, alasan) {
+    const akun = akunBerlaku();
+    const cocok = kunciUser(ingatan.username) === kunciUser(akun.username) &&
+      sidikSama(ingatan.sidik, akun.sidik);
+
+    if (!cocok) {
+      /* Kalau memang tidak ada server, catatan di perangkat inilah kata
+       * terakhirnya — ingatan yang tidak cocok tidak ada gunanya disimpan.
+       * Kalau servernya ADA tapi sedang diam, ingatan dibiarkan: bisa jadi
+       * ia masih benar dan hanya belum sempat diperiksa. */
+      if (!pakaiServer()) lupakanIngatan();
+      return {
+        ok: false, alasan: pakaiServer() ? 'gagal' : 'ditolak', sumber: 'perangkat',
+        username: ingatan.username, bawaan: false, catatan: alasan,
+        pesan: pakaiServer()
+          ? 'Masuk otomatis belum bisa dipastikan karena penyimpanan online sedang tidak ' +
+            'menjawab. Silakan masuk seperti biasa.'
+          : PESAN_INGAT_KEDALUWARSA,
+      };
+    }
+
+    perpanjangIngatan(ingatan, akun.username);
+    return {
+      ok: true, alasan: '', sumber: 'perangkat', username: akun.username,
+      bawaan: !!akun.bawaan, pesan: '',
+      catatan: alasan ? alasan + ' Untuk sementara akun dicocokkan dengan catatan di perangkat ini.' : '',
+    };
+  }
+
   /** Hasil pemeriksaan tanpa server (cadangan di perangkat / akun bawaan). */
   function hasilPerangkat(nama, sandi, alasan) {
     const akun = akunBerlaku();
@@ -463,6 +685,10 @@ const AkunPetugas = (function () {
         simpanPerangkat({
           username: periksa.userBaru, sidik: sidikBaru, diubah: resp.diubah || '',
         });
+        /* Kalau petugas sedang memakai "Ingatkan Saya", ingatannya ikut
+         * disegarkan — kalau tidak, kunjungan berikutnya akan ditolak
+         * server karena masih membawa sidik sandi yang lama. */
+        perbaruiIngatan(periksa.userBaru, sidikBaru);
         return {
           ok: true, sumber: 'server', hanyaPerangkat: false, catatan: '',
           username: periksa.userBaru,
@@ -500,6 +726,8 @@ const AkunPetugas = (function () {
           'Akun lama masih berlaku.',
       };
     }
+
+    perbaruiIngatan(periksa.userBaru, sidikBaru);
 
     return {
       ok: true, sumber: 'perangkat', hanyaPerangkat: pakaiServer(), catatan: alasan,
@@ -555,6 +783,12 @@ const AkunPetugas = (function () {
     periksaIsian: periksaIsian,
     nilaiSandi: nilaiSandi,
 
+    // "Ingatkan Saya"
+    ingat: ingat,
+    infoIngatan: infoIngatan,
+    masukTersimpan: masukTersimpan,
+    lupakanIngatan: lupakanIngatan,
+
     // keterangan akun
     info: info,
     infoCepat: infoCepat,
@@ -565,6 +799,9 @@ const AkunPetugas = (function () {
     lupakanAkunPerangkat: lupakanPerangkat,
 
     // aturan (dipakai tampilan agar tulisannya tidak kembar-beda)
-    ATURAN: { MIN_SANDI: MIN_SANDI, MIN_USER: MIN_USER, MAKS_USER: MAKS_USER },
+    ATURAN: {
+      MIN_SANDI: MIN_SANDI, MIN_USER: MIN_USER, MAKS_USER: MAKS_USER,
+      INGAT_HARI: INGAT_HARI,
+    },
   };
 })();

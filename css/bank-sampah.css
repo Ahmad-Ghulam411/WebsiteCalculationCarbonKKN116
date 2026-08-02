@@ -443,6 +443,38 @@
 }
 .adm-masuk-bawah { margin-top: 18px; font-size: .86rem; color: var(--tinta-lembut); }
 
+/* Pilihan "Ingatkan Saya" — tetap masuk walau website ditutup */
+.adm-masuk-ingat {
+  display: flex; align-items: flex-start; gap: 11px; text-align: left; cursor: pointer;
+  margin: 4px 0 14px; padding: 12px 14px;
+  background: var(--latar); border: 2px solid var(--garis);
+  border-radius: var(--radius-sm); transition: border-color var(--trans), background var(--trans);
+}
+.adm-masuk-ingat:hover { border-color: var(--hijau-terang); }
+.adm-masuk-ingat:focus-within {
+  border-color: var(--hijau-terang); box-shadow: 0 0 0 4px rgba(46, 158, 91, .15);
+}
+.adm-masuk-ingat input[type="checkbox"] {
+  width: 20px; height: 20px; margin: 2px 0 0; flex: none;
+  accent-color: var(--hijau-terang); cursor: pointer;
+}
+.adm-masuk-ingat-teks { display: block; }
+.adm-masuk-ingat-teks strong { display: block; font-size: .95rem; color: var(--hijau-tua); }
+.adm-masuk-ingat-teks small {
+  display: block; margin-top: 2px; font-size: .8rem; line-height: 1.5; color: var(--tinta-lembut);
+}
+
+/* Layar tunggu saat "Ingatkan Saya" sedang dipakai masuk otomatis */
+.adm-masuk-otomatis { padding: 6px 0 4px; }
+.adm-masuk-otomatis-judul { font-weight: 700; color: var(--hijau-tua); font-size: 1.02rem; }
+.adm-masuk-otomatis-nama {
+  font-family: 'Poppins', sans-serif; font-weight: 700; font-size: 1.15rem;
+  color: var(--tinta); margin: 6px 0 4px; word-break: break-word;
+}
+.adm-masuk-otomatis-ket {
+  font-size: .88rem; color: var(--tinta-lembut); line-height: 1.6; margin-bottom: 16px;
+}
+
 /* ------------------------------ Kerangka --------------------------------- */
 .adm-atas {
   background: linear-gradient(135deg, #0e5e33, #0a4f5e); color: #fff;

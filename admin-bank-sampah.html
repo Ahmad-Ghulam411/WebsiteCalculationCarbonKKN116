@@ -26,6 +26,19 @@
         Akun ini <strong>berbeda</strong> dengan akun admin data jejak karbon.
       </p>
 
+      <!-- Layar tunggu "masuk otomatis" — muncul hanya bila petugas pernah
+           mencentang "Ingatkan Saya" di perangkat ini. -->
+      <div class="adm-masuk-otomatis tersembunyi" id="masukOtomatis">
+        <p class="adm-masuk-otomatis-judul">⏳ Sedang masuk otomatis…</p>
+        <p class="adm-masuk-otomatis-nama" id="masukOtomatisNama">—</p>
+        <p class="adm-masuk-otomatis-ket">
+          Anda pernah mencentang <strong>“Ingatkan Saya”</strong> di perangkat ini.
+        </p>
+        <button type="button" class="tombol tombol-kecil tombol-batal" id="btnBatalOtomatis">
+          Masuk dengan akun lain
+        </button>
+      </div>
+
       <form id="formMasuk" novalidate>
         <div class="adm-masuk-field">
           <label for="inputUser">Nama Pengguna (Username)</label>
@@ -35,6 +48,19 @@
           <label for="inputSandi">Kata Sandi</label>
           <input type="password" id="inputSandi" autocomplete="current-password" placeholder="Kata sandi petugas">
         </div>
+
+        <label class="adm-masuk-ingat" for="inputIngat">
+          <input type="checkbox" id="inputIngat">
+          <span class="adm-masuk-ingat-teks">
+            <strong>Ingatkan Saya</strong>
+            <small>
+              Tetap masuk di perangkat ini walau website ditutup — sampai
+              <span id="ketIngatHari">30</span> hari, atau sampai Anda menekan tombol
+              <em>🚪 Keluar</em>. Jangan dicentang di HP/laptop yang dipakai bersama-sama.
+            </small>
+          </span>
+        </label>
+
         <p class="adm-masuk-pesan" id="pesanMasuk"></p>
         <button type="submit" class="tombol tombol-penuh" id="btnMasuk">🔓 Masuk Dashboard</button>
       </form>
@@ -596,6 +622,22 @@
               <strong>🔐 Akun Petugas</strong>. Gantilah segera kalau ada petugas lama yang
               sudah tidak bertugas lagi.
             </p>
+            <div class="adm-tanya">
+              <details>
+                <summary>Kotak “Ingatkan Saya” di layar masuk</summary>
+                <p>Kalau dicentang, dashboard ini <strong>ingat Anda di HP/laptop yang sedang
+                   dipakai</strong>: website boleh ditutup, dan saat dibuka lagi Anda
+                   <strong>langsung masuk</strong> tanpa mengetik akun — sampai 30 hari.</p>
+                <p>Ingatan itu berhenti sendiri kalau Anda menekan tombol
+                   <strong>🚪 Keluar</strong>, kalau sudah lewat 30 hari, atau kalau kata sandinya
+                   diganti dari perangkat lain. <strong>Kata sandi Anda tidak ikut tersimpan</strong> —
+                   yang dititipkan hanya sidik acaknya, sama seperti yang dikirim saat masuk biasa.</p>
+                <p><strong>⚠️ Jangan dicentang di HP/laptop yang dipakai bersama-sama</strong>
+                   (mis. komputer kantor yang bergantian dipakai). Siapa pun yang memegangnya
+                   bisa langsung membuka dashboard ini tanpa kata sandi. Kalau terlanjur,
+                   cukup tekan <strong>🚪 Keluar</strong> — ingatannya ikut terhapus.</p>
+              </details>
+            </div>
 
             <h3>🆘 Kalau Ada Yang Tidak Beres</h3>
             <p>

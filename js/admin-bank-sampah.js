@@ -53,6 +53,10 @@
   let sedangMasuk = false;
   let sedangSimpanAkun = false;
 
+  /* Petugas menekan "Masuk dengan akun lain" saat masuk otomatis masih
+   * berjalan — jawaban yang datang belakangan harus diabaikan. */
+  let otomatisDibatalkan = false;
+
   document.addEventListener('DOMContentLoaded', init);
 
   function init() {
@@ -71,7 +75,12 @@
     if (sesiAktif()) {
       namaPetugas = ambilNamaSesi();
       bukaDashboard();
+      return;
     }
+
+    /* Belum ada sesi di tab ini. Kalau petugas pernah mencentang
+     * "Ingatkan Saya", coba masuk sendiri tanpa mengetik ulang. */
+    cobaMasukOtomatis();
   }
 
   /* =======================================================================
@@ -207,6 +216,10 @@
       sessionStorage.removeItem(KUNCI_SESI);
       sessionStorage.removeItem(KUNCI_SESI_NAMA);
     } catch (e) {}
+    /* "Ingatkan Saya" ikut dilupakan. Menekan "🚪 Keluar" artinya
+     * BENAR-BENAR keluar — bukan sekadar menutup website. Tanpa baris ini,
+     * halaman yang dimuat ulang di bawah akan langsung masuk lagi sendiri. */
+    AkunPetugas.lupakanIngatan();
     window.location.reload();
   }
 
@@ -223,6 +236,106 @@
 
     const muat = $('btnMuat');
     if (muat) muat.addEventListener('click', muatData);
+
+    /* Lama berlakunya "Ingatkan Saya" ditulis dari satu sumber saja,
+     * supaya tulisan di layar tidak pernah beda dengan aturannya. */
+    const ketHari = $('ketIngatHari');
+    if (ketHari) ketHari.textContent = AkunPetugas.ATURAN.INGAT_HARI;
+
+    const batal = $('btnBatalOtomatis');
+    if (batal) batal.addEventListener('click', batalkanMasukOtomatis);
+  }
+
+  /* ------------------------- Masuk otomatis ------------------------------ */
+
+  /**
+   * Mencoba masuk memakai catatan "Ingatkan Saya" di perangkat ini.
+   *
+   * Sidik sandinya tetap diperiksa ulang ke Google Sheets (lihat
+   * AkunPetugas.masukTersimpan), jadi ingatan lama otomatis mati begitu
+   * akun petugas diganti dari perangkat lain.
+   */
+  function cobaMasukOtomatis() {
+    const ingatan = AkunPetugas.infoIngatan();
+    if (!ingatan) return;                    // tidak pernah dicentang / sudah kedaluwarsa
+
+    sedangMasuk = true;                      // formulir dikunci selama menunggu
+    otomatisDibatalkan = false;
+    tampilLayarOtomatis(ingatan.username);
+
+    AkunPetugas.masukTersimpan().then(function (hasil) {
+      if (otomatisDibatalkan) return;        // petugas memilih masuk dengan akun lain
+      sedangMasuk = false;
+
+      if (!hasil.ok) {
+        sudahiLayarOtomatis(ingatan.username);
+        pesanMasuk(hasil.pesan, hasil.catatan);
+        return;
+      }
+
+      namaPetugas = hasil.username;
+      simpanSesi(namaPetugas);
+
+      /* Urutan pesannya disamakan dengan masuk biasa, supaya peringatan akun
+       * bawaan tidak pernah terlewat hanya karena petugas selalu masuk
+       * otomatis. Kalau tidak ada yang perlu diperingatkan, barulah sapaan. */
+      if (hasil.catatan) {
+        toast('ℹ️ ' + hasil.catatan);
+      } else if (hasil.bawaan) {
+        toast('🔐 Anda masih memakai akun bawaan. Sebaiknya diganti lewat tab "🔐 Akun Petugas".');
+      } else {
+        toast('👋 Selamat datang kembali, ' + namaPetugas + '.');
+      }
+
+      bukaDashboard();
+    }).catch(function (err) {
+      if (otomatisDibatalkan) return;
+      sedangMasuk = false;
+      sudahiLayarOtomatis(ingatan.username);
+      pesanMasuk('Masuk otomatis gagal. Silakan masuk seperti biasa.', String(err));
+    });
+  }
+
+  /** Petugas menekan "Masuk dengan akun lain" saat masuk otomatis berjalan. */
+  function batalkanMasukOtomatis() {
+    otomatisDibatalkan = true;
+    sedangMasuk = false;
+    AkunPetugas.lupakanIngatan();
+    sudahiLayarOtomatis('');
+    pesanMasuk('', '');
+    const kotakUser = $('inputUser');
+    if (kotakUser) { kotakUser.value = ''; kotakUser.focus(); }
+    const ingat = $('inputIngat');
+    if (ingat) ingat.checked = false;
+  }
+
+  /** Menyembunyikan formulir & menampilkan keterangan "sedang masuk otomatis". */
+  function tampilLayarOtomatis(nama) {
+    const panel = $('masukOtomatis');
+    const form = $('formMasuk');
+    if (panel) panel.classList.remove('tersembunyi');
+    if (form) form.classList.add('tersembunyi');
+    const kotakNama = $('masukOtomatisNama');
+    if (kotakNama) kotakNama.textContent = nama || '—';
+  }
+
+  /** Mengembalikan formulir biasa saat masuk otomatis selesai / gagal. */
+  function sudahiLayarOtomatis(nama) {
+    const panel = $('masukOtomatis');
+    const form = $('formMasuk');
+    if (panel) panel.classList.add('tersembunyi');
+    if (form) form.classList.remove('tersembunyi');
+
+    if (!nama) return;
+    /* Gagalnya bukan salah petugas — nama penggunanya diisikan lagi dan
+     * kotak "Ingatkan Saya" tetap dicentang, jadi ia cukup mengetik
+     * kata sandinya sekali untuk kembali diingat. */
+    const kotakUser = $('inputUser');
+    const ingat = $('inputIngat');
+    if (kotakUser) kotakUser.value = nama;
+    if (ingat) ingat.checked = true;
+    const kotakSandi = $('inputSandi');
+    if (kotakSandi) kotakSandi.focus();
   }
 
   /** Menulis pesan di layar masuk. Baris kedua (kecil) dipakai untuk
@@ -270,6 +383,20 @@
       pesanMasuk('', '');
       namaPetugas = hasil.username || user;
       simpanSesi(namaPetugas);
+
+      /* "Ingatkan Saya" — yang disimpan nama pengguna + SIDIK sandinya,
+       * yaitu pasangan yang barusan diterima. Kalau tidak dicentang,
+       * ingatan lama (bila ada) sekalian dibuang. */
+      const ingat = $('inputIngat');
+      if (ingat && ingat.checked) {
+        if (!AkunPetugas.ingat(user, sandi)) {
+          toast('⚠️ "Ingatkan Saya" tidak bisa disimpan di perangkat ini. ' +
+            'Anda tetap masuk, hanya saja nanti perlu mengetik akun lagi.');
+        }
+      } else {
+        AkunPetugas.lupakanIngatan();
+      }
+
       $('inputSandi').value = '';
 
       if (hasil.catatan) {
