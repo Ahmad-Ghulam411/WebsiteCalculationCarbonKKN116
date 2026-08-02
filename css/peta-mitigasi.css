@@ -379,9 +379,48 @@
   .pm-kontrol-isi { max-height: 40vh; }
   .pm-kontrol-saklar { font-size: .72rem; }
   .pm-swatch { width: 16px; height: 11px; }
-  .leaflet-popup-content { width: 220px !important; }
   .pm-alat { gap: 6px; padding: 10px; }
   .pm-tombol-alat { font-size: .78rem; padding: 7px 12px; }
+}
+
+/* --------------------- Popup ringkas untuk layar kecil --------------------- */
+/* Berlaku di ponsel tegak (layar sempit) maupun mendatar (layar pendek): lebar,
+   huruf, dan jarak antarbaris dikecilkan supaya kotak info tidak menutupi
+   hampir seluruh peta. Kalimat panjang di dalamnya ikut diringkas dari
+   js/peta-mitigasi.js. */
+@media (max-width: 700px), (max-height: 500px) {
+  .leaflet-popup-content { width: min(228px, 66vw) !important; }
+  .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); }
+  .pm-popup-kepala {
+    /* sisi kanan diberi ruang supaya judul tidak tertimpa tombol tutup */
+    padding: 8px 32px 8px 11px; border-radius: 12px 12px 0 0;
+    font-size: .82rem; line-height: 1.2;
+  }
+  .pm-popup-kepala small { font-size: .66rem; margin-top: 1px; }
+  .pm-popup-isi { padding: 8px 11px 10px; font-size: .76rem; }
+  .pm-popup-baris { padding: 3px 0; gap: 6px; }
+  .pm-popup-baris b { width: 62px; font-size: .68rem; }
+  .pm-koordinat { font-size: .68rem; }
+  .pm-popup-aksi {
+    margin-top: 7px; padding: 7px 9px; border-radius: 8px;
+    font-size: .72rem; line-height: 1.4; border-left-width: 3px;
+  }
+  .leaflet-container a.pm-popup-tombol { margin-top: 7px; padding: 7px 10px; font-size: .74rem; }
+  /* Tombol tutup dibuat lebih besar dan putih agar gampang ditekan di atas
+     kepala popup yang berwarna — peta cepat terlihat lagi. */
+  .leaflet-container a.leaflet-popup-close-button {
+    width: 30px; height: 30px; font-size: 19px; line-height: 29px;
+    color: rgba(255, 255, 255, .92);
+  }
+  .leaflet-container a.leaflet-popup-close-button:hover,
+  .leaflet-container a.leaflet-popup-close-button:focus { color: #fff; }
+
+  /* Selagi popup terbuka, pita judul dan kotak peringatan disingkirkan supaya
+     tidak menutupi kepala popup — di layar sekecil ini Leaflet tidak selalu
+     bisa menggeser peta cukup jauh untuk menghindarinya. */
+  .pm-peta-kepala, .pm-peringatan { transition: opacity var(--trans); }
+  .pm-peta-bingkai.ada-popup .pm-peta-kepala,
+  .pm-peta-bingkai.ada-popup .pm-peringatan { opacity: 0; pointer-events: none; }
 }
 
 @media (prefers-reduced-motion: reduce) {

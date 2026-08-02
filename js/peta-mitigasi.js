@@ -10,6 +10,7 @@
 
   var D = window.DATA_PETA_MITIGASI;
   var wadah = document.getElementById('petaMitigasi');
+  var bingkai = document.querySelector('.pm-peta-bingkai');
   if (!wadah) return;
 
   if (!D || typeof L === 'undefined') {
@@ -42,6 +43,20 @@
 
   function fmtKoordinat(lat, lon) {
     return lat.toFixed(6) + ', ' + lon.toFixed(6);
+  }
+
+  /* Layar ponsel sempit (tegak) atau pendek (mendatar): isi popup diringkas —
+     kalimat panjang diganti versi pendek dan keterangan tambahan dilewati —
+     supaya kotak info tidak menutupi hampir seluruh peta. Ambangnya sama
+     dengan css/peta-mitigasi.css dan dibaca ulang tiap popup dibuka, jadi
+     tetap benar setelah layar diputar. */
+  var MQ_KECIL = window.matchMedia('(max-width: 700px), (max-height: 500px)');
+  function layarKecil() { return MQ_KECIL.matches; }
+  function ringkas(panjang, pendek) { return layarKecil() ? pendek : panjang; }
+
+  /** Nama jalur tanpa awalan "Jalur Evakuasi — "; label barisnya sudah jelas. */
+  function namaJalur(nama) {
+    return esc(layarKecil() ? String(nama).replace(/^Jalur Evakuasi\s*—\s*/, '') : nama);
   }
 
   /** Jarak bulat-bumi (haversine) dalam meter. */
@@ -162,7 +177,7 @@
 
   /* --------------------------------------------------------------- peta & lapisan */
 
-  var LAYAR_KECIL = window.matchMedia('(max-width: 700px)').matches;
+  var LAYAR_KECIL = layarKecil();
 
   var peta = L.map('petaMitigasi', {
     center: [-4.0199, 119.6277],
@@ -195,6 +210,22 @@
 
   L.control.zoom({ position: 'topright' }).addTo(peta);
   L.control.scale({ position: 'bottomleft', imperial: false, maxWidth: 190 }).addTo(peta);
+
+  /* Saat popup dibuka Leaflet menggeser peta agar popup masuk layar. Ruang
+     amannya diperbesar supaya popup tidak berhenti di balik pita judul,
+     kotak peringatan, atau legenda. Di ponsel ruangnya jauh lebih tipis:
+     petanya pendek dan geseran otomatis sering tertahan setMaxBounds, jadi
+     kedua kotak di atas peta disembunyikan sementara (lihat popupopen). */
+  function aturRuangPopup() {
+    var kecil = layarKecil();
+    L.Popup.mergeOptions({
+      autoPanPaddingTopLeft: L.point(10, kecil ? 16 : 96),
+      autoPanPaddingBottomRight: L.point(10, kecil ? 44 : 24)
+    });
+  }
+  aturRuangPopup();
+  if (MQ_KECIL.addEventListener) MQ_KECIL.addEventListener('change', aturRuangPopup);
+  else if (MQ_KECIL.addListener) MQ_KECIL.addListener(aturRuangPopup);
 
   /* Tiap lapisan gambar diberi pane sendiri dengan z-index tetap. Tanpa ini,
      mematikan lalu menyalakan kembali sebuah lapisan akan menaruhnya paling
@@ -229,7 +260,8 @@
       '<div class="pm-popup-isi">' +
         '<div class="pm-popup-baris"><b>Ancaman</b><span>' + esc(p.bahaya) + '</span></div>' +
         '<div class="pm-popup-baris"><b>Luas zona</b><span>' + p.luas_ha + ' Ha</span></div>' +
-        '<div class="pm-popup-baris"><b>Ketinggian</b><span>' + esc(p.elev) + '</span></div>' +
+        // ketinggian sudah tertulis di kepala popup, jadi di ponsel tidak diulang
+        ringkas('<div class="pm-popup-baris"><b>Ketinggian</b><span>' + esc(p.elev) + '</span></div>', '') +
         '<div class="pm-popup-aksi ' + w.aksi + '"><b>Yang harus dilakukan</b>' + esc(p.aksi) + '</div>' +
       '</div>';
   }
@@ -244,7 +276,8 @@
       };
     },
     onEachFeature: function (f, lay) {
-      lay.bindPopup(popupZona(f.properties), { maxWidth: 300 });
+      // isi dibuat ulang tiap dibuka agar versi ringkas ponsel ikut lebar layar
+      lay.bindPopup(function () { return popupZona(f.properties); }, { maxWidth: 300 });
       lay.on('mouseover', function () { lay.setStyle({ fillOpacity: WARNA[f.properties.zona].alpha + 0.16 }); });
       lay.on('mouseout',  function () { lay.setStyle({ fillOpacity: WARNA[f.properties.zona].alpha }); });
     }
@@ -292,14 +325,21 @@
 
     var html =
       '<div class="pm-popup-kepala ' + w.kepala + '">' + esc(p.nama || 'Jalan lokal') +
-        '<small>' + (zona ? esc(zona.nama) : 'Di luar Kelurahan Kampung Baru') + '</small></div>' +
+        '<small>' + (zona ? esc(zona.nama)
+                          : ringkas('Di luar Kelurahan Kampung Baru', 'Di luar Kampung Baru')) + '</small></div>' +
       '<div class="pm-popup-isi">' +
         '<div class="pm-popup-baris"><b>Koordinat</b>' +
           '<span class="pm-koordinat">' + fmtKoordinat(latlng.lat, latlng.lng) + '</span></div>' +
         '<div class="pm-popup-baris"><b>Zona</b><span>' +
-          (zona ? esc(zona.kelas) + ' — ' + esc(zona.bahaya) : 'Di luar batas kelurahan') + '</span></div>';
+          (zona ? ringkas(esc(zona.kelas) + ' — ' + esc(zona.bahaya),
+                          // di ponsel ketinggian ikut di baris ini dan jenis
+                          // ancamannya turun ke baris kecil di bawahnya
+                          esc(zona.kelas) + (p.mdpl ? ' · ± ' + esc(p.mdpl) : '') +
+                          '<br><small>' + esc(zona.bahaya) + '</small>')
+                : 'Di luar batas kelurahan') + '</span></div>';
 
-    if (p.mdpl) {
+    // baris ketinggian dilewati bila tadi sudah digabung ke baris zona
+    if (p.mdpl && !(layarKecil() && zona)) {
       html += '<div class="pm-popup-baris"><b>Ketinggian</b><span>± ' + esc(p.mdpl) + '</span></div>';
     }
 
@@ -308,17 +348,21 @@
           ' ke arah <strong>' + arah.nama + '</strong><br>' + fmtWaktu(jarak) + '</span></div>';
 
     if (jl) {
-      html += '<div class="pm-popup-baris"><b>Jalur terdekat</b><span>' + esc(jl.props.nama) +
-              ' — ' + fmtJarak(jl.jarak) + ' dari sini<br><small>Lewat: ' + esc(jl.props.via) + '</small></span></div>';
+      html += '<div class="pm-popup-baris"><b>Jalur terdekat</b><span>' + namaJalur(jl.props.nama) +
+              ' — ' + fmtJarak(jl.jarak) + ' dari sini' +
+              ringkas('<br><small>Lewat: ' + esc(jl.props.via) + '</small>', '') + '</span></div>';
     }
 
     html +=
         '<div class="pm-popup-aksi ' + (zona ? w.aksi : '') + '"><b>Petunjuk ke titik kumpul</b>' +
           (zona && zona.zona === 'merah'
-            ? 'Anda berada di zona merah. Segera bergerak ke arah <strong>' + arah.nama +
-              '</strong> menjauhi pantai, ikuti panah hijau menuju titik kumpul di Jl. Kesuma Timur.'
-            : 'Ikuti jalur evakuasi (panah hijau) ke arah <strong>' + arah.nama +
-              '</strong> menuju titik kumpul di Jl. Kesuma Timur.') +
+            ? ringkas('Anda berada di zona merah. Segera bergerak ke arah <strong>' + arah.nama +
+                '</strong> menjauhi pantai, ikuti panah hijau menuju titik kumpul di Jl. Kesuma Timur.',
+                'Zona merah — segera bergerak ke arah <strong>' + arah.nama +
+                '</strong> menjauhi pantai, ikuti panah hijau.')
+            : ringkas('Ikuti jalur evakuasi (panah hijau) ke arah <strong>' + arah.nama +
+                '</strong> menuju titik kumpul di Jl. Kesuma Timur.',
+                'Ikuti panah hijau ke arah <strong>' + arah.nama + '</strong> menuju Jl. Kesuma Timur.')) +
         '</div>' +
         '<a class="pm-popup-tombol" href="#" data-pm-ke-tk>📍 Tunjukkan titik kumpul</a>' +
       '</div>';
@@ -430,9 +474,11 @@
         '<div class="pm-popup-baris"><b>Titik mulai</b><span>± ' + p.mulai_mdpl + ' mdpl</span></div>' +
         '<div class="pm-popup-baris"><b>Melewati</b><span>' + esc(p.via) + '</span></div>' +
         '<div class="pm-popup-aksi"><b>Ikuti arah panah</b>' +
-          'Panah menunjuk ke arah titik kumpul dan menanjak menjauhi pantai. ' +
-          'Jalan kaki lebih aman daripada berkendara — jalan bisa macet atau ' +
-          'tertutup material saat bencana.</div>' +
+          ringkas('Panah menunjuk ke arah titik kumpul dan menanjak menjauhi pantai. ' +
+                  'Jalan kaki lebih aman daripada berkendara — jalan bisa macet atau ' +
+                  'tertutup material saat bencana.',
+                  'Panah menunjuk ke titik kumpul, menanjak menjauhi pantai. ' +
+                  'Jalan kaki lebih aman daripada berkendara.') + '</div>' +
         '<a class="pm-popup-tombol" href="#" data-pm-ke-tk>📍 Tunjukkan titik kumpul</a>' +
       '</div>';
   }
@@ -447,7 +493,9 @@
       renderer: rJalur, color: '#2e7d32', weight: 4.5, opacity: 0.96,
       lineCap: 'round', lineJoin: 'round'
     }).addTo(lapisJalur);
-    garis.bindPopup(popupJalur(f.properties), { maxWidth: 300 });
+    // isi dibuat ulang tiap kali dibuka agar versi ringkas untuk ponsel
+    // tetap mengikuti lebar layar saat itu
+    garis.bindPopup(function () { return popupJalur(f.properties); }, { maxWidth: 300 });
     garis.bindTooltip(f.properties.nama, { sticky: true, direction: 'top' });
   });
 
@@ -472,22 +520,28 @@
     })
   }).addTo(lapisTK);
 
-  penandaTK.bindPopup(
-    '<div class="pm-popup-kepala pm-kepala-biru">' + esc(TK.nama) +
-      '<small>Assembly Point — Kelurahan Kampung Baru</small></div>' +
-    '<div class="pm-popup-isi">' +
-      '<div class="pm-popup-baris"><b>Lokasi</b><span>' + esc(TK.ket) + '</span></div>' +
-      '<div class="pm-popup-baris"><b>Koordinat</b>' +
-        '<span class="pm-koordinat">' + fmtKoordinat(TK.lat, TK.lon) + '</span></div>' +
-      '<div class="pm-popup-baris"><b>Zona</b><span>Zona Hijau — Risiko Rendah</span></div>' +
-      '<div class="pm-popup-baris"><b>Ketinggian</b><span>± ' + TK.mdpl + ' mdpl</span></div>' +
-      '<div class="pm-popup-aksi"><b>Kenapa di sini?</b>' +
-        'Area terbuka, berada di zona hijau ± ' + TK.mdpl + ' mdpl, dan jauh dari garis pantai — ' +
-        'aman dari jangkauan tsunami, banjir rob, maupun gelombang pasang.</div>' +
-      '<a class="pm-popup-tombol" href="' + TK.gmaps + '" target="_blank" rel="noopener">' +
-        '🗺️ Buka di Google Maps</a>' +
-    '</div>', { maxWidth: 300 }
-  );
+  function popupTK() {
+    return '' +
+      '<div class="pm-popup-kepala pm-kepala-biru">' + esc(TK.nama) +
+        '<small>Assembly Point — Kelurahan Kampung Baru</small></div>' +
+      '<div class="pm-popup-isi">' +
+        '<div class="pm-popup-baris"><b>Lokasi</b><span>' + esc(TK.ket) + '</span></div>' +
+        '<div class="pm-popup-baris"><b>Koordinat</b>' +
+          '<span class="pm-koordinat">' + fmtKoordinat(TK.lat, TK.lon) + '</span></div>' +
+        '<div class="pm-popup-baris"><b>Zona</b><span>Zona Hijau — Risiko Rendah' +
+          ringkas('', ' · ± ' + TK.mdpl + ' mdpl') + '</span></div>' +
+        ringkas('<div class="pm-popup-baris"><b>Ketinggian</b><span>± ' + TK.mdpl + ' mdpl</span></div>', '') +
+        '<div class="pm-popup-aksi"><b>Kenapa di sini?</b>' +
+          ringkas('Area terbuka, berada di zona hijau ± ' + TK.mdpl + ' mdpl, dan jauh dari garis pantai — ' +
+                  'aman dari jangkauan tsunami, banjir rob, maupun gelombang pasang.',
+                  'Area terbuka di zona hijau ± ' + TK.mdpl + ' mdpl, jauh dari pantai — ' +
+                  'aman dari tsunami dan rob.') + '</div>' +
+        '<a class="pm-popup-tombol" href="' + TK.gmaps + '" target="_blank" rel="noopener">' +
+          '🗺️ Buka di Google Maps</a>' +
+      '</div>';
+  }
+
+  penandaTK.bindPopup(popupTK, { maxWidth: 300 });
 
   /* --------------------------------------------------------------- 6. fasilitas */
 
@@ -535,33 +589,59 @@
     var html =
       '<div class="pm-popup-kepala ' + (zona ? w.kepala : 'pm-kepala-biru') + '">' +
         (zona ? esc(zona.nama) : 'Lokasi di luar Kampung Baru') +
-        '<small>' + (kel ? 'Kelurahan ' + esc(kel) : 'Di luar batas kelurahan terpetakan') + '</small></div>' +
+        '<small>' + (kel ? 'Kelurahan ' + esc(kel)
+                         : ringkas('Di luar batas kelurahan terpetakan', 'Di luar batas peta')) + '</small></div>' +
       '<div class="pm-popup-isi">' +
         '<div class="pm-popup-baris"><b>Koordinat</b>' +
           '<span class="pm-koordinat">' + fmtKoordinat(lat, lon) + '</span></div>' +
         '<div class="pm-popup-baris"><b>Zona</b><span>' +
-          (zona ? esc(zona.kelas) + '<br><small>' + esc(zona.bahaya) + '</small>'
-                : 'Titik ini di luar wilayah Kelurahan Kampung Baru, sehingga tidak termasuk zonasi peta ini.') +
+          (zona ? esc(zona.kelas) + ringkas('', ' · ' + esc(zona.elev)) +
+                  '<br><small>' + esc(zona.bahaya) + '</small>'
+                : ringkas('Titik ini di luar wilayah Kelurahan Kampung Baru, sehingga tidak termasuk zonasi peta ini.',
+                          'Di luar wilayah Kelurahan Kampung Baru.')) +
         '</span></div>' +
-        (zona ? '<div class="pm-popup-baris"><b>Ketinggian</b><span>' + esc(zona.elev) + '</span></div>' : '') +
+        // di ponsel ketinggian sudah ikut di baris zona, jadi barisnya dilewati
+        (zona ? ringkas('<div class="pm-popup-baris"><b>Ketinggian</b><span>' + esc(zona.elev) + '</span></div>', '') : '') +
         '<div class="pm-popup-baris"><b>Ke titik kumpul</b><span>' + fmtJarak(jarak) +
           ' ke arah <strong>' + arah.nama + '</strong><br>' + fmtWaktu(jarak) + '</span></div>' +
-        (jl ? '<div class="pm-popup-baris"><b>Jalur terdekat</b><span>' + esc(jl.props.nama) + ' — ' +
+        (jl ? '<div class="pm-popup-baris"><b>Jalur terdekat</b><span>' + namaJalur(jl.props.nama) + ' — ' +
               fmtJarak(jl.jarak) + ' dari sini</span></div>' : '') +
         '<div class="pm-popup-aksi ' + (zona ? w.aksi : '') + '"><b>Petunjuk ke titik kumpul</b>' +
           (zona && zona.zona === 'merah'
-            ? 'Zona merah. Jangan menunggu — segera bergerak ke arah <strong>' + arah.nama +
-              '</strong> menjauhi pantai menuju titik kumpul.'
+            ? ringkas('Zona merah. Jangan menunggu — segera bergerak ke arah <strong>' + arah.nama +
+                '</strong> menjauhi pantai menuju titik kumpul.',
+                'Zona merah — segera bergerak ke arah <strong>' + arah.nama + '</strong> menjauhi pantai.')
             : diKB
-              ? 'Bergerak ke arah <strong>' + arah.nama + '</strong> mengikuti panah hijau menuju titik kumpul.'
-              : 'Bila berada di sekitar sini saat bencana, tetap menuju tempat yang lebih tinggi. ' +
-                'Titik kumpul Kampung Baru berada ' + fmtJarak(jarak) + ' ke arah ' + arah.nama + '.') +
+              ? ringkas('Bergerak ke arah <strong>' + arah.nama + '</strong> mengikuti panah hijau menuju titik kumpul.',
+                  'Ikuti panah hijau ke arah <strong>' + arah.nama + '</strong>.')
+              : ringkas('Bila berada di sekitar sini saat bencana, tetap menuju tempat yang lebih tinggi. ' +
+                  'Titik kumpul Kampung Baru berada ' + fmtJarak(jarak) + ' ke arah ' + arah.nama + '.',
+                  'Menuju tempat yang lebih tinggi — titik kumpul ' + fmtJarak(jarak) +
+                  ' ke arah ' + arah.nama + '.')) +
         '</div>' +
         '<a class="pm-popup-tombol" href="#" data-pm-ke-tk>📍 Tunjukkan titik kumpul</a>' +
       '</div>';
 
     L.popup({ maxWidth: 300 }).setLatLng(e.latlng).setContent(html).openOn(peta);
   });
+
+  peta.on('popupopen', function (ev) {
+    /* Selagi popup terbuka, pita judul dan kotak peringatan disembunyikan
+       (hanya di layar kecil, lewat CSS) supaya keduanya tidak menutupi kepala
+       popup dan peta terasa lebih lega. */
+    if (bingkai) bingkai.classList.add('ada-popup');
+
+    /* Jaring pengaman: popup tidak pernah boleh lebih tinggi daripada petanya
+       sendiri — misalnya saat ponsel dipakai mendatar sehingga peta jadi
+       pendek. Sisa isinya bisa digulir di dalam popup. Batasnya dihitung saat
+       popup dibuka karena tinggi peta ikut berubah (putar layar/layar penuh). */
+    var batas = Math.max(170, wadah.clientHeight - 110);
+    if (ev.popup.options.maxHeight !== batas) {
+      ev.popup.options.maxHeight = batas;
+      ev.popup.update();
+    }
+  });
+  peta.on('popupclose', function () { if (bingkai) bingkai.classList.remove('ada-popup'); });
 
   // tombol "Tunjukkan titik kumpul" di dalam popup mana pun
   peta.on('popupopen', function (ev) {
@@ -703,7 +783,6 @@
     }
   });
 
-  var bingkai = document.querySelector('.pm-peta-bingkai');
   var tblPenuh = tombol('pmLayarPenuh', function () {
     bingkai.classList.toggle('is-penuh');
     var penuh = bingkai.classList.contains('is-penuh');
@@ -746,7 +825,9 @@
 
       penandaSaya.bindPopup(
         '<div class="pm-popup-kepala ' + (zona ? w.kepala : 'pm-kepala-biru') + '">Posisi Anda Sekarang' +
-          '<small>' + (zona ? esc(zona.nama) : 'Di luar wilayah Kelurahan Kampung Baru') + '</small></div>' +
+          '<small>' + (zona ? esc(zona.nama)
+                            : ringkas('Di luar wilayah Kelurahan Kampung Baru', 'Di luar Kampung Baru')) +
+          '</small></div>' +
         '<div class="pm-popup-isi">' +
           '<div class="pm-popup-baris"><b>Koordinat</b>' +
             '<span class="pm-koordinat">' + fmtKoordinat(latlng.lat, latlng.lng) + '</span></div>' +
@@ -754,10 +835,11 @@
             (zona ? esc(zona.kelas) : 'Di luar zonasi peta ini') + '</span></div>' +
           '<div class="pm-popup-baris"><b>Ke titik kumpul</b><span>' + fmtJarak(jarak) +
             ' ke arah <strong>' + arah.nama + '</strong><br>' + fmtWaktu(jarak) + '</span></div>' +
-          (jl ? '<div class="pm-popup-baris"><b>Jalur terdekat</b><span>' + esc(jl.props.nama) + ' — ' +
+          (jl ? '<div class="pm-popup-baris"><b>Jalur terdekat</b><span>' + namaJalur(jl.props.nama) + ' — ' +
                 fmtJarak(jl.jarak) + ' dari sini</span></div>' : '') +
           '<div class="pm-popup-aksi ' + (zona ? w.aksi : '') + '"><b>Petunjuk</b>' +
-            'Bergerak ke arah <strong>' + arah.nama + '</strong> menuju titik kumpul di Jl. Kesuma Timur.</div>' +
+            ringkas('Bergerak ke arah <strong>' + arah.nama + '</strong> menuju titik kumpul di Jl. Kesuma Timur.',
+                    'Ikuti panah hijau ke arah <strong>' + arah.nama + '</strong>.') + '</div>' +
           '<a class="pm-popup-tombol" href="#" data-pm-ke-tk>📍 Tunjukkan titik kumpul</a>' +
         '</div>', { maxWidth: 300 }
       ).openPopup();
