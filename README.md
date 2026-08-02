@@ -98,6 +98,10 @@ responsif (mobile-first), dan di-*hosting* gratis di **Vercel**.
   harus diketik dua kali, dan begitu tersimpan **akun lama langsung tidak
   berlaku** di semua perangkat. Kata sandinya **tidak pernah disimpan apa
   adanya** — yang tercatat di Google Sheets hanya *sidik acaknya* (SHA-256).
+- 🔓 **"Ingatkan Saya" di layar masuk** — bila dicentang, petugas **tetap masuk
+  walau website ditutup** (sampai 30 hari), jadi tidak perlu mengetik akun
+  setiap kali membuka dashboard. Menekan **🚪 Keluar** membatalkannya, dan
+  ingatan itu **otomatis mati** begitu kata sandinya diganti dari perangkat lain.
 - 🔎 **Penyaring lengkap** — cari nama/ID/NIK/HP, RT, RW, status nasabah, sisa
   tabungan, keaktifan menyetor, jenis sampah, status pencairan, rentang tanggal,
   dan berbagai pilihan pengurutan.
@@ -130,7 +134,8 @@ js/bantuan.js                   🆘 Kontak anggota KKN yang mengurus sistem web
 js/bank-sampah-lokasi.js        Peta lokasi & nomor WA pengelola (beranda + halaman warga)
 js/bank-sampah.js               Logika halaman warga "Cek Bank Sampah"
 js/bank-sampah-akun.js          🔐 Akun petugas: pengacak sandi (SHA-256), pemeriksaan
-                                   saat masuk, & penggantian nama pengguna/kata sandi
+                                   saat masuk, "Ingatkan Saya" (masuk otomatis), &
+                                   penggantian nama pengguna/kata sandi
 js/admin-bank-sampah.js         Logika dashboard admin bank sampah
 
 apps-script/Code.gs             Backend Google Apps Script — DATA KARBON
@@ -332,6 +337,37 @@ saat uang diserahkan.
 
 > 🔔 Angka **📥 Setoran Warga Menunggu** di baris statistik dan **lencana merah**
 > pada tab menunjukkan berapa catatan yang masih perlu diperiksa.
+
+### 🔓 "Ingatkan Saya" — tidak perlu mengetik akun setiap kali
+
+Biasanya petugas dianggap "sedang masuk" hanya selama tab-nya terbuka: begitu
+website ditutup, kunjungan berikutnya harus mengetik akun lagi. Kalau kotak
+**"Ingatkan Saya"** di layar masuk dicentang, dashboard menitipkan satu catatan
+kecil di perangkat itu, sehingga kunjungan berikutnya **langsung masuk sendiri**
+tanpa mengetik apa pun.
+
+| Kejadian | Yang terjadi pada "Ingatkan Saya" |
+| --- | --- |
+| Website / tab ditutup, lalu dibuka lagi | ✅ **Tetap masuk** — dashboard terbuka sendiri |
+| Sudah lewat **30 hari** sejak terakhir dipakai | 🔄 Habis masa berlakunya, diminta masuk seperti biasa |
+| Menekan tombol **🚪 Keluar** | 🚫 **Dilupakan** — itulah gunanya tombol Keluar |
+| Kata sandi diganti **dari perangkat lain** | 🚫 Ditolak server & dilupakan, disertai keterangan di layar |
+| Kata sandi diganti **dari perangkat ini** | ✅ Ikut disegarkan sendiri, tetap masuk otomatis |
+| Internet mati saat membuka dashboard | ✅ Dicocokkan dengan catatan akun di perangkat ini |
+
+Selagi menunggu jawaban Google Sheets, layar menampilkan **"⏳ Sedang masuk
+otomatis…"** beserta tombol **"Masuk dengan akun lain"** — jadi petugas tidak
+pernah terkunci menunggu bila internetnya sedang lambat.
+
+**Apa yang sebenarnya disimpan?** Hanya nama pengguna + **sidik acak SHA-256**
+kata sandinya — persis seperti yang dikirim ke server saat masuk biasa. Kata
+sandi aslinya **tidak pernah ikut tersimpan** dan tidak bisa dikembalikan dari
+sidik itu. Setiap kali masuk otomatis, sidik tersebut **tetap diperiksa ulang ke
+Google Sheets**, jadi ingatan lama benar-benar mati begitu akunnya diganti.
+
+> ⚠️ **Jangan dicentang di HP/laptop yang dipakai bersama-sama.** Siapa pun yang
+> memegang perangkat itu bisa langsung membuka dashboard tanpa kata sandi —
+> peringatan ini juga tertulis di layar masuk.
 
 ### 🔐 Mengganti Nama Pengguna & Kata Sandi Petugas
 
