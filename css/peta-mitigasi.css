@@ -94,6 +94,13 @@
 .pm-alat-petunjuk { margin-left: auto; font-size: .8rem; color: var(--tinta-lembut); }
 
 /* ------------------------ Kontrol di dalam peta ---------------------------- */
+/* Leaflet hanya menetralkan `max-width` pada `.leaflet-overlay-pane` bawaannya,
+   sedangkan css/styles.css memasang `svg { max-width: 100% }` untuk seluruh situs.
+   Peta ini memakai pane buatan sendiri (agar urutan lapisan tetap), jadi aturan
+   itu perlu diperluas — tanpa ini SVG di pane tersebut menciut ke lebar 0 dan
+   zona, jalan, serta jalur evakuasi tidak tergambar sama sekali. */
+.leaflet-container svg { max-width: none !important; max-height: none !important; }
+
 /* Kontrol Leaflet di kanan atas digeser turun agar tidak tertimpa kotak peringatan */
 .leaflet-top.leaflet-right { padding-top: 82px; }
 

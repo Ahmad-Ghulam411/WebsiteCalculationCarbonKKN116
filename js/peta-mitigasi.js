@@ -196,6 +196,18 @@
   L.control.zoom({ position: 'topright' }).addTo(peta);
   L.control.scale({ position: 'bottomleft', imperial: false, maxWidth: 190 }).addTo(peta);
 
+  /* Tiap lapisan gambar diberi pane sendiri dengan z-index tetap. Tanpa ini,
+     mematikan lalu menyalakan kembali sebuah lapisan akan menaruhnya paling
+     atas — zona warna sempat menutupi jalan dan jalur evakuasi. */
+  function pane(nama, z) {
+    peta.createPane(nama).style.zIndex = z;
+    return L.svg({ pane: nama });
+  }
+  var rZona  = pane('pmZona', 410);
+  var rBatas = pane('pmBatas', 420);
+  var rJalan = pane('pmJalan', 430);
+  var rJalur = pane('pmJalur', 440);   // jalur evakuasi selalu paling atas
+
   var lapisZona     = L.layerGroup().addTo(peta);
   var lapisBatas    = L.layerGroup().addTo(peta);
   var lapisJalan    = L.layerGroup().addTo(peta);
@@ -223,6 +235,7 @@
   }
 
   L.geoJSON(D.zona, {
+    renderer: rZona,
     style: function (f) {
       var w = WARNA[f.properties.zona];
       return {
@@ -240,6 +253,7 @@
   /* ------------------------------------------------------- 2. batas kelurahan */
 
   L.geoJSON(D.batas, {
+    renderer: rBatas,
     style: function (f) {
       return f.properties.utama
         ? { color: '#d32f2f', weight: 3.4, opacity: 1, dashArray: '11,7', fill: false }
@@ -312,6 +326,7 @@
   }
 
   L.geoJSON(D.jalan, {
+    renderer: rJalan,
     style: function (f) {
       var p = f.properties;
       return {
@@ -362,25 +377,46 @@
     });
   }
 
-  /** Sebar panah tiap ±jarakM meter sepanjang jalur, menghadap titik kumpul. */
-  function pasangPanah(coords, jarakM) {
-    var sisa = jarakM * 0.5;
+  /** Berapa meter panjang sekian piksel di layar pada zoom saat ini. */
+  function piksterMeter(px) {
+    var pusat = peta.getCenter();
+    var p = peta.latLngToContainerPoint(pusat);
+    return jarakMeter(pusat, peta.containerPointToLatLng(L.point(p.x + px, p.y)));
+  }
+
+  /** Sebar panah tiap ±jarakM meter sepanjang satu jalur.
+      Jalur yang lebih pendek dari jarak itu tetap diberi satu panah di
+      tengahnya — kecuali bila di layar memang terlalu pendek untuk terlihat
+      (minTampilM), supaya saat peta di-zoom jauh panah tidak menumpuk. */
+  function pasangPanah(coords, jarakM, minTampilM) {
+    var ruas = [], total = 0;
     for (var i = 0; i < coords.length - 1; i++) {
       var a = L.latLng(coords[i][1], coords[i][0]);
       var b = L.latLng(coords[i + 1][1], coords[i + 1][0]);
-      var panjang = jarakMeter(a, b);
-      if (panjang < 1) continue;
-      var sudut = arahKe(a, b).derajat;
-      var t = sisa;
-      while (t <= panjang) {
-        var f = t / panjang;
-        L.marker([a.lat + (b.lat - a.lat) * f, a.lng + (b.lng - a.lng) * f], {
-          icon: panahIkon(sudut), interactive: false, keyboard: false
-        }).addTo(lapisPanah);
-        t += jarakM;
-      }
-      sisa = t - panjang;
+      var d = jarakMeter(a, b);
+      if (d < 0.5) continue;
+      ruas.push({ a: a, b: b, d: d, sudut: arahKe(a, b).derajat, mulai: total });
+      total += d;
     }
+    if (!ruas.length || total < minTampilM) return;
+
+    var titik = [];
+    if (total < jarakM) {
+      titik.push(total / 2);
+    } else {
+      var n = Math.max(1, Math.round(total / jarakM));
+      for (var k = 0; k < n; k++) titik.push(total * (k + 0.5) / n);
+    }
+
+    var j = 0;
+    titik.forEach(function (t) {
+      while (j < ruas.length - 1 && t > ruas[j].mulai + ruas[j].d) j++;
+      var s = ruas[j];
+      var f = Math.max(0, Math.min(1, (t - s.mulai) / s.d));
+      L.marker([s.a.lat + (s.b.lat - s.a.lat) * f, s.a.lng + (s.b.lng - s.a.lng) * f], {
+        icon: panahIkon(s.sudut), interactive: false, keyboard: false
+      }).addTo(lapisPanah);
+    });
   }
 
   function popupJalur(p) {
@@ -388,29 +424,42 @@
       '<div class="pm-popup-kepala pm-kepala-hijau">' + esc(p.nama) +
         '<small>Menuju Titik Kumpul — Jl. Kesuma Timur</small></div>' +
       '<div class="pm-popup-isi">' +
-        '<div class="pm-popup-baris"><b>Panjang</b><span>' + fmtJarak(p.panjang_m) + '</span></div>' +
-        '<div class="pm-popup-baris"><b>Perkiraan</b><span>± ' + p.estimasi_menit + ' menit jalan kaki</span></div>' +
+        '<div class="pm-popup-baris"><b>Panjang ruas</b><span>' + fmtJarak(p.panjang_m) + '</span></div>' +
+        '<div class="pm-popup-baris"><b>Ke titik kumpul</b><span>' + fmtJarak(p.jarak_tk_m) +
+          ' dari ujung jalur<br>± ' + p.estimasi_menit + ' menit jalan kaki</span></div>' +
         '<div class="pm-popup-baris"><b>Titik mulai</b><span>± ' + p.mulai_mdpl + ' mdpl</span></div>' +
         '<div class="pm-popup-baris"><b>Melewati</b><span>' + esc(p.via) + '</span></div>' +
         '<div class="pm-popup-aksi"><b>Ikuti arah panah</b>' +
-          'Jalur ini menanjak menjauhi pantai. Jalan kaki lebih aman daripada berkendara — ' +
-          'jalan bisa macet atau tertutup material saat bencana.</div>' +
+          'Panah menunjuk ke arah titik kumpul dan menanjak menjauhi pantai. ' +
+          'Jalan kaki lebih aman daripada berkendara — jalan bisa macet atau ' +
+          'tertutup material saat bencana.</div>' +
         '<a class="pm-popup-tombol" href="#" data-pm-ke-tk>📍 Tunjukkan titik kumpul</a>' +
       '</div>';
   }
 
   D.jalur.features.forEach(function (f) {
     var latlngs = f.geometry.coordinates.map(function (c) { return [c[1], c[0]]; });
-    L.polyline(latlngs, { color: '#0b3d16', weight: 9, opacity: 0.55, lineCap: 'round', lineJoin: 'round' })
-      .addTo(lapisJalur);
+    L.polyline(latlngs, {
+      renderer: rJalur, color: '#0b3d16', weight: 7.5, opacity: 0.5,
+      lineCap: 'round', lineJoin: 'round', interactive: false
+    }).addTo(lapisJalur);
     var garis = L.polyline(latlngs, {
-      color: '#2e7d32', weight: 5.5, opacity: 0.97, lineCap: 'round', lineJoin: 'round'
+      renderer: rJalur, color: '#2e7d32', weight: 4.5, opacity: 0.96,
+      lineCap: 'round', lineJoin: 'round'
     }).addTo(lapisJalur);
     garis.bindPopup(popupJalur(f.properties), { maxWidth: 300 });
-    garis.bindTooltip(f.properties.nama + ' — ' + fmtJarak(f.properties.panjang_m),
-      { sticky: true, direction: 'top' });
-    pasangPanah(f.geometry.coordinates, 60);
+    garis.bindTooltip(f.properties.nama, { sticky: true, direction: 'top' });
   });
+
+  function gambarPanah() {
+    var jarak = Math.max(45, piksterMeter(130));   // ± 130 px antar panah
+    var minTampil = piksterMeter(46);              // ruas < 46 px di layar dilewati
+    lapisPanah.clearLayers();
+    D.jalur.features.forEach(function (f) {
+      pasangPanah(f.geometry.coordinates, jarak, minTampil);
+    });
+  }
+  peta.on('zoomend', gambarPanah);
 
   /* ------------------------------------------------------------- 5. titik kumpul */
 
@@ -545,7 +594,7 @@
         baris('pm-swatch-hijau',  'Zona Hijau — Risiko Rendah', 'Aman dari bahaya utama') +
         '<div class="pm-legenda-baris"><span class="pm-panah-contoh">➤</span>' +
           '<span class="pm-legenda-teks"><b>Jalur Evakuasi</b>' +
-          '<span>Menuju Jl. Kesuma Timur</span></span></div>' +
+          '<span>Semua jalan berpanah menuju Jl. Kesuma Timur</span></span></div>' +
         '<div class="pm-legenda-baris"><span class="pm-panah-contoh">🏃</span>' +
           '<span class="pm-legenda-teks"><b>Titik Kumpul</b>' +
           '<span>Area aman untuk berkumpul</span></span></div>' +
@@ -621,8 +670,9 @@
     L.latLng(bb[1] - 0.0005, bb[0] - 0.0008),
     L.latLng(bb[3] + 0.0005, bb[2] + 0.0008)
   );
-  peta.fitBounds(BATAS_TAMPIL, { padding: [10, 10] });
+  peta.fitBounds(BATAS_TAMPIL, { padding: [26, 26] });
   peta.setMaxBounds(BATAS_TAMPIL.pad(1.1));
+  gambarPanah();   // butuh tingkat zoom akhir, jadi dipanggil setelah fitBounds
 
   function tombol(id, fn) {
     var el = document.getElementById(id);

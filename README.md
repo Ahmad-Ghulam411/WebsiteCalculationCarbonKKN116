@@ -564,7 +564,7 @@ Kampung Baru beserta sebagian kelurahan tetangga di sisi kiri dan kanan.
 ### Isi halaman
 
 - **Peta interaktif besar** (Leaflet + citra satelit Esri, bisa diganti ke peta jalan)
-  dengan zona **merah / kuning / hijau**, **9 jalur evakuasi berpanah**, **titik kumpul**,
+  dengan zona **merah / kuning / hijau**, **arah evakuasi berpanah di seluruh jalan**, **titik kumpul**,
   batas kelurahan, nama jalan, dan fasilitas umum.
 - **Instruksi Evakuasi** — 4 langkah yang harus dilakukan warga saat bencana.
 - **Informasi Legenda Map** — arti tiap warna & simbol.

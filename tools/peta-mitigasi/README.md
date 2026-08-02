@@ -8,7 +8,7 @@ seluruh lapisan peta yang dipakai `peta-mitigasi-bencana.html`:
 | `batas` | Batas Kelurahan Kampung Baru + 5 kelurahan tetangga |
 | `zona` | Poligon zona merah / kuning / hijau |
 | `jalan` | Jaringan jalan bernama beserta zona & ketinggiannya |
-| `jalur` | 9 jalur evakuasi menuju titik kumpul |
+| `jalur` | Jaringan arah evakuasi — **seluruh jalan** di kelurahan, berpanah menuju titik kumpul |
 | `fasilitas` | Fasilitas umum (sekolah, masjid, puskesmas, kantor) |
 
 **Berkas `data/peta-mitigasi-data.js` sudah ada di repo dan tidak perlu dibuat ulang
@@ -70,8 +70,31 @@ curl -o osm_poi.json 'https://overpass-api.de/api/interpreter' \
   --data-urlencode 'data=[out:json][timeout:90];(nwr["amenity"~"school|place_of_worship|hospital|clinic|townhall|police|fire_station"](-4.0250,119.6200,-4.0140,119.6340);nwr["office"="government"](-4.0250,119.6200,-4.0140,119.6340););out tags center;'
 ```
 
+## Bagaimana arah evakuasi ditentukan
+
+`build_routes.py` tidak memilih beberapa jalur favorit, melainkan memberi arah
+pada **setiap ruas jalan** di dalam kelurahan:
+
+1. Dijkstra dijalankan dari titik kumpul ke seluruh simpul jalan. Biaya sebuah
+   ruas diperberat bila menurun ke arah laut, sehingga rute cenderung menanjak
+   menjauhi pantai — perilaku yang benar untuk evakuasi tsunami.
+2. Arah panah tiap ruas = dari simpul berbiaya besar ke simpul berbiaya kecil,
+   yaitu arah yang mendekatkan warga ke titik kumpul.
+3. Ruas-ruas itu disambung jadi rantai panjang, diutamakan menyambung pada
+   jalan bernama sama, supaya popup-nya menampilkan urutan jalan yang masuk akal.
+4. Lintasan yang harus keluar sebentar dari batas kelurahan tetap disertakan,
+   agar rantai panah tidak terputus di tepi wilayah.
+
+Karena setiap langkah selalu menurunkan biaya menuju titik kumpul, mengikuti
+panah dari titik mana pun dijamin sampai ke titik kumpul dan tidak akan berputar.
+Sifat ini diverifikasi ulang tiap kali data dibuat: **cakupan 100% jalan
+kelurahan, 405 simpul diuji, semuanya sampai, tanpa jalan buntu maupun siklus.**
+
+> ⚠️ Geometri jalur evakuasi sengaja **tidak disederhanakan**. Penyederhanaan
+> sempat membuang simpul persimpangan sehingga rantai panah terputus.
+
 ## Cara memindahkan titik kumpul
 
 Ubah nilai `TITIK_KUMPUL` di `build_routes.py` dan `TK` di `bundle.py`, lalu
-jalankan ulang `build_routes.py` dan `bundle.py`. Jalur evakuasi akan dihitung
-ulang otomatis sebagai lintasan terpendek pada jaringan jalan menuju titik baru.
+jalankan ulang `build_routes.py` dan `bundle.py`. Seluruh arah panah akan
+dihitung ulang otomatis menuju titik yang baru.
