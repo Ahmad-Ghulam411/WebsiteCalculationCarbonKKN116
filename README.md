@@ -1,6 +1,6 @@
 # 🌏 Kalkulator Jejak Karbon Harian & Bank Sampah — Kampung Baru, Kota Parepare
 
-Website untuk warga Kampung Baru yang berisi **dua layanan**:
+Website untuk warga Kampung Baru yang berisi **tiga layanan**:
 
 1. **Kalkulator Jejak Karbon Harian** — mengukur dampak kegiatan sehari-hari
    (listrik, gas, kendaraan, sampah, dll.) lengkap dengan **saran praktis**,
@@ -11,6 +11,11 @@ Website untuk warga Kampung Baru yang berisi **dua layanan**:
    memasukkan ID Nasabah, serta **mengajukan pencairan**. Petugas punya
    **dashboard admin tersendiri** (akun terpisah) untuk **menyetujui/menolak
    setoran warga** serta mengelola nasabah, setoran, dan pencairan.
+3. **Peta Mitigasi Bencana** — **peta interaktif** zona rawan bencana Kelurahan
+   Kampung Baru (tsunami, banjir rob, gelombang pasang) lengkap dengan
+   **jalur evakuasi berpanah**, **titik kumpul**, **instruksi evakuasi**, dan
+   **nomor darurat**. Warga bisa **mengklik jalan atau area mana pun** untuk
+   melihat koordinat, zona wilayahnya, dan petunjuk arah ke titik kumpul.
 
 Dibuat dengan **HTML5 + CSS3 + JavaScript murni (tanpa framework)** — ringan,
 responsif (mobile-first), dan di-*hosting* gratis di **Vercel**.
@@ -23,6 +28,7 @@ responsif (mobile-first), dan di-*hosting* gratis di **Vercel**.
 | Dashboard admin data karbon | *pop-up di `index.html`* (footer → 🔒 Admin Data Karbon) | Petugas data karbon |
 | **Cek Bank Sampah** | `bank-sampah.html` | Semua warga |
 | **Dashboard admin Bank Sampah** | `admin-bank-sampah.html` | Petugas bank sampah |
+| **Peta Mitigasi Bencana** | `peta-mitigasi-bencana.html` | Semua warga |
 
 > 🔐 **Akses admin sengaja dipisah.** Admin data karbon memakai *password* di
 > `KONFIGURASI.ADMIN`, sedangkan admin bank sampah memakai **username + password
@@ -116,9 +122,11 @@ responsif (mobile-first), dan di-*hosting* gratis di **Vercel**.
 index.html                      Beranda + Kalkulator Jejak Karbon (+ pop-up admin karbon)
 bank-sampah.html                ♻️  Halaman warga: Cek Bank Sampah
 admin-bank-sampah.html          🔒 Dashboard admin Bank Sampah (akun terpisah)
+peta-mitigasi-bencana.html      🗺️  Peta Mitigasi Bencana Kelurahan Kampung Baru
 
 css/styles.css                  Gaya & animasi umum (dipakai semua halaman)
 css/bank-sampah.css             Gaya khusus halaman bank sampah & dashboardnya
+css/peta-mitigasi.css           Gaya khusus halaman peta mitigasi bencana
 
 js/config.js                    ⚙️  SEMUA pengaturan: faktor emisi, tarif, kategori,
                                    URL Apps Script, password admin, harga sampah  ← SERING DIUBAH
@@ -137,6 +145,14 @@ js/bank-sampah-akun.js          🔐 Akun petugas: pengacak sandi (SHA-256), pem
                                    saat masuk, "Ingatkan Saya" (masuk otomatis), &
                                    penggantian nama pengguna/kata sandi
 js/admin-bank-sampah.js         Logika dashboard admin bank sampah
+js/peta-mitigasi.js             🗺️  Logika peta interaktif mitigasi bencana (Leaflet)
+
+data/peta-mitigasi-data.js      Data peta: batas kelurahan, zona rawan, jalan,
+                                   jalur evakuasi, fasilitas ← dibuat otomatis
+vendor/leaflet/                 Pustaka peta Leaflet 1.9.4 (disertakan lokal, bukan CDN,
+                                   agar peta tetap terbuka walau jaringan bermasalah)
+tools/peta-mitigasi/            Skrip pembangkit data peta + cara memperbaruinya
+                                   (lihat tools/peta-mitigasi/README.md)
 
 apps-script/Code.gs             Backend Google Apps Script — DATA KARBON
 apps-script/CodeBankSampah.gs   Backend Google Apps Script — BANK SAMPAH (spreadsheet lain)
@@ -537,6 +553,60 @@ Karena itu, saat **foto pertama** masuk, Google akan meminta **izin tambahan**:
 > **Bagikan ▸ Sematkan peta**, salin `src` iframe-nya ke kedua halaman, lalu
 > samakan juga `LOKASI.lat` & `LOKASI.lng` di `js/config.js` supaya tombol
 > petunjuk arahnya ikut menunjuk ke tempat yang sama.
+
+---
+
+## 🗺️ Peta Mitigasi Bencana
+
+Halaman `peta-mitigasi-bencana.html` menampilkan **peta interaktif** Kelurahan
+Kampung Baru beserta sebagian kelurahan tetangga di sisi kiri dan kanan.
+
+### Isi halaman
+
+- **Peta interaktif besar** (Leaflet + citra satelit Esri, bisa diganti ke peta jalan)
+  dengan zona **merah / kuning / hijau**, **9 jalur evakuasi berpanah**, **titik kumpul**,
+  batas kelurahan, nama jalan, dan fasilitas umum.
+- **Instruksi Evakuasi** — 4 langkah yang harus dilakukan warga saat bencana.
+- **Informasi Legenda Map** — arti tiap warna & simbol.
+- **Kelas Bahaya** — tabel data resmi dari dokumen KRB Kota Parepare.
+- **Nomor Emergency** — 112, BPBD, Polisi, Ambulans, Damkar, Basarnas (bisa langsung ditelepon).
+- **Keterangan** — sumber data & cara membaca peta.
+
+### Yang bisa diklik warga
+
+| Diklik | Yang muncul |
+| --- | --- |
+| Area berwarna | Zona, ancaman, luas, dan tindakan yang harus dilakukan |
+| Garis jalan | Nama jalan, koordinat, zona, jarak & arah ke titik kumpul |
+| Garis hijau berpanah | Panjang jalur, perkiraan waktu jalan kaki, jalan yang dilewati |
+| Titik mana pun | Koordinat, zona wilayahnya, dan petunjuk arah ke titik kumpul |
+| Tombol 🧭 "Di Zona Mana Saya?" | Posisi warga lewat GPS + zona tempat ia berdiri |
+
+### Zona & dasar penyusunannya
+
+Zona dibagi berdasarkan **ketinggian lahan (DEM SRTM 30 m)**, dikalibrasi supaya
+luasnya mendekati angka **Dokumen Kajian Risiko Bencana Kota Parepare 2022–2026**
+untuk Kelurahan Kampung Baru:
+
+| Zona | Ketinggian | Luas | Pembanding dokumen KRB |
+| --- | --- | --- | --- |
+| 🔴 Merah — Risiko Tinggi | 0 – 9 mdpl | 5,32 Ha (11,6%) | bahaya tsunami **5,49 Ha**, kelas **TINGGI** |
+| 🟡 Kuning — Risiko Sedang | 9 – 15 mdpl | 12,62 Ha (27,5%) | gelombang ekstrim & abrasi 10,98 Ha; banjir 2,40 Ha |
+| 🟢 Hijau — Risiko Rendah | > 15 mdpl | 27,95 Ha (60,9%) | sisa wilayah |
+
+**Titik kumpul:** `-4.019402, 119.626271` — lapangan/area terbuka sekitar
+Jl. Kesuma Timur, berada di **zona hijau ± 15 mdpl**, ± 322 m dari zona merah.
+
+### Memperbarui data peta
+
+Data peta ada di `data/peta-mitigasi-data.js` dan **sudah jadi** — tidak perlu
+dibuat ulang untuk menjalankan situs. Bila batas wilayah berubah, ada jalan baru,
+atau titik kumpul dipindahkan, jalankan ulang skrip di `tools/peta-mitigasi/`
+(petunjuk lengkapnya ada di `tools/peta-mitigasi/README.md`).
+
+> ⚠️ Peta ini adalah **alat bantu edukasi dan panduan evakuasi mandiri**, bukan
+> dokumen resmi tata ruang. Selalu utamakan informasi dan arahan resmi dari
+> **BMKG, BPBD Kota Parepare, dan aparat kelurahan**.
 
 ---
 
