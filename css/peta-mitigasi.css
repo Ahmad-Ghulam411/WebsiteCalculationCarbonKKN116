@@ -88,10 +88,15 @@
   pointer-events: none;
 }
 .pm-peta-atas > * { pointer-events: auto; }
-/* Kolom kanan: tombol keluar di atas, kotak peringatan di bawahnya. */
+/* Kolom kanan: tombol keluar di atas, kotak peringatan di bawahnya.
+   `margin-left: auto` menahannya tetap di sisi kanan walau kotak judul di
+   sebelah kiri sedang disembunyikan — misalnya saat penunjuk arah menyala.
+   Tanpa itu `justify-content: space-between` kehilangan lawan mainnya dan
+   tombol "✕ Keluar" layar penuh melompat ke tepi kiri, tepat menimpa panel
+   penunjuk arah. */
 .pm-peta-atas-kanan {
   display: flex; flex-direction: column; align-items: flex-end; gap: 10px;
-  pointer-events: none;
+  margin-left: auto; pointer-events: none;
 }
 .pm-peta-atas-kanan > * { pointer-events: auto; }
 /* Di mode layar penuh bilah menempel ke tepi layar, jadi perlu menghindari
@@ -168,9 +173,182 @@
    ditutup atau peta digeser menjauh, kotaknya muncul kembali. Tempatnya tidak
    ikut bergeser (hanya disamarkan) supaya tombol "✕ Keluar" di sebelahnya
    tetap diam di tempat. */
-.pm-peta-kepala, .pm-peringatan { transition: opacity var(--trans); }
+.pm-peta-kepala, .pm-peringatan, .pm-kontrol { transition: opacity var(--trans); }
 .pm-peta-bingkai.tumpang-judul .pm-peta-kepala,
-.pm-peta-bingkai.tumpang-peringatan .pm-peringatan { opacity: 0; pointer-events: none; }
+.pm-peta-bingkai.tumpang-peringatan .pm-peringatan,
+.pm-peta-bingkai.tumpang-legenda .pm-kontrol { opacity: 0; pointer-events: none; }
+
+/* ===================== Penunjuk arah "1 alur" (mode navigasi) ===============
+   Saat warga menekan "🧭 Tunjukkan Arah Jalan" di kotak info, peta masuk mode
+   terfokus: hanya SATU alur menuju titik kumpul yang tergambar, dan panel di
+   bawah ini menampilkan langkah demi langkahnya.
+
+   Kotak-kotak yang tidak dipakai dalam mode itu disembunyikan supaya tidak ada
+   dua penjelasan yang bersaing di layar sempit — judul peta, kotak peringatan
+   zona merah, dan legenda lapisan. Semuanya muncul kembali begitu penunjuk arah
+   ditutup, jadi tidak ada keadaan yang hilang. */
+.pm-peta-bingkai.is-navigasi .pm-peta-kepala,
+.pm-peta-bingkai.is-navigasi .pm-peringatan,
+.pm-peta-bingkai.is-navigasi .pm-kontrol { display: none; }
+
+/* Zona warna diredupkan agar garis alur yang terang tetap paling menonjol,
+   tetapi konteks merah/kuning/hijaunya tidak sampai hilang. */
+.pm-peta-bingkai.is-navigasi .leaflet-pmZona-pane { opacity: .5; }
+.leaflet-pmZona-pane { transition: opacity var(--trans); }
+
+/* Garis putih berjalan di atas alur — memberi rasa "arah jalannya ke sana". */
+.pm-rute-aliran { animation: pmAlirRute 1.1s linear infinite; }
+@keyframes pmAlirRute { to { stroke-dashoffset: -18; } }
+
+.pm-panah-rute svg { filter: drop-shadow(0 1px 3px rgba(0, 0, 0, .7)); }
+
+/* Penanda titik awal alur */
+.pm-rute-mulai { position: relative; width: 20px; height: 20px; }
+.pm-rute-mulai i {
+  position: absolute; inset: 0; border-radius: 50%;
+  background: #00e676; border: 3px solid #04340f;
+  box-shadow: 0 0 0 3px rgba(255, 255, 255, .9), 0 2px 8px rgba(0, 0, 0, .45);
+}
+.pm-rute-mulai b {
+  position: absolute; top: 24px; left: 50%; transform: translateX(-50%);
+  background: #04340f; color: #fff; font-family: 'Poppins', sans-serif;
+  font-size: .62rem; font-weight: 800; letter-spacing: .5px;
+  padding: 2px 7px; border-radius: 6px; white-space: nowrap;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, .45);
+}
+
+/* ------------------------------ Panel arah -------------------------------- */
+/* z-index 660 menaruh panel di atas bilah keterangan (640) DAN di atas seluruh
+   isi peta termasuk popup — sebab #petaMitigasi ber-z-index 1 di dalam bingkai
+   ini. Dengan begitu tombol "✕" pada panel tidak pernah bisa tertutup popup
+   yang kebetulan terbuka di tempat yang sama. */
+.pm-arah {
+  position: absolute; z-index: 660; top: 12px; left: 12px;
+  width: min(340px, 42%);
+  /* Sisi bawah peta sudah dipakai batang skala Leaflet. Panel dibatasi agar
+     berhenti di atasnya — di layar pendek (ponsel mendatar) daftar langkah yang
+     panjang akan memenuhi seluruh tinggi peta dan menimpa skala itu. Sisa isinya
+     digulir di dalam panel. */
+  max-height: calc(100% - 64px);
+  display: flex; flex-direction: column;
+  background: rgba(255, 255, 255, .97); backdrop-filter: blur(5px);
+  border-radius: 14px; border-left: 5px solid var(--hijau);
+  box-shadow: 0 12px 38px rgba(0, 0, 0, .34);
+  overflow: hidden; font-size: .82rem; color: var(--tinta);
+}
+/* Sama seperti tombol keluar layar penuh: `hidden` harus tetap menang walau
+   berkas gaya ini dimuat belakangan atau `display:flex` di atas lebih spesifik. */
+.pm-arah[hidden] { display: none; }
+.pm-peta-bingkai.is-penuh .pm-arah {
+  top: calc(12px + env(safe-area-inset-top));
+  left: calc(12px + env(safe-area-inset-left));
+}
+
+/* Semua bagian panel bertinggi tetap KECUALI daftar langkah; daftar itulah yang
+   boleh menyusut dan digulir. `min-height: 0` wajib ada — tanpa itu anak sebuah
+   kolom flex menolak menyusut di bawah tinggi isinya, daftar langkah yang
+   panjang akan mendorong tombol "✕ Keluar Penunjuk Arah" keluar dari panel, dan
+   warga kehilangan jalan keluarnya. */
+.pm-arah-kepala, .pm-arah-ringkas, .pm-arah-catatan,
+.pm-arah-saklar, .pm-arah-kaki { flex: none; }
+.pm-arah-gulir { flex: 1 1 auto; min-height: 0; }
+
+.pm-arah-kepala {
+  display: flex; align-items: flex-start; gap: 10px; padding: 11px 12px 10px 14px;
+  background: linear-gradient(135deg, #1b7a43, #0b3d16); color: #fff;
+}
+.pm-arah-judul { min-width: 0; flex: 1; }
+.pm-arah-judul b {
+  display: block; font-family: 'Poppins', sans-serif; font-size: .92rem;
+  font-weight: 700; line-height: 1.25;
+}
+.pm-arah-judul small {
+  display: block; font-size: .72rem; opacity: .92; margin-top: 2px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.pm-arah-tutup {
+  flex: none; width: 34px; height: 34px; border-radius: 50%;
+  border: 2px solid rgba(255, 255, 255, .85); background: rgba(0, 0, 0, .22);
+  color: #fff; font-size: 1rem; line-height: 1;
+  display: flex; align-items: center; justify-content: center;
+  transition: background var(--trans), transform var(--trans);
+}
+.pm-arah-tutup:hover { background: var(--zona-merah); transform: scale(1.06); }
+.pm-arah-tutup:focus-visible { outline: 3px solid #fff; outline-offset: 2px; }
+
+.pm-arah-ringkas {
+  display: grid; grid-template-columns: repeat(3, 1fr); gap: 1px;
+  background: var(--garis); border-bottom: 1px solid var(--garis);
+}
+.pm-arah-ringkas > div { background: #f7fbf8; padding: 8px 6px; text-align: center; }
+.pm-arah-nilai {
+  display: block; font-family: 'Poppins', sans-serif; font-weight: 800;
+  font-size: .95rem; color: var(--hijau-tua); line-height: 1.2;
+}
+.pm-arah-nilai.is-merah  { color: var(--zona-merah-tua); }
+.pm-arah-nilai.is-kuning { color: var(--zona-kuning-tua); }
+.pm-arah-nilai.is-hijau  { color: var(--zona-hijau-tua); }
+.pm-arah-ringkas > div > span {
+  display: block; font-size: .66rem; color: var(--tinta-lembut);
+  text-transform: uppercase; letter-spacing: .3px; margin-top: 1px;
+}
+
+.pm-arah-catatan {
+  margin: 10px 12px 0; padding: 8px 10px; border-radius: 9px;
+  background: var(--hijau-muda); color: var(--hijau-tua);
+  border-left: 4px solid var(--hijau); font-size: .75rem; line-height: 1.45;
+}
+.pm-arah-catatan.is-bahaya { background: #ffebee; color: #8e1616; border-left-color: var(--zona-merah); }
+.pm-arah-catatan[hidden] { display: none; }
+
+.pm-arah-saklar {
+  display: flex; align-items: center; justify-content: space-between; gap: 8px;
+  width: 100%; border: none; background: none; padding: 10px 12px 6px;
+  font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .72rem;
+  color: var(--hijau-tua); text-transform: uppercase; letter-spacing: .5px;
+}
+.pm-arah-saklar small { text-transform: none; letter-spacing: 0; color: var(--tinta-lembut); font-weight: 600; }
+.pm-arah-tanda { transition: transform var(--trans); font-size: .9rem; }
+.pm-arah.is-lipat .pm-arah-tanda { transform: rotate(-90deg); }
+.pm-arah.is-lipat .pm-arah-gulir { display: none; }
+
+.pm-arah-gulir { overflow-y: auto; -webkit-overflow-scrolling: touch; padding: 0 12px; }
+.pm-arah-langkah { list-style: none; margin: 0; padding: 0; }
+.pm-arah-item {
+  display: flex; gap: 9px; align-items: flex-start; width: 100%; text-align: left;
+  border: none; background: none; padding: 7px 6px; border-radius: 9px;
+  border-bottom: 1px dashed var(--garis); color: inherit; font: inherit;
+  transition: background var(--trans);
+}
+.pm-arah-langkah li:last-child .pm-arah-item { border-bottom: none; }
+.pm-arah-item:hover { background: var(--hijau-muda); }
+.pm-arah-item.is-terpilih { background: var(--hijau-muda); box-shadow: inset 0 0 0 2px var(--hijau-terang); }
+.pm-arah-item:focus-visible { outline: 3px solid var(--hijau); outline-offset: -1px; }
+.pm-arah-ikon {
+  flex: none; width: 26px; height: 26px; border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  background: var(--hijau-muda); color: var(--hijau-tua);
+  font-size: .92rem; font-weight: 800; line-height: 1;
+}
+.pm-arah-item.is-mulai  .pm-arah-ikon { background: #e3f2fd; }
+.pm-arah-item.is-tujuan .pm-arah-ikon { background: var(--tk); color: #fff; }
+.pm-arah-teks { min-width: 0; }
+.pm-arah-teks b { display: block; font-size: .78rem; font-weight: 700; line-height: 1.35; }
+.pm-arah-teks span { display: block; font-size: .72rem; color: var(--tinta-lembut); }
+
+.pm-arah-kaki {
+  display: flex; gap: 8px; padding: 10px 12px;
+  border-top: 1px solid var(--garis); background: #f7fbf8;
+}
+.pm-arah-tombol {
+  flex: 1; border: 1px solid var(--garis); background: var(--putih); color: var(--hijau-tua);
+  border-radius: 999px; padding: 9px 10px; font-size: .76rem; font-weight: 700;
+  min-height: 40px; transition: background var(--trans), border-color var(--trans);
+}
+.pm-arah-tombol:hover { background: var(--hijau-muda); border-color: var(--hijau-terang); }
+.pm-arah-tombol.is-keluar { background: var(--hijau); border-color: var(--hijau); color: #fff; flex: 1.35; }
+.pm-arah-tombol.is-keluar:hover { background: var(--hijau-tua); border-color: var(--hijau-tua); }
+.pm-arah-tombol:focus-visible { outline: 3px solid var(--hijau-tua); outline-offset: 2px; }
 
 /* Alat bantu di bawah peta */
 .pm-alat {
@@ -350,6 +528,15 @@
 }
 .leaflet-container a.pm-popup-tombol:hover,
 .leaflet-container a.pm-popup-tombol:focus { filter: brightness(1.1); color: #fff; }
+/* Aksi kedua di dalam popup ("Tunjukkan titik kumpul") dibuat lebih kalem
+   supaya tombol utama — "🧭 Tunjukkan Arah Jalan" — jelas mana yang dimaksud
+   saat warga sedang buru-buru. */
+.leaflet-container a.pm-popup-tombol.is-kedua {
+  margin-top: 6px; background: var(--hijau-muda); color: var(--hijau-tua);
+  border: 1px solid var(--hijau-terang);
+}
+.leaflet-container a.pm-popup-tombol.is-kedua:hover,
+.leaflet-container a.pm-popup-tombol.is-kedua:focus { color: var(--hijau-tua); filter: brightness(.98); }
 .pm-koordinat { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size: .76rem; }
 
 /* --------------------------- Instruksi evakuasi ---------------------------- */
@@ -489,6 +676,60 @@
   .leaflet-top.leaflet-right { padding-top: calc(var(--pm-atas-kanan, 96px) + 16px); }
 }
 
+/* --------- Panel arah dipadatkan di layar pendek tapi masih lebar ---------- */
+/* Ponsel yang dipegang mendatar: tingginya sedikit, lebarnya cukup. Panel tetap
+   di sisi kiri (menjadikannya lembar bawah di sini akan menyisakan peta setipis
+   pita), hanya dirampingkan dan dipadatkan. */
+@media (min-width: 701px) and (max-height: 560px) {
+  .pm-arah { width: min(300px, 38%); font-size: .78rem; }
+  .pm-arah-kepala { padding: 8px 10px 8px 12px; }
+  .pm-arah-judul b { font-size: .84rem; }
+  .pm-arah-judul small { font-size: .68rem; }
+  .pm-arah-ringkas > div { padding: 6px 4px; }
+  .pm-arah-nilai { font-size: .85rem; }
+  .pm-arah-catatan { margin: 8px 10px 0; padding: 7px 9px; font-size: .72rem; }
+  .pm-arah-saklar { padding: 8px 10px 4px; }
+  .pm-arah-gulir { padding: 0 10px; }
+  .pm-arah-kaki { padding: 8px 10px; }
+  .pm-arah-tombol { font-size: .72rem; padding: 8px; min-height: 36px; }
+}
+
+/* ------------- Panel arah sebagai lembar bawah di layar sempit ------------- */
+/* Di ponsel tegak, panel melayang di sudut kiri atas akan menutupi justru
+   bagian peta yang sedang dijelaskannya — lebar layarnya tidak cukup untuk
+   keduanya. Di sini panel dipindah menjadi lembar yang menempel di sisi bawah,
+   dan daftar langkahnya dimulai dalam keadaan terlipat (diatur
+   js/peta-mitigasi.js) supaya lembarannya tetap pendek. */
+@media (max-width: 700px) {
+  .pm-arah {
+    top: auto; right: 0; bottom: 0; left: 0;
+    width: auto; max-height: 62%;
+    border-radius: 16px 16px 0 0;
+    border-left: none; border-top: 4px solid var(--hijau);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+  .pm-peta-bingkai.is-penuh .pm-arah {
+    top: auto; left: 0;
+    padding-bottom: calc(env(safe-area-inset-bottom) + 4px);
+  }
+  .pm-arah-kepala { padding: 9px 10px 9px 12px; }
+  .pm-arah-judul b { font-size: .86rem; }
+  .pm-arah-judul small { font-size: .68rem; }
+  .pm-arah-ringkas > div { padding: 6px 4px; }
+  .pm-arah-nilai { font-size: .86rem; }
+  .pm-arah-gulir { padding: 0 10px; max-height: 32vh; }
+  .pm-arah-kaki { padding: 8px 10px; }
+  .pm-arah-tombol { font-size: .72rem; padding: 8px; }
+
+  /* Skala peta dan atribusi ada di sisi bawah juga — dinaikkan setinggi
+     lembar arah agar tidak tertimbun. Tingginya diukur js/peta-mitigasi.js
+     ke --pm-arah-tinggi. */
+  .pm-peta-bingkai.is-navigasi .leaflet-bottom {
+    transform: translateY(calc(-1 * var(--pm-arah-tinggi, 0px)));
+    transition: transform var(--trans);
+  }
+}
+
 /* --------------------- Popup ringkas untuk layar kecil --------------------- */
 /* Berlaku di ponsel tegak (layar sempit) maupun mendatar (layar pendek): lebar,
    huruf, dan jarak antarbaris dikecilkan supaya kotak info tidak menutupi
@@ -524,7 +765,9 @@
 
 @media (prefers-reduced-motion: reduce) {
   .pm-tk-titik::after { animation: none; }
+  .pm-rute-aliran { animation: none; }
   .pm-instruksi-item:hover, .pm-zona-kartu:hover, .pm-darurat:hover { transform: none; }
+  .pm-arah-tutup:hover { transform: none; }
 }
 
 @media print {

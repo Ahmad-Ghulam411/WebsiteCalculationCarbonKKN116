@@ -254,6 +254,10 @@
     var isi = kontrol && kontrol.querySelector('.pm-kontrol-isi');
     var kananAtas = bingkai.querySelector('.leaflet-top.leaflet-right');
     if (!kontrol || !isi || !kananAtas) return;
+    /* Legenda disembunyikan selama mode penunjuk arah. Mengukurnya saat itu
+       hanya menghasilkan angka nol yang menyesatkan, jadi nilai terakhir
+       dibiarkan apa adanya sampai legenda muncul kembali. */
+    if (!kontrol.offsetHeight) return;
     // bagian legenda selain daftar isinya (judul + jarak tepi)
     var rangka = kontrol.offsetHeight - isi.offsetHeight;
     var sisa = kananAtas.getBoundingClientRect().bottom;
@@ -271,9 +275,22 @@
     var kecil = layarKecil();
     // +24px: jarak bilah dari tepi atas peta ditambah sedikit sela.
     var atas = kecil ? 16 : Math.max(96, tinggiBilah(bilahAtas) + 24);
+    var kiri = 10, bawah = kecil ? 44 : 24;
+
+    /* Panel penunjuk arah ikut diperhitungkan: di layar lebar ia menempel di
+       kiri atas, di layar kecil menjadi lembar di sisi bawah. Tanpa ruang
+       tambahan ini popup bisa berhenti tepat di baliknya. Panel sendiri selalu
+       tergambar di atas popup (z-index), jadi yang perlu mengalah adalah
+       popupnya. */
+    var kotak = kotakPanelArah();
+    if (kotak) {
+      if (panelDiBawah()) bawah = Math.round(kotak.height) + 14;
+      else kiri = Math.round(kotak.right - bingkai.getBoundingClientRect().left) + 14;
+    }
+
     L.Popup.mergeOptions({
-      autoPanPaddingTopLeft: L.point(10, atas),
-      autoPanPaddingBottomRight: L.point(10, kecil ? 44 : 24)
+      autoPanPaddingTopLeft: L.point(kiri, atas),
+      autoPanPaddingBottomRight: L.point(10, bawah)
     });
   }
 
@@ -287,6 +304,13 @@
      sisanya tetap terlihat. */
   var kotakJudul = bingkai && bingkai.querySelector('.pm-peta-kepala');
   var kotakPeringatan = bingkai && bingkai.querySelector('.pm-peringatan');
+  /* Kotak legenda ikut diperiksa. Leaflet menaruh SELURUH kontrolnya
+     (z-index 1000) di atas lapisan popup (z-index 700), jadi legenda yang
+     sedang terbuka bukan cuma menutupi popup — ia juga menelan sentuhan yang
+     ditujukan ke tombol di dalam popup itu. Di ponsel, popup yang berisi
+     tombol "Tunjukkan Arah Jalan" sering berhenti tepat di atasnya. Elemennya
+     baru dibuat saat kontrol legenda dipasang, jadi dicari belakangan. */
+  var kotakLegendaTumpang = null;
 
   /* Popup yang sedang terbuka dicatat lewat peristiwa Leaflet, bukan dicari
      dengan querySelector('.leaflet-popup'): popup yang baru ditutup masih
@@ -312,6 +336,8 @@
       var kotak = el ? el.getBoundingClientRect() : null;
       bingkai.classList.toggle('tumpang-judul', bertabrakan(kotak, kotakJudul));
       bingkai.classList.toggle('tumpang-peringatan', bertabrakan(kotak, kotakPeringatan));
+      if (!kotakLegendaTumpang) kotakLegendaTumpang = bingkai.querySelector('.pm-kontrol');
+      bingkai.classList.toggle('tumpang-legenda', bertabrakan(kotak, kotakLegendaTumpang));
     };
     if (window.requestAnimationFrame) window.requestAnimationFrame(jalankan);
     else jalankan();
@@ -320,6 +346,7 @@
   /** Ukur ulang bilah lalu sesuaikan jarak kontrol peta dan ruang popup. */
   function segarkanBilahAtas() {
     ukurBilahAtas();
+    ukurPanelArah();
     ukurRuangLegenda();
     aturRuangPopup();
     aturTumpangTindih();
@@ -365,7 +392,28 @@
   var lapisTK       = L.layerGroup().addTo(peta);
   var namaDiminta   = true;   // saklar "Nama jalan" pada legenda
 
+  /* Penunjuk arah "1 alur" sedang aktif? Dideklarasikan di sini — bukan di
+     bagian 10 tempat isinya ditulis — karena beberapa fungsi di atas
+     (gambarPanah, aturRuangPopup, ukurRuangLegenda) sudah harus tahu keadaan
+     ini sejak peta pertama kali digambar. */
+  var modeArah = false;
+
   /* ------------------------------------------------------------------ 1. zona */
+
+  /** Tombol "tunjukkan arah jalan" untuk dipasang di dalam popup mana pun.
+      `label` menjadi nama titik awal pada panel penunjuk arah. `titik` boleh
+      diisi bila koordinat awalnya sudah pasti (penanda fasilitas, posisi GPS);
+      bila kosong, titik klik popup itu sendiri yang dipakai. */
+  function tombolArah(label, titik) {
+    return '<a class="pm-popup-tombol" href="#" data-pm-arah="' + esc(label) + '"' +
+           (titik ? ' data-pm-titik="' + titik.lat + ',' + titik.lng + '"' : '') +
+           '>🧭 Tunjukkan Arah Jalan</a>';
+  }
+
+  /** Tautan "tunjukkan titik kumpul" — aksi kedua, jadi tampil lebih kalem. */
+  function tombolTK() {
+    return '<a class="pm-popup-tombol is-kedua" href="#" data-pm-ke-tk>📍 Tunjukkan titik kumpul</a>';
+  }
 
   function popupZona(p) {
     var w = WARNA[p.zona];
@@ -378,6 +426,8 @@
         // ketinggian sudah tertulis di kepala popup, jadi di ponsel tidak diulang
         ringkas('<div class="pm-popup-baris"><b>Ketinggian</b><span>' + esc(p.elev) + '</span></div>', '') +
         '<div class="pm-popup-aksi ' + w.aksi + '"><b>Yang harus dilakukan</b>' + esc(p.aksi) + '</div>' +
+        tombolArah(p.nama) +
+        tombolTK() +
       '</div>';
   }
 
@@ -479,7 +529,8 @@
                 '</strong> menuju titik kumpul di Jl. Kesuma Timur.',
                 'Ikuti panah hijau ke arah <strong>' + arah.nama + '</strong> menuju Jl. Kesuma Timur.')) +
         '</div>' +
-        '<a class="pm-popup-tombol" href="#" data-pm-ke-tk>📍 Tunjukkan titik kumpul</a>' +
+        tombolArah(p.nama || 'Jalan lokal') +
+        tombolTK() +
       '</div>';
     return html;
   }
@@ -526,13 +577,19 @@
 
   /* ------------------------------------------------------ 4. jalur evakuasi + panah */
 
-  function panahIkon(sudut) {
+  /** Panah arah evakuasi. `aktif` = panah pada rute yang sedang ditunjukkan
+      mode penunjuk arah: lebih besar dan berwarna terang agar satu alur itu
+      langsung terbaca di atas citra satelit. */
+  function panahIkon(sudut, aktif) {
+    var u = aktif ? 28 : 24;
     return L.divIcon({
-      className: 'pm-panah',
-      html: '<svg width="24" height="24" viewBox="0 0 24 24" style="transform:rotate(' + sudut + 'deg)">' +
-            '<path d="M12 2.5 L19 19 L12 15 L5 19 Z" fill="#1b5e20" stroke="#eaffef" stroke-width="1.5" ' +
+      className: aktif ? 'pm-panah pm-panah-rute' : 'pm-panah',
+      html: '<svg width="' + u + '" height="' + u + '" viewBox="0 0 24 24" ' +
+            'style="transform:rotate(' + sudut + 'deg)">' +
+            '<path d="M12 2.5 L19 19 L12 15 L5 19 Z" fill="' + (aktif ? '#ffffff' : '#1b5e20') +
+            '" stroke="' + (aktif ? '#04340f' : '#eaffef') + '" stroke-width="1.5" ' +
             'stroke-linejoin="round"/></svg>',
-      iconSize: [24, 24], iconAnchor: [12, 12]
+      iconSize: [u, u], iconAnchor: [u / 2, u / 2]
     });
   }
 
@@ -547,7 +604,8 @@
       Jalur yang lebih pendek dari jarak itu tetap diberi satu panah di
       tengahnya — kecuali bila di layar memang terlalu pendek untuk terlihat
       (minTampilM), supaya saat peta di-zoom jauh panah tidak menumpuk. */
-  function pasangPanah(coords, jarakM, minTampilM) {
+  function pasangPanah(coords, jarakM, minTampilM, lapisan, aktif) {
+    var tujuan = lapisan || lapisPanah;
     var ruas = [], total = 0;
     for (var i = 0; i < coords.length - 1; i++) {
       var a = L.latLng(coords[i][1], coords[i][0]);
@@ -573,8 +631,9 @@
       var s = ruas[j];
       var f = Math.max(0, Math.min(1, (t - s.mulai) / s.d));
       L.marker([s.a.lat + (s.b.lat - s.a.lat) * f, s.a.lng + (s.b.lng - s.a.lng) * f], {
-        icon: panahIkon(s.sudut), interactive: false, keyboard: false
-      }).addTo(lapisPanah);
+        icon: panahIkon(s.sudut, aktif), interactive: false, keyboard: false,
+        zIndexOffset: aktif ? 800 : 0
+      }).addTo(tujuan);
     });
   }
 
@@ -594,7 +653,8 @@
                   'tertutup material saat bencana.',
                   'Panah menunjuk ke titik kumpul, menanjak menjauhi pantai. ' +
                   'Jalan kaki lebih aman daripada berkendara.') + '</div>' +
-        '<a class="pm-popup-tombol" href="#" data-pm-ke-tk>📍 Tunjukkan titik kumpul</a>' +
+        tombolArah(p.nama) +
+        tombolTK() +
       '</div>';
   }
 
@@ -615,6 +675,10 @@
   });
 
   function gambarPanah() {
+    // Saat penunjuk arah aktif, panah seluruh jaringan sedang disembunyikan —
+    // menghitungnya ulang hanya membuang waktu. Dipanggil lagi begitu warga
+    // keluar dari mode itu.
+    if (modeArah) return;
     var jarak = Math.max(45, piksterMeter(130));   // ± 130 px antar panah
     var minTampil = piksterMeter(46);              // ruas < 46 px di layar dilewati
     lapisPanah.clearLayers();
@@ -622,7 +686,7 @@
       pasangPanah(f.geometry.coordinates, jarak, minTampil);
     });
   }
-  peta.on('zoomend', gambarPanah);
+  peta.on('zoomend', function () { gambarPanah(); gambarPanahRute(); });
 
   /* ------------------------------------------------------------- 5. titik kumpul */
 
@@ -679,7 +743,8 @@
         '<div class="pm-popup-baris"><b>Ketinggian</b><span>± ' + f.mdpl + ' mdpl</span></div>' +
         '<div class="pm-popup-baris"><b>Ke titik kumpul</b><span>' + fmtJarak(f.jarak_tk_m) +
           ' ke arah <strong>' + arah.nama + '</strong><br>' + fmtWaktu(f.jarak_tk_m) + '</span></div>' +
-        '<a class="pm-popup-tombol" href="#" data-pm-ke-tk>📍 Tunjukkan titik kumpul</a>' +
+        tombolArah(f.nama, titik) +
+        tombolTK() +
       '</div>', { maxWidth: 300 }
     ).bindTooltip(f.nama, { direction: 'top' }).addTo(lapisFasilitas);
   });
@@ -734,7 +799,8 @@
                   'Menuju tempat yang lebih tinggi — titik kumpul ' + fmtJarak(jarak) +
                   ' ke arah ' + arah.nama + '.')) +
         '</div>' +
-        '<a class="pm-popup-tombol" href="#" data-pm-ke-tk>📍 Tunjukkan titik kumpul</a>' +
+        tombolArah(zona ? zona.nama : 'Titik pilihan Anda') +
+        tombolTK() +
       '</div>';
 
     L.popup({ maxWidth: 300 }).setLatLng(e.latlng).setContent(html).openOn(peta);
@@ -742,16 +808,36 @@
 
   peta.on('popupopen', function (ev) {
     popupAktif = ev.popup;
+    var berubah = false;
 
-    /* Jaring pengaman: popup tidak pernah boleh lebih tinggi daripada petanya
-       sendiri — misalnya saat ponsel dipakai mendatar sehingga peta jadi
-       pendek. Sisa isinya bisa digulir di dalam popup. Batasnya dihitung saat
-       popup dibuka karena tinggi peta ikut berubah (putar layar/layar penuh). */
-    var batas = Math.max(170, wadah.clientHeight - 110);
+    /* Di ponsel, panel penunjuk arah menjadi lembar yang menempel di sisi bawah
+       peta. Kalau daftar langkahnya sedang terbuka, lembar itu memakan lebih
+       dari separuh peta dan popup yang baru dibuka tidak kebagian ruang: ia
+       berhenti di baliknya, dan tombol di dalamnya tidak bisa disentuh sama
+       sekali. Karena itu daftar langkah dilipat sementara — satu ketukan pada
+       judulnya membuka lagi. Di layar lebar panel duduk di samping, jadi tidak
+       ada yang perlu dilipat. */
+    if (panelDiBawah() && !panelArah.classList.contains('is-lipat')) {
+      lipatPanelArah(true);
+      berubah = true;
+    }
+    // ukur ulang panel supaya sisipan geseran otomatis popup ikut benar
+    segarkanBilahAtas();
+
+    /* Jaring pengaman: popup tidak pernah boleh lebih tinggi daripada ruang
+       peta yang benar-benar kosong — peta bisa jadi pendek (ponsel mendatar)
+       dan sebagian tingginya bisa terpakai lembar penunjuk arah. Sisa isinya
+       digulir di dalam popup. Dihitung saat popup dibuka karena kedua ukuran
+       itu berubah-ubah (putar layar, layar penuh, panel dilipat). */
+    var kotakPanel = panelDiBawah() ? kotakPanelArah() : null;
+    var terpakai = kotakPanel ? Math.round(kotakPanel.height) : 0;
+    var batas = Math.max(150, wadah.clientHeight - 110 - terpakai);
     if (ev.popup.options.maxHeight !== batas) {
       ev.popup.options.maxHeight = batas;
-      ev.popup.update();
+      berubah = true;
     }
+    // update() menggambar & menggeser ulang popup dengan ukuran/sisipan baru
+    if (berubah) ev.popup.update();
     aturTumpangTindih();
   });
   peta.on('popupclose', function (ev) {
@@ -763,16 +849,48 @@
      supaya tidak memberatkan. */
   peta.on('move zoom moveend zoomend resize', aturTumpangTindih);
 
-  // tombol "Tunjukkan titik kumpul" di dalam popup mana pun
-  peta.on('popupopen', function (ev) {
-    var t = ev.popup.getElement().querySelector('[data-pm-ke-tk]');
-    if (!t) return;
-    L.DomEvent.on(t, 'click', function (e) {
+  /* Tombol di dalam popup ("Tunjukkan titik kumpul" & "Tunjukkan arah jalan")
+     ditangani lewat SATU pendengar di wadah popup, bukan dipasang ulang tiap
+     popup dibuka. Leaflet memakai kembali elemen popup yang sama saat sebuah
+     penanda dibuka-tutup-dibuka lagi, sehingga cara lama menumpuk pendengar
+     dan satu klik bisa berjalan berkali-kali. */
+  function nenekMoyang(el, atribut) {
+    while (el && el !== document) {
+      if (el.getAttribute && el.getAttribute(atribut) !== null) return el;
+      el = el.parentNode;
+    }
+    return null;
+  }
+
+  L.DomEvent.on(peta.getPane('popupPane'), 'click', function (e) {
+    var ke = nenekMoyang(e.target, 'data-pm-ke-tk');
+    if (ke) {
       L.DomEvent.preventDefault(e);
+      tutupArah();                  // penunjuk arah lama tidak boleh tertinggal
       peta.closePopup();
       peta.flyTo(TK_LATLNG, 18, { duration: 0.9 });
       setTimeout(function () { penandaTK.openPopup(); }, 950);
-    });
+      return;
+    }
+
+    var arah = nenekMoyang(e.target, 'data-pm-arah');
+    if (!arah) return;
+    L.DomEvent.preventDefault(e);
+
+    /* Titik awalnya: koordinat pasti bila tombolnya membawa data-pm-titik
+       (penanda fasilitas / posisi GPS), selain itu titik tempat popup berdiri
+       — yaitu tempat warga tadi mengetuk peta. */
+    var titik = null;
+    var tulis = arah.getAttribute('data-pm-titik');
+    if (tulis) {
+      var pecah = tulis.split(',');
+      var la = parseFloat(pecah[0]), lo = parseFloat(pecah[1]);
+      if (isFinite(la) && isFinite(lo)) titik = L.latLng(la, lo);
+    }
+    if (!titik && popupAktif) titik = popupAktif.getLatLng();
+    if (!titik) return;
+
+    mulaiArah(titik, arah.getAttribute('data-pm-arah'));
   });
 
   /* ------------------------------------------------------- 8. kontrol legenda */
@@ -956,8 +1074,13 @@
   });
   tombol('pmKeluarPenuh', keluarLayarPenuh);
 
+  /* Esc dikupas selapis demi selapis: penunjuk arah dulu (kembali ke peta
+     semula), baru mode layar penuh. Kalau keduanya ditutup sekaligus, warga
+     yang menekan Esc satu kali kehilangan dua hal sekaligus. */
   document.addEventListener('keydown', function (e) {
-    if (e.key === 'Escape' && bingkai.classList.contains('is-penuh')) keluarLayarPenuh();
+    if (e.key !== 'Escape') return;
+    if (modeArah) { tutupArah(); return; }
+    if (bingkai.classList.contains('is-penuh')) keluarLayarPenuh();
   });
 
   var penandaSaya = null;
@@ -1004,7 +1127,8 @@
           '<div class="pm-popup-aksi ' + (zona ? w.aksi : '') + '"><b>Petunjuk</b>' +
             ringkas('Bergerak ke arah <strong>' + arah.nama + '</strong> menuju titik kumpul di Jl. Kesuma Timur.',
                     'Ikuti panah hijau ke arah <strong>' + arah.nama + '</strong>.') + '</div>' +
-          '<a class="pm-popup-tombol" href="#" data-pm-ke-tk>📍 Tunjukkan titik kumpul</a>' +
+          tombolArah('Posisi Anda sekarang', latlng) +
+          tombolTK() +
         '</div>', { maxWidth: 300 }
       ).openPopup();
       peta.flyTo(latlng, 17, { duration: 0.9 });
@@ -1013,6 +1137,562 @@
       alert('Lokasi tidak bisa diambil. Pastikan izin lokasi sudah diaktifkan di peramban Anda.');
     }, { enableHighAccuracy: true, timeout: 12000, maximumAge: 60000 });
   });
+
+  /* ========================================================================== *
+   *  10. PENUNJUK ARAH "1 ALUR"
+   *
+   *  Dari titik mana pun yang diketuk warga (atau dari posisi GPS-nya), peta
+   *  menghitung SATU alur terpendek menuju titik kumpul lewat jaringan jalur
+   *  evakuasi, lalu masuk ke mode terfokus: 52 jalur lain, panah umum, dan
+   *  fasilitas disembunyikan sehingga hanya alur itu yang tergambar. Menekan
+   *  "✕" mengembalikan peta persis ke keadaan sebelumnya.
+   * ========================================================================== */
+
+  /* --- 10a. graf jaringan jalur evakuasi ----------------------------------- *
+     Dibangun sekali saat pertama kali dibutuhkan (bukan saat halaman dimuat)
+     supaya peta tetap cepat terbuka bagi warga yang hanya ingin melihat zona. */
+  var graf = null;
+
+  function bangunGraf() {
+    if (graf) return graf;
+    var simpul = [], indeks = {}, tetangga = [], sisi = [];
+
+    function idSimpul(c) {
+      // koordinat dibulatkan 6 desimal (± 0,1 m) supaya ujung dua jalur yang
+      // bertemu di persimpangan yang sama benar-benar menjadi satu simpul
+      var kunci = c[0].toFixed(6) + ',' + c[1].toFixed(6);
+      if (indeks[kunci] === undefined) {
+        indeks[kunci] = simpul.length;
+        simpul.push(L.latLng(c[1], c[0]));
+        tetangga.push([]);
+      }
+      return indeks[kunci];
+    }
+
+    D.jalur.features.forEach(function (f) {
+      var c = f.geometry.coordinates;
+      for (var i = 0; i < c.length - 1; i++) {
+        var a = idSimpul(c[i]), b = idSimpul(c[i + 1]);
+        if (a === b) continue;
+        var w = jarakMeter(simpul[a], simpul[b]);
+        tetangga[a].push({ n: b, w: w });
+        tetangga[b].push({ n: a, w: w });
+        sisi.push({ a: a, b: b });
+      }
+    });
+
+    // simpul jaringan yang paling dekat ke titik kumpul menjadi tujuan perutean
+    var tujuan = 0, terdekat = Infinity;
+    simpul.forEach(function (p, i) {
+      var d = jarakMeter(p, TK_LATLNG);
+      if (d < terdekat) { terdekat = d; tujuan = i; }
+    });
+
+    graf = { simpul: simpul, tetangga: tetangga, sisi: sisi, tujuan: tujuan };
+    return graf;
+  }
+
+  /** Titik terdekat pada jaringan jalur, beserta ruas tempat ia menempel. */
+  function tempelKeJaringan(p) {
+    var g = bangunGraf(), terbaik = null;
+    for (var i = 0; i < g.sisi.length; i++) {
+      var s = g.sisi[i];
+      var r = jarakKeRuas(p, g.simpul[s.a], g.simpul[s.b]);
+      if (!terbaik || r.jarak < terbaik.jarak) {
+        terbaik = { jarak: r.jarak, titik: r.titik, sisi: s };
+      }
+    }
+    return terbaik;
+  }
+
+  /** Alur terpendek (Dijkstra) dari sebuah titik ke titik kumpul.
+      Jaringannya kecil (± 405 simpul) sehingga pencarian sederhana O(n²) sudah
+      selesai jauh di bawah satu kedipan mata — tak perlu antrean berprioritas. */
+  function cariAlur(p) {
+    var g = bangunGraf();
+    var tempel = tempelKeJaringan(p);
+    if (!tempel) return null;
+
+    var N = g.simpul.length, AWAL = N;      // simpul semu di titik tempelan
+    var jarak = [], dari = [], selesai = [];
+    for (var i = 0; i <= N; i++) { jarak[i] = Infinity; dari[i] = -1; selesai[i] = false; }
+    jarak[AWAL] = 0;
+
+    var sisiAwal = [
+      { n: tempel.sisi.a, w: jarakMeter(tempel.titik, g.simpul[tempel.sisi.a]) },
+      { n: tempel.sisi.b, w: jarakMeter(tempel.titik, g.simpul[tempel.sisi.b]) }
+    ];
+
+    for (var putaran = 0; putaran <= N; putaran++) {
+      var u = -1, ud = Infinity;
+      for (var k = 0; k <= N; k++) if (!selesai[k] && jarak[k] < ud) { ud = jarak[k]; u = k; }
+      if (u === -1 || u === g.tujuan) break;
+      selesai[u] = true;
+      var sekitar = (u === AWAL) ? sisiAwal : g.tetangga[u];
+      for (var t = 0; t < sekitar.length; t++) {
+        var e = sekitar[t];
+        if (jarak[u] + e.w < jarak[e.n]) { jarak[e.n] = jarak[u] + e.w; dari[e.n] = u; }
+      }
+    }
+    if (!isFinite(jarak[g.tujuan])) return null;
+
+    var urut = [], cur = g.tujuan;
+    while (cur !== -1 && cur !== AWAL) { urut.unshift(cur); cur = dari[cur]; }
+
+    var titik = [tempel.titik];
+    urut.forEach(function (n) { titik.push(g.simpul[n]); });
+    titik.push(TK_LATLNG);   // sambungan pendek terakhir ke penanda titik kumpul
+
+    // titik kembar berurutan dibuang agar panah & langkah tidak menumpuk
+    var bersih = [];
+    titik.forEach(function (t) {
+      var akhir = bersih[bersih.length - 1];
+      if (!akhir || jarakMeter(akhir, t) > 0.5) bersih.push(t);
+    });
+    if (bersih.length < 2) return null;
+
+    var total = 0;
+    for (var q = 0; q < bersih.length - 1; q++) total += jarakMeter(bersih[q], bersih[q + 1]);
+
+    return { titik: bersih, panjang: total, tempelJarak: tempel.jarak };
+  }
+
+  /* --- 10b. langkah demi langkah ------------------------------------------- */
+
+  /* Jalur evakuasi menyimpan nama JALUR ("Jalur Evakuasi — Jl. Bau Massepe"),
+     bukan nama jalan di tiap ruasnya. Untuk petunjuk belok yang benar, nama
+     jalan diambil dari ruas jaringan jalan terdekat dengan tengah ruas itu. */
+  var ruasJalan = null;
+
+  function daftarRuasJalan() {
+    if (ruasJalan) return ruasJalan;
+    ruasJalan = [];
+    D.jalan.features.forEach(function (f) {
+      if (!f.properties.nama) return;
+      f.geometry.coordinates.forEach(function (garis) {
+        for (var i = 0; i < garis.length - 1; i++) {
+          ruasJalan.push({
+            a: L.latLng(garis[i][1], garis[i][0]),
+            b: L.latLng(garis[i + 1][1], garis[i + 1][0]),
+            nama: f.properties.nama
+          });
+        }
+      });
+    });
+    return ruasJalan;
+  }
+
+  function namaJalanDekat(p) {
+    var daftar = daftarRuasJalan(), terbaik = null;
+    for (var i = 0; i < daftar.length; i++) {
+      var r = jarakKeRuas(p, daftar[i].a, daftar[i].b);
+      if (!terbaik || r.jarak < terbaik.jarak) terbaik = { jarak: r.jarak, nama: daftar[i].nama };
+    }
+    // lebih dari 32 m berarti ruas itu memang bukan jalan bernama
+    return (terbaik && terbaik.jarak < 32) ? terbaik.nama : null;
+  }
+
+  /** Perubahan arah antara dua ruas → kata dan ikon petunjuknya. */
+  function belokan(sudutLama, sudutBaru) {
+    var d = ((sudutBaru - sudutLama + 540) % 360) - 180;   // -180°..180°
+    var besar = Math.abs(d), kanan = d > 0;
+    if (besar < 22) return { ikon: '↑', teks: 'Lurus mengikuti' };
+    if (besar > 150) return { ikon: kanan ? '↻' : '↺', teks: 'Putar balik, masuk' };
+    if (besar > 60) return { ikon: kanan ? '→' : '←', teks: 'Belok ' + (kanan ? 'kanan' : 'kiri') + ' ke' };
+    return { ikon: kanan ? '↗' : '↖', teks: 'Serong ' + (kanan ? 'kanan' : 'kiri') + ' ke' };
+  }
+
+  function susunLangkah(titik) {
+    var kasar = [];
+    for (var i = 0; i < titik.length - 1; i++) {
+      var a = titik[i], b = titik[i + 1];
+      var d = jarakMeter(a, b);
+      if (d < 0.5) continue;
+      var tengah = L.latLng((a.lat + b.lat) / 2, (a.lng + b.lng) / 2);
+      // huruf kecil supaya kalimatnya tetap wajar: "Belok kiri ke jalan lingkungan"
+      var nama = namaJalanDekat(tengah) || 'jalan lingkungan';
+      var sudut = arahKe(a, b).derajat;
+      var akhir = kasar[kasar.length - 1];
+      if (akhir && akhir.nama === nama) {
+        akhir.jarak += d; akhir.sudutAkhir = sudut; akhir.titik = b;
+      } else {
+        kasar.push({ nama: nama, jarak: d, sudutAwal: sudut, sudutAkhir: sudut, titik: b });
+      }
+    }
+
+    /* Potongan di bawah 14 m biasanya hanya belokan tikungan, bukan ruas jalan
+       tersendiri — digabung ke langkah tetangganya supaya daftarnya tidak
+       penuh baris sepele yang justru membingungkan saat panik. */
+    var padat = [];
+    kasar.forEach(function (l) {
+      var akhir = padat[padat.length - 1];
+      if (akhir && l.jarak < 14) {
+        akhir.jarak += l.jarak; akhir.sudutAkhir = l.sudutAkhir; akhir.titik = l.titik;
+      } else {
+        padat.push(l);
+      }
+    });
+    while (padat.length > 1 && padat[0].jarak < 14) {
+      padat[1].jarak += padat[0].jarak;
+      padat[1].sudutAwal = padat[0].sudutAwal;
+      padat.shift();
+    }
+
+    for (var k = 1; k < padat.length; k++) {
+      padat[k].belok = belokan(padat[k - 1].sudutAkhir, padat[k].sudutAwal);
+    }
+    return padat;
+  }
+
+  /* --- 10c. panel & keadaan mode ------------------------------------------- */
+
+  var panelArah   = document.getElementById('pmArah');
+  var lapisArah   = L.layerGroup();      // garis + penanda alur aktif
+  var lapisPanahArah = L.layerGroup();   // panah di sepanjang alur aktif
+  var rRute       = pane('pmRute', 455); // di atas jalur biasa (440)
+  var alurAktif   = null;
+  var simpanTampilan = null;             // pusat & zoom peta sebelum mode ini
+  var simpanLapisan  = null;             // lapisan yang tadi menyala
+  var simpanPosisiSaya = false;
+  var lipatAwalDiatur = false;           // keadaan lipat awal sudah ditentukan?
+
+  /** Kotak panel penunjuk arah bila sedang terlihat, selain itu null. */
+  function kotakPanelArah() {
+    if (!modeArah || !panelArah || panelArah.hidden || !bingkai) return null;
+    var b = panelArah.getBoundingClientRect();
+    return b.height ? b : null;
+  }
+
+  /* Panel bisa berupa kotak melayang di kiri atas (layar lebar) atau lembar
+     yang menempel di sisi bawah (ponsel tegak) — lihat css/peta-mitigasi.css.
+     Bentuk mana yang sedang berlaku ditanyakan langsung ke tata letaknya,
+     bukan ditebak dari ambang lebar layar: keduanya harus selalu cocok, dan
+     ambangnya hanya ditulis satu kali, di berkas gaya. Lembar bawah selalu
+     selebar peta; kotak melayang tidak pernah lebih dari separuhnya. */
+  function panelDiBawah() {
+    var b = kotakPanelArah();
+    return !!b && b.width > bingkai.getBoundingClientRect().width * 0.7;
+  }
+
+  function ukurPanelArah() {
+    if (!bingkai) return;
+    var b = kotakPanelArah();
+    setUkuran('--pm-arah-tinggi', (b ? Math.round(b.height) : 0) + 'px');
+  }
+
+  /** Buka/tutup daftar langkah, sekaligus memberi tahu pembaca layar. */
+  function lipatPanelArah(lipat) {
+    if (!panelArah) return;
+    panelArah.classList.toggle('is-lipat', lipat);
+    var s = document.getElementById('pmArahSaklar');
+    if (s) s.setAttribute('aria-expanded', lipat ? 'false' : 'true');
+  }
+
+  /** Ruang yang harus disisakan flyToBounds agar alur tidak tertutup panel.
+      Dibatasi 42% ukuran peta: sisipan yang lebih besar daripada petanya
+      sendiri membuat Leaflet menghitung zoom yang aneh. */
+  function sisipanPanel() {
+    var dasar = 20;
+    /* Penanda "MULAI" dan "TITIK KUMPUL" menggantungkan labelnya di bawah titik
+       jangkarnya dan menonjolkan lingkaran di atasnya. Batas rute dihitung dari
+       titik jangkar, jadi sisi atas & bawah diberi ruang ekstra — tanpa itu
+       label kedua penanda terpotong tepi peta. */
+    var kiri = dasar, atas = dasar + 30, bawah = dasar + 34;
+    var b = kotakPanelArah();
+    if (b) {
+      if (panelDiBawah()) bawah = Math.round(b.height) + dasar;
+      else kiri = Math.round(b.right - bingkai.getBoundingClientRect().left) + dasar;
+    }
+    var batasX = wadah.clientWidth * 0.42, batasY = wadah.clientHeight * 0.42;
+    return {
+      kiriAtas: L.point(Math.min(kiri, batasX), Math.min(atas, batasY)),
+      kananBawah: L.point(dasar, Math.min(bawah, batasY))
+    };
+  }
+
+  /* --- 10d. menggambar alur ------------------------------------------------ */
+
+  function gambarAlur() {
+    lapisArah.clearLayers();
+    if (!alurAktif) return;
+    var titik = alurAktif.titik;
+
+    /* Titik warga sering tidak persis di atas jalur (mengetuk halaman rumah,
+       atau GPS meleset beberapa meter). Ruas putus-putus ini menunjukkan jalan
+       kaki singkat menuju awal alur, supaya alurnya tidak terlihat "mulai
+       entah dari mana". */
+    if (alurAktif.tempelJarak > 12) {
+      L.polyline([alurAktif.asal, titik[0]], {
+        renderer: rRute, color: '#ffffff', weight: 3, opacity: 0.9,
+        dashArray: '2 8', lineCap: 'round', interactive: false
+      }).addTo(lapisArah);
+    }
+
+    // bayangan gelap → garis terang → aliran putih berjalan
+    L.polyline(titik, {
+      renderer: rRute, color: '#04340f', weight: 13, opacity: 0.55,
+      lineCap: 'round', lineJoin: 'round', interactive: false
+    }).addTo(lapisArah);
+    L.polyline(titik, {
+      renderer: rRute, color: '#00e676', weight: 6.5, opacity: 1,
+      lineCap: 'round', lineJoin: 'round', interactive: false
+    }).addTo(lapisArah);
+    L.polyline(titik, {
+      renderer: rRute, color: '#ffffff', weight: 3, opacity: 0.95,
+      dashArray: '2 16', lineCap: 'round', className: 'pm-rute-aliran', interactive: false
+    }).addTo(lapisArah);
+
+    L.marker(alurAktif.asal, {
+      interactive: false, keyboard: false, zIndexOffset: 1100,
+      icon: L.divIcon({
+        className: '', html: '<div class="pm-rute-mulai"><i></i><b>MULAI</b></div>',
+        iconSize: [20, 20], iconAnchor: [10, 10]
+      })
+    }).addTo(lapisArah);
+
+    gambarPanahRute();
+  }
+
+  function gambarPanahRute() {
+    lapisPanahArah.clearLayers();
+    if (!modeArah || !alurAktif) return;
+    var koor = alurAktif.titik.map(function (t) { return [t.lng, t.lat]; });
+    pasangPanah(koor, Math.max(35, piksterMeter(115)), 0, lapisPanahArah, true);
+  }
+
+  /* --- 10e. isi panel ------------------------------------------------------ */
+
+  function isiPanel() {
+    if (!panelArah || !alurAktif) return;
+    var r = alurAktif;
+    var jauh = r.tempelJarak > 25;
+    var totalM = r.panjang + (jauh ? r.tempelJarak : 0);
+    var zona = zonaDi(r.asal.lat, r.asal.lng);
+
+    teksPanel('pmArahAsal', 'Dari ' + r.label);
+    teksPanel('pmArahJarak', fmtJarak(totalM));
+    teksPanel('pmArahWaktu', '± ' + Math.max(1, Math.round(totalM / 75)) + ' menit');
+
+    var elZona = document.getElementById('pmArahZona');
+    if (elZona) {
+      elZona.textContent = zona ? String(zona.nama).split('—')[0].trim() : 'Luar zona';
+      elZona.className = 'pm-arah-nilai' + (zona ? ' is-' + zona.zona : '');
+    }
+
+    var catatan = document.getElementById('pmArahCatatan');
+    if (catatan) {
+      if (zona && zona.zona === 'merah') {
+        catatan.innerHTML = '<b>⚠️ Anda di zona merah.</b> Jangan menunggu — ' +
+          'segera berjalan mengikuti alur di bawah ini.';
+        catatan.className = 'pm-arah-catatan is-bahaya';
+        catatan.hidden = false;
+      } else if (!zona) {
+        catatan.innerHTML = '<b>Di luar wilayah Kampung Baru.</b> Alur ini dihitung ' +
+          'dari jalur evakuasi terdekat menuju titik kumpul Kampung Baru.';
+        catatan.className = 'pm-arah-catatan';
+        catatan.hidden = false;
+      } else {
+        catatan.hidden = true;
+      }
+    }
+
+    var daftar = document.getElementById('pmArahLangkah');
+    if (!daftar) return;
+    var html = '';
+
+    if (jauh) {
+      html += barisLangkah(-1, '🚶', 'Berjalan ke jalur evakuasi terdekat',
+        fmtJarak(r.tempelJarak) + ' ke arah ' + arahKe(r.asal, r.titik[0]).nama);
+    }
+
+    r.langkah.forEach(function (l, i) {
+      var judul = l.belok
+        ? l.belok.teks + ' ' + esc(l.nama)
+        : 'Mulai berjalan ke arah ' + MATA_ANGIN[Math.round(l.sudutAwal / 45) % 8] +
+          ' lewat ' + esc(l.nama);
+      html += barisLangkah(i, l.belok ? l.belok.ikon : '▶', judul, fmtJarak(l.jarak));
+    });
+
+    html += barisLangkah(-2, '🏃', 'Tiba di Titik Kumpul',
+      'Jl. Kesuma Timur · zona hijau ± ' + TK.mdpl + ' mdpl');
+
+    daftar.innerHTML = html;
+
+    var jml = document.getElementById('pmArahJumlah');
+    if (jml) jml.textContent = r.langkah.length + ' langkah';
+  }
+
+  function teksPanel(id, isi) {
+    var el = document.getElementById(id);
+    if (el) el.textContent = isi;
+  }
+
+  /** Satu baris langkah. Indeks -1 = jalan kaki awal, -2 = tiba di tujuan;
+      keduanya tetap bisa diketuk untuk memusatkan peta ke titiknya. */
+  function barisLangkah(i, ikon, judul, ket) {
+    var kelas = 'pm-arah-item' + (i === -1 ? ' is-mulai' : i === -2 ? ' is-tujuan' : '');
+    return '<li><button type="button" class="' + kelas + '" data-langkah="' + i + '">' +
+             '<span class="pm-arah-ikon" aria-hidden="true">' + ikon + '</span>' +
+             '<span class="pm-arah-teks"><b>' + judul + '</b><span>' + esc(ket) + '</span></span>' +
+           '</button></li>';
+  }
+
+  /* --- 10f. masuk & keluar mode ------------------------------------------- */
+
+  function mulaiArah(asal, label) {
+    if (!panelArah) return;
+
+    var hasil = cariAlur(asal);
+    if (!hasil) {
+      alert('Maaf, alur evakuasi dari titik ini belum bisa dihitung. ' +
+            'Coba pilih titik lain yang lebih dekat ke jalan.');
+      return;
+    }
+
+    hasil.asal = asal;
+    hasil.label = label || 'Titik pilihan Anda';
+    hasil.langkah = susunLangkah(hasil.titik);
+    alurAktif = hasil;
+
+    if (!modeArah) {
+      // keadaan peta sebelum mode ini, untuk dipulihkan persis saat keluar
+      simpanTampilan = { tengah: peta.getCenter(), zoom: peta.getZoom() };
+      simpanLapisan = [lapisJalur, lapisPanah, lapisFasilitas].filter(function (l) {
+        return peta.hasLayer(l);
+      });
+      simpanLapisan.forEach(function (l) { peta.removeLayer(l); });
+      simpanPosisiSaya = !!(penandaSaya && peta.hasLayer(penandaSaya));
+      if (simpanPosisiSaya) peta.removeLayer(penandaSaya);
+
+      lapisArah.addTo(peta);
+      lapisPanahArah.addTo(peta);
+      modeArah = true;
+      bingkai.classList.add('is-navigasi');
+      panelArah.hidden = false;
+
+      /* Sekali saja, saat panel pertama kali tampil: bila ia berbentuk lembar
+         bawah (ponsel tegak), daftar langkah dimulai terlipat agar lembarnya
+         pendek dan peta tetap kelihatan. Keadaan lipat itu tidak disetel ulang
+         pada alur-alur berikutnya — kalau warga sudah membukanya, biarkan
+         terbuka. Bentuk panel ditanya ke tata letak, jadi ambang lebar layar
+         cukup ditulis di css/peta-mitigasi.css saja. */
+      if (!lipatAwalDiatur) {
+        lipatAwalDiatur = true;
+        if (panelDiBawah()) lipatPanelArah(true);
+      }
+    }
+
+    peta.closePopup();
+    gambarAlur();
+    isiPanel();
+    segarkanBilahAtas();
+    lihatSeluruhAlur();
+
+    /* Di ponsel yang dipegang mendatar, bingkai peta lebih tinggi daripada
+       layarnya — lembar arah yang menempel di sisi bawah peta bisa berhenti di
+       bawah garis lipat, dan tombol "✕ Keluar" jadi tak terjangkau. Halaman
+       digulir seperlunya supaya panelnya utuh terlihat. Di mode layar penuh
+       bingkainya sudah setara layar, jadi tidak perlu digulir. */
+    if (!bingkai.classList.contains('is-penuh') && panelArah.scrollIntoView) {
+      panelArah.scrollIntoView({ block: 'nearest' });
+    }
+
+    // fokus pindah ke panel supaya pengguna papan ketik & pembaca layar
+    // langsung berada di petunjuk yang baru muncul
+    var tutup = document.getElementById('pmArahTutup');
+    if (tutup) tutup.focus();
+  }
+
+  function lihatSeluruhAlur() {
+    if (!alurAktif) return;
+    var titik = alurAktif.titik.slice();
+    // titik warga hanya ikut dibingkai bila masih di dalam wilayah peta —
+    // GPS dari luar kota tidak boleh menarik peta sampai keluar batas
+    if (BATAS_TAMPIL.pad(1.1).contains(alurAktif.asal)) titik.push(alurAktif.asal);
+    var sisip = sisipanPanel();
+    peta.flyToBounds(L.latLngBounds(titik), {
+      paddingTopLeft: sisip.kiriAtas,
+      paddingBottomRight: sisip.kananBawah,
+      duration: 0.8, maxZoom: 18
+    });
+  }
+
+  function tutupArah() {
+    if (!modeArah) return;
+    modeArah = false;
+    bingkai.classList.remove('is-navigasi');
+    if (panelArah) panelArah.hidden = true;
+
+    lapisArah.clearLayers();
+    lapisPanahArah.clearLayers();
+    peta.removeLayer(lapisArah);
+    peta.removeLayer(lapisPanahArah);
+    alurAktif = null;
+
+    // hanya lapisan yang tadi memang menyala yang dinyalakan kembali, jadi
+    // saklar legenda yang sengaja dimatikan warga tidak ikut hidup lagi
+    if (simpanLapisan) {
+      simpanLapisan.forEach(function (l) { peta.addLayer(l); });
+      simpanLapisan = null;
+    }
+    if (simpanPosisiSaya && penandaSaya) peta.addLayer(penandaSaya);
+    simpanPosisiSaya = false;
+
+    peta.closePopup();
+    gambarPanah();            // panah umum dihitung ulang untuk zoom saat ini
+    segarkanBilahAtas();
+
+    if (simpanTampilan) {
+      peta.flyTo(simpanTampilan.tengah, simpanTampilan.zoom, { duration: 0.7 });
+      simpanTampilan = null;
+    }
+
+    /* Fokus tidak boleh tertinggal di tombol yang baru saja disembunyikan —
+       pembaca layar akan kehilangan tempatnya. Tombol pemicunya ada di dalam
+       popup yang sudah ikut tertutup, jadi fokus dikembalikan ke peta itu
+       sendiri: tempat warga memang sedang berada. */
+    if (wadah.focus) {
+      try { wadah.focus({ preventScroll: true }); } catch (x) { wadah.focus(); }
+    }
+  }
+
+  /* --- 10g. tombol-tombol panel ------------------------------------------- */
+
+  if (panelArah) {
+    panelArah.hidden = true;   // halaman selalu dibuka tanpa penunjuk arah
+
+    tombol('pmArahTutup', tutupArah);
+    tombol('pmArahKeluar', tutupArah);
+    tombol('pmArahSeluruh', lihatSeluruhAlur);
+
+    var saklarArah = document.getElementById('pmArahSaklar');
+    if (saklarArah) {
+      saklarArah.addEventListener('click', function () {
+        lipatPanelArah(!panelArah.classList.contains('is-lipat'));
+        segarkanBilahAtas();
+      });
+    }
+
+    // mengetuk satu langkah memusatkan peta ke ujung langkah itu
+    panelArah.addEventListener('click', function (e) {
+      var el = nenekMoyang(e.target, 'data-langkah');
+      if (!el || !alurAktif) return;
+      var i = parseInt(el.getAttribute('data-langkah'), 10);
+      var titik = i === -1 ? alurAktif.titik[0]
+                : i === -2 ? TK_LATLNG
+                : (alurAktif.langkah[i] && alurAktif.langkah[i].titik);
+      if (!titik) return;
+      peta.flyTo(titik, Math.max(peta.getZoom(), 18), { duration: 0.6 });
+      var lain = panelArah.querySelectorAll('.pm-arah-item.is-terpilih');
+      Array.prototype.forEach.call(lain, function (x) { x.classList.remove('is-terpilih'); });
+      el.classList.add('is-terpilih');
+    });
+
+    /* Panel bisa berubah tinggi tanpa jendela berubah ukuran (daftar langkah
+       baru, lipat/buka). Tinggi itu dipakai untuk sisipan popup dan untuk
+       menaikkan skala & atribusi peta di ponsel, jadi harus selalu segar. */
+    if (window.ResizeObserver) new ResizeObserver(segarkanBilahAtas).observe(panelArah);
+  }
 
   /* ------------------------------- gulir roda: aktif setelah peta diklik ----- */
   peta.on('focus click', function () { peta.scrollWheelZoom.enable(); });
