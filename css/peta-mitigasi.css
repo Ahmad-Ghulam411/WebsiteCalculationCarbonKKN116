@@ -495,26 +495,60 @@
 }
 
 /* ------------------------------- Popup ------------------------------------ */
-.leaflet-popup-content-wrapper { border-radius: 14px; box-shadow: 0 10px 34px rgba(0, 0, 0, .3); }
-.leaflet-popup-content { margin: 0; width: 268px !important; font-family: 'Nunito', sans-serif; }
-.pm-popup-kepala {
-  padding: 11px 14px; border-radius: 14px 14px 0 0; color: #fff;
-  font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .95rem; line-height: 1.25;
+/* Kotak info dijaga sependek mungkin. Saat popup dibuka Leaflet menggeser peta
+   agar kotaknya muat seluruhnya — makin tinggi kotaknya, makin jauh peta
+   tersentak ke atas dan makin hilang titik yang baru saja diketuk warga dari
+   pandangan. Isi yang panjang sudah dipindah ke panel penunjuk arah, dan jarak
+   antarbarisnya dirapatkan di sini. */
+.leaflet-popup-content-wrapper {
+  border-radius: 14px; box-shadow: 0 10px 34px rgba(0, 0, 0, .3);
+  /* memotong isi yang digulir mengikuti sudut membulat kartu, sehingga
+     bagian yang bisa digulir tidak tampak seperti kotak kedua yang ditempel */
+  overflow: hidden;
 }
-.pm-popup-kepala small { display: block; font-weight: 600; font-size: .72rem; opacity: .92; margin-top: 2px; }
+.leaflet-popup-content { margin: 0; width: 252px !important; font-family: 'Nunito', sans-serif; }
+
+/* Isi yang melebihi tinggi peta digulir DI DALAM kartu. Batang gulir bawaan
+   peramban tebal, bersudut siku, dan berdiri persis di bawah tombol "✕"
+   sehingga tombol itu tampak tertimpa. Di sini batangnya dibuat tipis,
+   membulat, senada warna kartu, dan diberi jarak dari tepi. */
+.leaflet-popup-scrolled {
+  border: none; scrollbar-width: thin; overscroll-behavior: contain;
+  scrollbar-color: rgba(14, 94, 51, .3) transparent;
+}
+.leaflet-popup-scrolled::-webkit-scrollbar { width: 6px; }
+.leaflet-popup-scrolled::-webkit-scrollbar-track { background: transparent; }
+.leaflet-popup-scrolled::-webkit-scrollbar-thumb {
+  background: rgba(14, 94, 51, .3); border-radius: 999px;
+}
+.leaflet-popup-scrolled::-webkit-scrollbar-thumb:hover { background: rgba(14, 94, 51, .5); }
+/* Tombol tutup digeser 8 px ke dalam — persis di luar jangkauan batang gulir
+   selebar 6 px di atas — sehingga keduanya tidak pernah bertumpuk. Kepala
+   popup selalu menyisakan ruang selebar tombol itu di sisi kanannya. */
+.leaflet-container a.leaflet-popup-close-button { top: 4px; right: 8px; }
+
+.pm-popup-kepala {
+  padding: 9px 36px 9px 13px; border-radius: 14px 14px 0 0; color: #fff;
+  font-family: 'Poppins', sans-serif; font-weight: 700; font-size: .9rem; line-height: 1.22;
+}
+.pm-popup-kepala small { display: block; font-weight: 600; font-size: .7rem; opacity: .92; margin-top: 1px; }
 .pm-kepala-merah  { background: linear-gradient(135deg, #e53935, #8e1616); }
 .pm-kepala-kuning { background: linear-gradient(135deg, #f2b705, #a37700); }
 .pm-kepala-hijau  { background: linear-gradient(135deg, #4caf50, #1b5e20); }
 .pm-kepala-biru   { background: linear-gradient(135deg, #1e88e5, #0d47a1); }
-.pm-popup-isi { padding: 11px 14px 13px; font-size: .82rem; color: var(--tinta); }
-.pm-popup-baris { display: flex; gap: 8px; padding: 4px 0; border-bottom: 1px dashed var(--garis); }
+.pm-popup-isi { padding: 8px 13px 11px; font-size: .8rem; color: var(--tinta); line-height: 1.42; }
+.pm-popup-baris { display: flex; gap: 8px; padding: 3px 0; border-bottom: 1px dashed var(--garis); }
 .pm-popup-baris:last-of-type { border-bottom: none; }
-.pm-popup-baris b { flex: none; width: 92px; color: var(--tinta-lembut); font-weight: 700; font-size: .76rem; }
-.pm-popup-baris span { flex: 1; }
+/* Lebar kolom label dipilih agar label terpanjang muat dalam satu baris —
+   label yang patah dua ikut menaikkan tinggi barisnya, dan tinggi kotak
+   inilah yang menentukan seberapa jauh peta tersentak saat popup dibuka. */
+.pm-popup-baris b { flex: none; width: 72px; color: var(--tinta-lembut); font-weight: 700; font-size: .72rem; }
+.pm-popup-baris span { flex: 1; min-width: 0; }
+.pm-popup-baris small { color: var(--tinta-lembut); font-size: .72rem; }
 .pm-popup-aksi {
-  margin-top: 9px; padding: 9px 11px; border-radius: 9px;
+  margin-top: 7px; padding: 7px 10px; border-radius: 9px;
   background: var(--hijau-muda); color: var(--hijau-tua);
-  font-size: .78rem; line-height: 1.45; border-left: 4px solid var(--hijau);
+  font-size: .76rem; line-height: 1.4; border-left: 4px solid var(--hijau);
 }
 .pm-popup-aksi.is-bahaya { background: #ffebee; color: #8e1616; border-left-color: var(--zona-merah); }
 .pm-popup-aksi.is-siaga  { background: #fff8e1; color: #7a5900; border-left-color: var(--zona-kuning); }
@@ -522,8 +556,8 @@
 /* `.leaflet-container a` mewarnai semua tautan biru, jadi tombol ini harus
    ditulis lebih spesifik agar tetap putih di atas latar hijau. */
 .leaflet-container a.pm-popup-tombol {
-  display: block; margin-top: 9px; text-align: center; background: var(--hijau);
-  color: #fff; font-weight: 700; font-size: .8rem; padding: 8px 10px; border-radius: 999px;
+  display: block; margin-top: 7px; text-align: center; background: var(--hijau);
+  color: #fff; font-weight: 700; font-size: .78rem; padding: 7px 10px; border-radius: 999px;
   text-decoration: none; transition: filter var(--trans);
 }
 .leaflet-container a.pm-popup-tombol:hover,
@@ -532,12 +566,19 @@
    supaya tombol utama — "🧭 Tunjukkan Arah Jalan" — jelas mana yang dimaksud
    saat warga sedang buru-buru. */
 .leaflet-container a.pm-popup-tombol.is-kedua {
-  margin-top: 6px; background: var(--hijau-muda); color: var(--hijau-tua);
+  margin-top: 5px; padding: 5px 10px; font-size: .74rem;
+  background: var(--hijau-muda); color: var(--hijau-tua);
   border: 1px solid var(--hijau-terang);
 }
 .leaflet-container a.pm-popup-tombol.is-kedua:hover,
 .leaflet-container a.pm-popup-tombol.is-kedua:focus { color: var(--hijau-tua); filter: brightness(.98); }
-.pm-koordinat { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size: .76rem; }
+/* Kaki kotak info. Di layar lebar kedua tombol ditumpuk ke bawah seperti biasa;
+   aturan berdampingan untuk ponsel ada di media query di bawah berkas ini. */
+.pm-popup-kaki { display: flex; flex-direction: column; }
+/* Huruf monospace lebih lebar daripada huruf biasa. Ukurannya dipilih agar
+   koordinat lengkap muat dalam SATU baris — kalau patah dua, kotak info
+   bertambah tinggi dan peta ikut tersentak lebih jauh saat popup dibuka. */
+.pm-koordinat { font-family: ui-monospace, 'SFMono-Regular', Menlo, monospace; font-size: .66rem; }
 
 /* --------------------------- Instruksi evakuasi ---------------------------- */
 .pm-instruksi { display: grid; grid-template-columns: 1fr; gap: 14px; counter-reset: pmlangkah; }
@@ -736,27 +777,38 @@
    hampir seluruh peta. Kalimat panjang di dalamnya ikut diringkas dari
    js/peta-mitigasi.js. */
 @media (max-width: 700px), (max-height: 500px) {
-  .leaflet-popup-content { width: min(228px, 66vw) !important; }
+  /* Sedikit lebih lebar daripada sebelumnya justru membuat kotaknya PENDEK:
+     teks yang tadinya patah jadi tiga baris kini cukup satu-dua baris, dan
+     tinggi kotak itulah yang menentukan seberapa jauh peta tersentak. */
+  .leaflet-popup-content { width: min(248px, 74vw) !important; }
   .leaflet-popup-content-wrapper { border-radius: 12px; box-shadow: 0 8px 24px rgba(0, 0, 0, .3); }
   .pm-popup-kepala {
     /* sisi kanan diberi ruang supaya judul tidak tertimpa tombol tutup */
-    padding: 8px 32px 8px 11px; border-radius: 12px 12px 0 0;
-    font-size: .82rem; line-height: 1.2;
+    padding: 7px 36px 7px 10px; border-radius: 12px 12px 0 0;
+    font-size: .8rem; line-height: 1.18;
   }
-  .pm-popup-kepala small { font-size: .66rem; margin-top: 1px; }
-  .pm-popup-isi { padding: 8px 11px 10px; font-size: .76rem; }
+  .pm-popup-kepala small { font-size: .65rem; margin-top: 1px; }
+  .pm-popup-isi { padding: 6px 10px 8px; font-size: .74rem; line-height: 1.38; }
   .pm-popup-baris { padding: 3px 0; gap: 6px; }
-  .pm-popup-baris b { width: 62px; font-size: .68rem; }
-  .pm-koordinat { font-size: .68rem; }
+  .pm-popup-baris b { width: 66px; font-size: .64rem; }
+  .pm-popup-baris small { font-size: .66rem; }
+  .pm-koordinat { font-size: .63rem; }
   .pm-popup-aksi {
-    margin-top: 7px; padding: 7px 9px; border-radius: 8px;
-    font-size: .72rem; line-height: 1.4; border-left-width: 3px;
+    margin-top: 6px; padding: 6px 8px; border-radius: 8px;
+    font-size: .7rem; line-height: 1.36; border-left-width: 3px;
   }
-  .leaflet-container a.pm-popup-tombol { margin-top: 7px; padding: 7px 10px; font-size: .74rem; }
+  /* Kedua tombol berdampingan dan kata "Tunjukkan" disembunyikan: satu baris
+     tombol, bukan dua. Di peta ponsel yang pendek, dua baris tombol saja sudah
+     cukup membuat kotak info menyentak peta beberapa puluh piksel. */
+  .pm-popup-kaki { flex-direction: row; gap: 6px; }
+  .pm-popup-kaki > a { flex: 1; min-width: 0; }
+  .pm-tombol-panjang { display: none; }
+  .leaflet-container a.pm-popup-tombol { margin-top: 7px; padding: 7px 6px; font-size: .71rem; }
+  .leaflet-container a.pm-popup-tombol.is-kedua { margin-top: 7px; padding: 7px 6px; font-size: .71rem; }
   /* Tombol tutup dibuat lebih besar dan putih agar gampang ditekan di atas
      kepala popup yang berwarna — peta cepat terlihat lagi. */
   .leaflet-container a.leaflet-popup-close-button {
-    width: 30px; height: 30px; font-size: 19px; line-height: 29px;
+    width: 26px; height: 26px; font-size: 18px; line-height: 25px;
     color: rgba(255, 255, 255, .92);
   }
   .leaflet-container a.leaflet-popup-close-button:hover,

@@ -605,10 +605,13 @@ saja** dari titik itu menuju titik kumpul, lalu masuk ke *mode terfokus*:
   dua penjelasan yang bersaing di layar sempit.
 
 Menekan **"✕"** (di panel, atau tombol <kbd>Esc</kbd> pada komputer)
-mengembalikan peta **persis** ke keadaan sebelumnya — termasuk posisi, tingkat
-zoom, dan saklar lapisan yang sebelumnya sengaja dimatikan warga lewat legenda.
-Bila mode layar penuh juga sedang menyala, <kbd>Esc</kbd> menutup penunjuk arah
-lebih dulu, baru layar penuhnya pada tekanan berikutnya.
+mengembalikan seluruh lapisan peta — jalur evakuasi, panah, dan fasilitas —
+**tepat di tampilan yang sedang dilihat warga**. Letak dan tingkat zoom peta
+sengaja dibiarkan apa adanya: warga baru selesai menelusuri alurnya, jadi
+melemparnya kembali ke tampilan lain hanya membuat ia harus mencari lokasinya
+dari awal. Saklar lapisan yang sebelumnya sengaja dimatikan lewat legenda juga
+tetap mati. Bila mode layar penuh juga sedang menyala, <kbd>Esc</kbd> menutup
+penunjuk arah lebih dulu, baru layar penuhnya pada tekanan berikutnya.
 
 **Cara alurnya dihitung.** Seluruh jalur evakuasi (53 ruas) dirangkai menjadi
 satu graf; titik yang diketuk ditempelkan ke ruas terdekat, lalu jalur
@@ -623,6 +626,21 @@ alur, dan langkah pertama pada panel menyebutkannya.
 
 Di ponsel tegak panel ini menjadi **lembar di sisi bawah** dengan daftar langkah
 yang bisa dilipat; di layar lebar ia melayang di **sudut kiri atas** peta.
+
+### Kotak info (popup) sengaja dibuat pendek
+
+Saat sebuah kotak info dibuka, Leaflet **menggeser peta** agar kotaknya muat
+seluruhnya — makin tinggi kotaknya, makin jauh peta tersentak dan makin hilang
+titik yang baru saja diketuk warga dari pandangan. Karena itu isinya dipadatkan:
+ketinggian digabung ke baris zona, jarak/arah/waktu jadi satu baris, kalimat
+petunjuk memakai versi pendek, dan di ponsel kedua tombol aksinya berdampingan
+dalam satu baris. Rinciannya tidak hilang — jalur yang dilewati, perkiraan
+waktu, dan tiap belokannya tersaji lengkap di panel penunjuk arah.
+
+Bila isinya tetap tidak muat (mis. ponsel dipegang mendatar), kotak itu bisa
+**digulir di dalam kartunya sendiri**: batang gulirnya dibuat tipis, membulat,
+senada warna kartu, dan diberi jarak dari tombol **✕** supaya keduanya tidak
+pernah bertumpuk.
 
 ### Zona & dasar penyusunannya
 
@@ -741,7 +759,7 @@ ulang. Berkas `vercel.json` sudah menyertakan pengaturan *clean URLs* dan
 >    untuk `/css/` dan `/js/`, jadi peramban selalu memastikan berkasnya masih
 >    yang terbaru sebelum memakainya.
 > 2. `peta-mitigasi-bencana.html` memanggil berkas petanya dengan penanda versi
->    (`css/peta-mitigasi.css?v=4` dan `js/peta-mitigasi.js?v=4`).
+>    (`css/peta-mitigasi.css?v=5` dan `js/peta-mitigasi.js?v=5`).
 >    **Naikkan angka `?v=` itu setiap kali salah satu berkas tersebut diubah.**
 
 ### Alternatif (lewat terminal)

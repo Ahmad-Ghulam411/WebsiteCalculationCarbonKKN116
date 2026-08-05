@@ -45,19 +45,26 @@
     return lat.toFixed(6) + ', ' + lon.toFixed(6);
   }
 
-  /* Layar ponsel sempit (tegak) atau pendek (mendatar): isi popup diringkas —
-     kalimat panjang diganti versi pendek dan keterangan tambahan dilewati —
-     supaya kotak info tidak menutupi hampir seluruh peta. Ambangnya sama
-     dengan css/peta-mitigasi.css dan dibaca ulang tiap popup dibuka, jadi
-     tetap benar setelah layar diputar. */
+  /* Layar ponsel sempit (tegak) atau pendek (mendatar). Ambangnya sama dengan
+     css/peta-mitigasi.css dan dibaca ulang tiap kali dibutuhkan, jadi tetap
+     benar setelah layar diputar.
+
+     Dulu ini juga dipakai memilih dua versi teks popup: panjang untuk layar
+     lebar, pendek untuk ponsel. Sekarang seluruh kotak info memakai versi
+     pendeknya di semua ukuran layar — kotak yang tinggi memaksa Leaflet
+     menggeser peta saat dibuka, dan titik yang baru diketuk warga ikut hilang
+     dari pandangan. Rinciannya tidak hilang, hanya pindah ke panel penunjuk
+     arah yang menyajikannya langkah demi langkah. */
   var MQ_KECIL = window.matchMedia('(max-width: 700px), (max-height: 500px)');
   function layarKecil() { return MQ_KECIL.matches; }
-  function ringkas(panjang, pendek) { return layarKecil() ? pendek : panjang; }
 
-  /** Nama jalur tanpa awalan "Jalur Evakuasi — "; label barisnya sudah jelas. */
-  function namaJalur(nama) {
-    return esc(layarKecil() ? String(nama).replace(/^Jalur Evakuasi\s*—\s*/, '') : nama);
-  }
+  /** Bagian kotak info yang hanya muat di layar lapang. Di ponsel petanya
+      pendek, jadi tiap baris tambahan langsung terasa: kotak yang tinggi
+      memaksa Leaflet menggeser peta lebih jauh saat popup dibuka. Yang
+      dilewati di sini selalu ada penggantinya — perkiraan waktu jalan kaki
+      dan petunjuk beloknya tersaji lengkap di panel penunjuk arah, dan nama
+      zonanya sudah tertulis besar di kepala popup. */
+  function bilaLapang(html) { return layarKecil() ? '' : html; }
 
   /** Jarak bulat-bumi (haversine) dalam meter. */
   function jarakMeter(a, b) {
@@ -74,9 +81,20 @@
   }
 
   /** Perkiraan waktu jalan kaki cepat (~4,5 km/jam). */
-  function fmtWaktu(m) {
-    var menit = Math.max(1, Math.round(m / 75));
-    return '± ' + menit + ' menit jalan kaki';
+  function fmtWaktuSingkat(m) {
+    return '± ' + Math.max(1, Math.round(m / 75)) + ' menit';
+  }
+
+  /** Satu baris padat "jarak · arah · waktu" menuju titik kumpul.
+      Dipakai di semua kotak info supaya tingginya seragam dan sependek
+      mungkin: kotak yang tinggi memaksa Leaflet menggeser peta saat dibuka. */
+  function barisKeTK(dari) {
+    var jarak = jarakMeter(dari, TK_LATLNG);
+    return '<div class="pm-popup-baris"><b>Titik kumpul</b><span>' + fmtJarak(jarak) +
+           ' ke <strong>' + arahKe(dari, TK_LATLNG).nama + '</strong>' +
+           // Di ponsel perkiraan waktu membuat baris ini patah jadi dua —
+           // angkanya tetap tersaji besar-besar di panel penunjuk arah.
+           bilaLapang(' · ' + fmtWaktuSingkat(jarak)) + '</span></div>';
   }
 
   var MATA_ANGIN = ['utara', 'timur laut', 'timur', 'tenggara', 'selatan', 'barat daya', 'barat', 'barat laut'];
@@ -150,7 +168,7 @@
     return null;
   }
 
-  /* ------------------------------------------------------ jalur evakuasi terdekat */
+  /* --------------------------------------------------------------- geometri garis */
 
   /** Titik terdekat pada sebuah ruas garis, beserta jaraknya. */
   function jarakKeRuas(p, a, b) {
@@ -159,20 +177,6 @@
     t = Math.max(0, Math.min(1, t));
     var proy = L.latLng(a.lat + t * dy, a.lng + t * dx);
     return { titik: proy, jarak: jarakMeter(p, proy) };
-  }
-
-  function jalurTerdekat(latlng) {
-    var terbaik = null;
-    D.jalur.features.forEach(function (f) {
-      var c = f.geometry.coordinates;
-      for (var i = 0; i < c.length - 1; i++) {
-        var r = jarakKeRuas(latlng, L.latLng(c[i][1], c[i][0]), L.latLng(c[i + 1][1], c[i + 1][0]));
-        if (!terbaik || r.jarak < terbaik.jarak) {
-          terbaik = { jarak: r.jarak, titik: r.titik, props: f.properties };
-        }
-      }
-    });
-    return terbaik;
   }
 
   /* --------------------------------------------------------------- peta & lapisan */
@@ -273,9 +277,15 @@
      jadi kotak yang tertimpa disamarkan saja (lihat aturTumpangTindih). */
   function aturRuangPopup() {
     var kecil = layarKecil();
-    // +24px: jarak bilah dari tepi atas peta ditambah sedikit sela.
-    var atas = kecil ? 16 : Math.max(96, tinggiBilah(bilahAtas) + 24);
-    var kiri = 10, bawah = kecil ? 44 : 24;
+    /* Ruang aman ini dibuat setipis mungkin: makin besar angkanya, makin jauh
+       Leaflet menggeser peta saat popup dibuka — dan warga kehilangan titik
+       yang baru saja diketuknya dari pandangan. Dulu sisi atas dijaga selebar
+       bilah judul (± 96 px) agar popup tidak berhenti di baliknya; sekarang
+       tugas itu diambil alih aturTumpangTindih(), yang menyamarkan kotak judul
+       hanya pada saat benar-benar tertimpa. Sisanya cukup sekadar jarak nafas
+       dari tepi peta. */
+    var atas = kecil ? 14 : 40;
+    var kiri = 10, bawah = kecil ? 34 : 20;
 
     /* Panel penunjuk arah ikut diperhitungkan: di layar lebar ia menempel di
        kiri atas, di layar kecil menjadi lembar di sisi bawah. Tanpa ruang
@@ -407,12 +417,21 @@
   function tombolArah(label, titik) {
     return '<a class="pm-popup-tombol" href="#" data-pm-arah="' + esc(label) + '"' +
            (titik ? ' data-pm-titik="' + titik.lat + ',' + titik.lng + '"' : '') +
-           '>🧭 Tunjukkan Arah Jalan</a>';
+           '>🧭 <span class="pm-tombol-panjang">Tunjukkan </span>Arah Jalan</a>';
   }
 
   /** Tautan "tunjukkan titik kumpul" — aksi kedua, jadi tampil lebih kalem. */
   function tombolTK() {
-    return '<a class="pm-popup-tombol is-kedua" href="#" data-pm-ke-tk>📍 Tunjukkan titik kumpul</a>';
+    return '<a class="pm-popup-tombol is-kedua" href="#" data-pm-ke-tk>' +
+           '📍 <span class="pm-tombol-panjang">Tunjukkan </span>Titik Kumpul</a>';
+  }
+
+  /** Kaki kotak info: dua tombol aksi. Di layar lebar ditumpuk ke bawah, di
+      ponsel berdampingan (dan kata "Tunjukkan" disembunyikan lewat CSS) supaya
+      kotaknya tidak bertambah dua baris — tinggi kotak inilah yang menentukan
+      seberapa jauh peta tersentak saat popup dibuka. */
+  function tombolPopup(label, titik) {
+    return '<div class="pm-popup-kaki">' + tombolArah(label, titik) + tombolTK() + '</div>';
   }
 
   function popupZona(p) {
@@ -423,11 +442,9 @@
       '<div class="pm-popup-isi">' +
         '<div class="pm-popup-baris"><b>Ancaman</b><span>' + esc(p.bahaya) + '</span></div>' +
         '<div class="pm-popup-baris"><b>Luas zona</b><span>' + p.luas_ha + ' Ha</span></div>' +
-        // ketinggian sudah tertulis di kepala popup, jadi di ponsel tidak diulang
-        ringkas('<div class="pm-popup-baris"><b>Ketinggian</b><span>' + esc(p.elev) + '</span></div>', '') +
+        // ketinggian tidak diulang di sini — sudah tertulis di kepala popup
         '<div class="pm-popup-aksi ' + w.aksi + '"><b>Yang harus dilakukan</b>' + esc(p.aksi) + '</div>' +
-        tombolArah(p.nama) +
-        tombolTK() +
+        tombolPopup(p.nama) +
       '</div>';
   }
 
@@ -481,56 +498,51 @@
 
   /* -------------------------------------------------------------- 3. jaringan jalan */
 
+  /* Kotak info sengaja dibuat sependek mungkin — bukan sekadar soal selera.
+     Saat popup dibuka, Leaflet menggeser peta agar kotaknya muat seluruhnya;
+     makin tinggi kotaknya, makin jauh peta tersentak dan makin hilang titik
+     yang baru saja diketuk warga dari pandangan. Karena itu:
+       - ketinggian digabung ke baris zona (tidak lagi baris sendiri);
+       - jarak, arah, dan perkiraan waktu dipadatkan ke satu baris;
+       - daftar "Lewat: ..." dihapus — rinciannya kini ada di panel penunjuk
+         arah, langkah demi langkah;
+       - kalimat petunjuknya memakai versi pendek di semua ukuran layar.
+     Rinciannya tidak hilang, hanya pindah ke tempat yang lebih pas. */
   function popupJalan(p, latlng) {
     var zona = zonaDi(latlng.lat, latlng.lng);
-    var jarak = jarakMeter(latlng, TK_LATLNG);
     var arah = arahKe(latlng, TK_LATLNG);
     var w = zona ? WARNA[zona.zona] : WARNA.hijau;
-    var jl = jalurTerdekat(latlng);
 
     var html =
       '<div class="pm-popup-kepala ' + w.kepala + '">' + esc(p.nama || 'Jalan lokal') +
-        '<small>' + (zona ? esc(zona.nama)
-                          : ringkas('Di luar Kelurahan Kampung Baru', 'Di luar Kampung Baru')) + '</small></div>' +
+        '<small>' + (zona ? esc(zona.nama) : 'Di luar Kampung Baru') + '</small></div>' +
       '<div class="pm-popup-isi">' +
         '<div class="pm-popup-baris"><b>Koordinat</b>' +
           '<span class="pm-koordinat">' + fmtKoordinat(latlng.lat, latlng.lng) + '</span></div>' +
         '<div class="pm-popup-baris"><b>Zona</b><span>' +
-          (zona ? ringkas(esc(zona.kelas) + ' — ' + esc(zona.bahaya),
-                          // di ponsel ketinggian ikut di baris ini dan jenis
-                          // ancamannya turun ke baris kecil di bawahnya
-                          esc(zona.kelas) + (p.mdpl ? ' · ± ' + esc(p.mdpl) : '') +
-                          '<br><small>' + esc(zona.bahaya) + '</small>')
-                : 'Di luar batas kelurahan') + '</span></div>';
+          (zona ? esc(zona.kelas) + (p.mdpl ? ' · ± ' + esc(p.mdpl) : '') +
+                  // jenis ancaman dilewati di ponsel: kepala popup sudah
+                  // menyebut nama zonanya, dan barisnya memakan 2-3 baris
+                  bilaLapang('<br><small>' + esc(zona.bahaya) + '</small>')
+                : 'Di luar batas kelurahan') + '</span></div>' +
+        barisKeTK(latlng);
 
-    // baris ketinggian dilewati bila tadi sudah digabung ke baris zona
-    if (p.mdpl && !(layarKecil() && zona)) {
-      html += '<div class="pm-popup-baris"><b>Ketinggian</b><span>± ' + esc(p.mdpl) + '</span></div>';
+    // Di ponsel kotak petunjuk hanya ditampilkan untuk zona merah — di sana
+    // pesannya mendesak dan tidak boleh terlewat. Untuk zona lain isinya
+    // sudah diwakili tombol "Tunjukkan Arah Jalan" tepat di bawahnya.
+    var merah = zona && zona.zona === 'merah';
+    if (merah) {
+      html += '<div class="pm-popup-aksi ' + w.aksi + '">' +
+              '<b>Zona merah — jangan menunggu</b>Segera bergerak ke <strong>' + arah.nama +
+              '</strong> menjauhi pantai.</div>';
+    } else {
+      html += bilaLapang('<div class="pm-popup-aksi ' + (zona ? w.aksi : '') + '">' +
+              '<b>Petunjuk</b>Ikuti panah hijau ke <strong>' + arah.nama +
+              '</strong> menuju Jl. Kesuma Timur.</div>');
     }
 
     html +=
-        '<div class="pm-popup-baris"><b>Ke titik kumpul</b><span>' + fmtJarak(jarak) +
-          ' ke arah <strong>' + arah.nama + '</strong><br>' + fmtWaktu(jarak) + '</span></div>';
-
-    if (jl) {
-      html += '<div class="pm-popup-baris"><b>Jalur terdekat</b><span>' + namaJalur(jl.props.nama) +
-              ' — ' + fmtJarak(jl.jarak) + ' dari sini' +
-              ringkas('<br><small>Lewat: ' + esc(jl.props.via) + '</small>', '') + '</span></div>';
-    }
-
-    html +=
-        '<div class="pm-popup-aksi ' + (zona ? w.aksi : '') + '"><b>Petunjuk ke titik kumpul</b>' +
-          (zona && zona.zona === 'merah'
-            ? ringkas('Anda berada di zona merah. Segera bergerak ke arah <strong>' + arah.nama +
-                '</strong> menjauhi pantai, ikuti panah hijau menuju titik kumpul di Jl. Kesuma Timur.',
-                'Zona merah — segera bergerak ke arah <strong>' + arah.nama +
-                '</strong> menjauhi pantai, ikuti panah hijau.')
-            : ringkas('Ikuti jalur evakuasi (panah hijau) ke arah <strong>' + arah.nama +
-                '</strong> menuju titik kumpul di Jl. Kesuma Timur.',
-                'Ikuti panah hijau ke arah <strong>' + arah.nama + '</strong> menuju Jl. Kesuma Timur.')) +
-        '</div>' +
-        tombolArah(p.nama || 'Jalan lokal') +
-        tombolTK() +
+        tombolPopup(p.nama || 'Jalan lokal') +
       '</div>';
     return html;
   }
@@ -642,19 +654,15 @@
       '<div class="pm-popup-kepala pm-kepala-hijau">' + esc(p.nama) +
         '<small>Menuju Titik Kumpul — Jl. Kesuma Timur</small></div>' +
       '<div class="pm-popup-isi">' +
-        '<div class="pm-popup-baris"><b>Panjang ruas</b><span>' + fmtJarak(p.panjang_m) + '</span></div>' +
-        '<div class="pm-popup-baris"><b>Ke titik kumpul</b><span>' + fmtJarak(p.jarak_tk_m) +
-          ' dari ujung jalur<br>± ' + p.estimasi_menit + ' menit jalan kaki</span></div>' +
-        '<div class="pm-popup-baris"><b>Titik mulai</b><span>± ' + p.mulai_mdpl + ' mdpl</span></div>' +
+        '<div class="pm-popup-baris"><b>Panjang ruas</b><span>' + fmtJarak(p.panjang_m) +
+          ' · mulai ± ' + p.mulai_mdpl + ' mdpl</span></div>' +
+        '<div class="pm-popup-baris"><b>Titik kumpul</b><span>' + fmtJarak(p.jarak_tk_m) +
+          ' dari ujung jalur · ± ' + p.estimasi_menit + ' menit</span></div>' +
         '<div class="pm-popup-baris"><b>Melewati</b><span>' + esc(p.via) + '</span></div>' +
         '<div class="pm-popup-aksi"><b>Ikuti arah panah</b>' +
-          ringkas('Panah menunjuk ke arah titik kumpul dan menanjak menjauhi pantai. ' +
-                  'Jalan kaki lebih aman daripada berkendara — jalan bisa macet atau ' +
-                  'tertutup material saat bencana.',
-                  'Panah menunjuk ke titik kumpul, menanjak menjauhi pantai. ' +
-                  'Jalan kaki lebih aman daripada berkendara.') + '</div>' +
-        tombolArah(p.nama) +
-        tombolTK() +
+          'Panah menunjuk ke titik kumpul, menanjak menjauhi pantai. ' +
+          'Jalan kaki lebih aman daripada berkendara.</div>' +
+        tombolPopup(p.nama) +
       '</div>';
   }
 
@@ -707,14 +715,11 @@
         '<div class="pm-popup-baris"><b>Lokasi</b><span>' + esc(TK.ket) + '</span></div>' +
         '<div class="pm-popup-baris"><b>Koordinat</b>' +
           '<span class="pm-koordinat">' + fmtKoordinat(TK.lat, TK.lon) + '</span></div>' +
-        '<div class="pm-popup-baris"><b>Zona</b><span>Zona Hijau — Risiko Rendah' +
-          ringkas('', ' · ± ' + TK.mdpl + ' mdpl') + '</span></div>' +
-        ringkas('<div class="pm-popup-baris"><b>Ketinggian</b><span>± ' + TK.mdpl + ' mdpl</span></div>', '') +
+        '<div class="pm-popup-baris"><b>Zona</b><span>Zona Hijau — Risiko Rendah · ± ' +
+          TK.mdpl + ' mdpl</span></div>' +
         '<div class="pm-popup-aksi"><b>Kenapa di sini?</b>' +
-          ringkas('Area terbuka, berada di zona hijau ± ' + TK.mdpl + ' mdpl, dan jauh dari garis pantai — ' +
-                  'aman dari jangkauan tsunami, banjir rob, maupun gelombang pasang.',
-                  'Area terbuka di zona hijau ± ' + TK.mdpl + ' mdpl, jauh dari pantai — ' +
-                  'aman dari tsunami dan rob.') + '</div>' +
+          'Area terbuka di zona hijau ± ' + TK.mdpl + ' mdpl, jauh dari pantai — ' +
+          'aman dari tsunami dan rob.</div>' +
         '<a class="pm-popup-tombol" href="' + TK.gmaps + '" target="_blank" rel="noopener">' +
           '🗺️ Buka di Google Maps</a>' +
       '</div>';
@@ -727,7 +732,6 @@
   D.fasilitas.forEach(function (f) {
     var w = WARNA[f.zona] || WARNA.hijau;
     var titik = L.latLng(f.lat, f.lon);
-    var arah = arahKe(titik, TK_LATLNG);
     L.marker(titik, {
       icon: L.divIcon({
         className: 'pm-fasilitas-ikon', html: f.ikon,
@@ -739,12 +743,10 @@
       '<div class="pm-popup-isi">' +
         '<div class="pm-popup-baris"><b>Koordinat</b>' +
           '<span class="pm-koordinat">' + fmtKoordinat(f.lat, f.lon) + '</span></div>' +
-        '<div class="pm-popup-baris"><b>Zona</b><span>' + esc(WARNA[f.zona] ? namaZona(f.zona) : '-') + '</span></div>' +
-        '<div class="pm-popup-baris"><b>Ketinggian</b><span>± ' + f.mdpl + ' mdpl</span></div>' +
-        '<div class="pm-popup-baris"><b>Ke titik kumpul</b><span>' + fmtJarak(f.jarak_tk_m) +
-          ' ke arah <strong>' + arah.nama + '</strong><br>' + fmtWaktu(f.jarak_tk_m) + '</span></div>' +
-        tombolArah(f.nama, titik) +
-        tombolTK() +
+        '<div class="pm-popup-baris"><b>Zona</b><span>' +
+          esc(WARNA[f.zona] ? namaZona(f.zona) : '-') + ' · ± ' + f.mdpl + ' mdpl</span></div>' +
+        barisKeTK(titik) +
+        tombolPopup(f.nama, titik) +
       '</div>', { maxWidth: 300 }
     ).bindTooltip(f.nama, { direction: 'top' }).addTo(lapisFasilitas);
   });
@@ -762,45 +764,33 @@
     var kel = kelurahanDi(lat, lon);
     var jarak = jarakMeter(e.latlng, TK_LATLNG);
     var arah = arahKe(e.latlng, TK_LATLNG);
-    var jl = jalurTerdekat(e.latlng);
     var w = zona ? WARNA[zona.zona] : WARNA.hijau;
     var diKB = diKelurahan(lat, lon);
 
     var html =
       '<div class="pm-popup-kepala ' + (zona ? w.kepala : 'pm-kepala-biru') + '">' +
         (zona ? esc(zona.nama) : 'Lokasi di luar Kampung Baru') +
-        '<small>' + (kel ? 'Kelurahan ' + esc(kel)
-                         : ringkas('Di luar batas kelurahan terpetakan', 'Di luar batas peta')) + '</small></div>' +
+        '<small>' + (kel ? 'Kelurahan ' + esc(kel) : 'Di luar batas peta') + '</small></div>' +
       '<div class="pm-popup-isi">' +
         '<div class="pm-popup-baris"><b>Koordinat</b>' +
           '<span class="pm-koordinat">' + fmtKoordinat(lat, lon) + '</span></div>' +
         '<div class="pm-popup-baris"><b>Zona</b><span>' +
-          (zona ? esc(zona.kelas) + ringkas('', ' · ' + esc(zona.elev)) +
-                  '<br><small>' + esc(zona.bahaya) + '</small>'
-                : ringkas('Titik ini di luar wilayah Kelurahan Kampung Baru, sehingga tidak termasuk zonasi peta ini.',
-                          'Di luar wilayah Kelurahan Kampung Baru.')) +
+          (zona ? esc(zona.kelas) + ' · ' + esc(zona.elev) +
+                  bilaLapang('<br><small>' + esc(zona.bahaya) + '</small>')
+                : 'Di luar wilayah Kampung Baru') +
         '</span></div>' +
-        // di ponsel ketinggian sudah ikut di baris zona, jadi barisnya dilewati
-        (zona ? ringkas('<div class="pm-popup-baris"><b>Ketinggian</b><span>' + esc(zona.elev) + '</span></div>', '') : '') +
-        '<div class="pm-popup-baris"><b>Ke titik kumpul</b><span>' + fmtJarak(jarak) +
-          ' ke arah <strong>' + arah.nama + '</strong><br>' + fmtWaktu(jarak) + '</span></div>' +
-        (jl ? '<div class="pm-popup-baris"><b>Jalur terdekat</b><span>' + namaJalur(jl.props.nama) + ' — ' +
-              fmtJarak(jl.jarak) + ' dari sini</span></div>' : '') +
-        '<div class="pm-popup-aksi ' + (zona ? w.aksi : '') + '"><b>Petunjuk ke titik kumpul</b>' +
-          (zona && zona.zona === 'merah'
-            ? ringkas('Zona merah. Jangan menunggu — segera bergerak ke arah <strong>' + arah.nama +
-                '</strong> menjauhi pantai menuju titik kumpul.',
-                'Zona merah — segera bergerak ke arah <strong>' + arah.nama + '</strong> menjauhi pantai.')
-            : diKB
-              ? ringkas('Bergerak ke arah <strong>' + arah.nama + '</strong> mengikuti panah hijau menuju titik kumpul.',
-                  'Ikuti panah hijau ke arah <strong>' + arah.nama + '</strong>.')
-              : ringkas('Bila berada di sekitar sini saat bencana, tetap menuju tempat yang lebih tinggi. ' +
-                  'Titik kumpul Kampung Baru berada ' + fmtJarak(jarak) + ' ke arah ' + arah.nama + '.',
-                  'Menuju tempat yang lebih tinggi — titik kumpul ' + fmtJarak(jarak) +
-                  ' ke arah ' + arah.nama + '.')) +
-        '</div>' +
-        tombolArah(zona ? zona.nama : 'Titik pilihan Anda') +
-        tombolTK() +
+        barisKeTK(e.latlng) +
+        // sama seperti popup jalan: di ponsel hanya peringatan zona merah yang
+        // tetap tampil, sisanya sudah diwakili tombol di bawahnya
+        (zona && zona.zona === 'merah'
+          ? '<div class="pm-popup-aksi ' + w.aksi + '">' +
+            '<b>Zona merah — jangan menunggu</b>Segera bergerak ke <strong>' + arah.nama +
+            '</strong> menjauhi pantai.</div>'
+          : bilaLapang('<div class="pm-popup-aksi ' + (zona ? w.aksi : '') + '"><b>Petunjuk</b>' +
+              (diKB ? 'Ikuti panah hijau ke <strong>' + arah.nama + '</strong>.'
+                    : 'Menuju tempat lebih tinggi — titik kumpul ' + fmtJarak(jarak) +
+                      ' ke <strong>' + arah.nama + '</strong>.') + '</div>')) +
+        tombolPopup(zona ? zona.nama : 'Titik pilihan Anda') +
       '</div>';
 
     L.popup({ maxWidth: 300 }).setLatLng(e.latlng).setContent(html).openOn(peta);
@@ -1098,9 +1088,7 @@
       tbl.textContent = teksAsli; tbl.disabled = false;
       var latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
       var zona = zonaDi(latlng.lat, latlng.lng);
-      var jarak = jarakMeter(latlng, TK_LATLNG);
       var arah = arahKe(latlng, TK_LATLNG);
-      var jl = jalurTerdekat(latlng);
       var w = zona ? WARNA[zona.zona] : WARNA.hijau;
 
       if (penandaSaya) peta.removeLayer(penandaSaya);
@@ -1112,23 +1100,20 @@
 
       penandaSaya.bindPopup(
         '<div class="pm-popup-kepala ' + (zona ? w.kepala : 'pm-kepala-biru') + '">Posisi Anda Sekarang' +
-          '<small>' + (zona ? esc(zona.nama)
-                            : ringkas('Di luar wilayah Kelurahan Kampung Baru', 'Di luar Kampung Baru')) +
-          '</small></div>' +
+          '<small>' + (zona ? esc(zona.nama) : 'Di luar Kampung Baru') + '</small></div>' +
         '<div class="pm-popup-isi">' +
           '<div class="pm-popup-baris"><b>Koordinat</b>' +
             '<span class="pm-koordinat">' + fmtKoordinat(latlng.lat, latlng.lng) + '</span></div>' +
           '<div class="pm-popup-baris"><b>Zona</b><span>' +
             (zona ? esc(zona.kelas) : 'Di luar zonasi peta ini') + '</span></div>' +
-          '<div class="pm-popup-baris"><b>Ke titik kumpul</b><span>' + fmtJarak(jarak) +
-            ' ke arah <strong>' + arah.nama + '</strong><br>' + fmtWaktu(jarak) + '</span></div>' +
-          (jl ? '<div class="pm-popup-baris"><b>Jalur terdekat</b><span>' + namaJalur(jl.props.nama) + ' — ' +
-                fmtJarak(jl.jarak) + ' dari sini</span></div>' : '') +
-          '<div class="pm-popup-aksi ' + (zona ? w.aksi : '') + '"><b>Petunjuk</b>' +
-            ringkas('Bergerak ke arah <strong>' + arah.nama + '</strong> menuju titik kumpul di Jl. Kesuma Timur.',
-                    'Ikuti panah hijau ke arah <strong>' + arah.nama + '</strong>.') + '</div>' +
-          tombolArah('Posisi Anda sekarang', latlng) +
-          tombolTK() +
+          barisKeTK(latlng) +
+          (zona && zona.zona === 'merah'
+            ? '<div class="pm-popup-aksi ' + w.aksi + '">' +
+              '<b>Zona merah — jangan menunggu</b>Segera bergerak ke <strong>' + arah.nama +
+              '</strong> menjauhi pantai.</div>'
+            : bilaLapang('<div class="pm-popup-aksi ' + (zona ? w.aksi : '') + '"><b>Petunjuk</b>' +
+                'Ikuti panah hijau ke <strong>' + arah.nama + '</strong> menuju Jl. Kesuma Timur.</div>')) +
+          tombolPopup('Posisi Anda sekarang', latlng) +
         '</div>', { maxWidth: 300 }
       ).openPopup();
       peta.flyTo(latlng, 17, { duration: 0.9 });
@@ -1351,7 +1336,6 @@
   var lapisPanahArah = L.layerGroup();   // panah di sepanjang alur aktif
   var rRute       = pane('pmRute', 455); // di atas jalur biasa (440)
   var alurAktif   = null;
-  var simpanTampilan = null;             // pusat & zoom peta sebelum mode ini
   var simpanLapisan  = null;             // lapisan yang tadi menyala
   var simpanPosisiSaya = false;
   var lipatAwalDiatur = false;           // keadaan lipat awal sudah ditentukan?
@@ -1555,8 +1539,6 @@
     alurAktif = hasil;
 
     if (!modeArah) {
-      // keadaan peta sebelum mode ini, untuk dipulihkan persis saat keluar
-      simpanTampilan = { tengah: peta.getCenter(), zoom: peta.getZoom() };
       simpanLapisan = [lapisJalur, lapisPanah, lapisFasilitas].filter(function (l) {
         return peta.hasLayer(l);
       });
@@ -1642,10 +1624,12 @@
     gambarPanah();            // panah umum dihitung ulang untuk zoom saat ini
     segarkanBilahAtas();
 
-    if (simpanTampilan) {
-      peta.flyTo(simpanTampilan.tengah, simpanTampilan.zoom, { duration: 0.7 });
-      simpanTampilan = null;
-    }
+    /* Letak & tingkat zoom peta SENGAJA dibiarkan apa adanya. Yang dipulihkan
+       hanya lapisannya — jalur evakuasi, panah, dan fasilitas muncul kembali
+       di tempat yang sedang dilihat warga. Dulu peta terbang balik ke posisi
+       sebelum penunjuk arah dibuka, dan itu justru membingungkan: warga baru
+       selesai menelusuri alurnya, lalu tiba-tiba dilempar ke tampilan lain
+       dan harus mencari lokasinya lagi dari awal. */
 
     /* Fokus tidak boleh tertinggal di tombol yang baru saja disembunyikan —
        pembaca layar akan kehilangan tempatnya. Tombol pemicunya ada di dalam
