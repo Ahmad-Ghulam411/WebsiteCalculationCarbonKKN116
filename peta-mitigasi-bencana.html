@@ -29,7 +29,7 @@
        terbaru seketika. NAIKKAN ANGKA INI setiap css/peta-mitigasi.css atau
        js/peta-mitigasi.js diubah. -->
   <link rel="stylesheet" href="css/styles.css">
-  <link rel="stylesheet" href="css/peta-mitigasi.css?v=3">
+  <link rel="stylesheet" href="css/peta-mitigasi.css?v=5">
 </head>
 <body>
 
@@ -166,6 +166,63 @@
 
           <div id="petaMitigasi" role="application"
                aria-label="Peta interaktif zona rawan bencana dan jalur evakuasi Kelurahan Kampung Baru"></div>
+
+          <!-- Panel penunjuk arah "1 alur".
+               Muncul setelah warga menekan "🧭 Tunjukkan Arah Jalan" di dalam
+               kotak info mana pun (zona, jalan, titik bebas, fasilitas, atau
+               posisi GPS-nya sendiri). Selama panel ini terbuka peta masuk mode
+               terfokus: 53 jalur evakuasi lain dan panahnya disembunyikan
+               sehingga hanya SATU alur menuju titik kumpul yang tergambar.
+
+               Sama seperti tombol "✕ Keluar" layar penuh, penyembunyiannya
+               memakai atribut `hidden` (dipasang di sini, dilepas/dipasang lagi
+               oleh js/peta-mitigasi.js) dan bukan cuma aturan CSS — atribut ini
+               tetap dipatuhi peramban walau css/peta-mitigasi.css gagal dimuat
+               atau versinya masih yang lama dari cache. Tanpa itu panel akan
+               tampil polos menutupi peta sejak halaman dibuka. -->
+          <aside class="pm-arah" id="pmArah" hidden
+                 aria-label="Penunjuk arah jalan menuju titik kumpul">
+            <div class="pm-arah-kepala">
+              <div class="pm-arah-judul">
+                <b>🧭 Arah Jalan Evakuasi</b>
+                <small id="pmArahAsal">—</small>
+              </div>
+              <button type="button" class="pm-arah-tutup" id="pmArahTutup"
+                      aria-label="Keluar dari penunjuk arah dan kembali ke peta semula">✕</button>
+            </div>
+
+            <div class="pm-arah-ringkas">
+              <div>
+                <b class="pm-arah-nilai" id="pmArahJarak">—</b>
+                <span>Jarak tempuh</span>
+              </div>
+              <div>
+                <b class="pm-arah-nilai" id="pmArahWaktu">—</b>
+                <span>Jalan kaki</span>
+              </div>
+              <div>
+                <b class="pm-arah-nilai" id="pmArahZona">—</b>
+                <span>Zona awal</span>
+              </div>
+            </div>
+
+            <p class="pm-arah-catatan" id="pmArahCatatan" hidden></p>
+
+            <button type="button" class="pm-arah-saklar" id="pmArahSaklar"
+                    aria-expanded="true" aria-controls="pmArahGulir">
+              <span>Langkah demi langkah <small id="pmArahJumlah"></small></span>
+              <span class="pm-arah-tanda" aria-hidden="true">▾</span>
+            </button>
+
+            <div class="pm-arah-gulir" id="pmArahGulir">
+              <ol class="pm-arah-langkah" id="pmArahLangkah"></ol>
+            </div>
+
+            <div class="pm-arah-kaki">
+              <button type="button" class="pm-arah-tombol" id="pmArahSeluruh">🔍 Seluruh Alur</button>
+              <button type="button" class="pm-arah-tombol is-keluar" id="pmArahKeluar">✕ Keluar Penunjuk Arah</button>
+            </div>
+          </aside>
         </div>
 
         <!-- Alat bantu peta -->
@@ -558,6 +615,15 @@
               <li><strong>Klik garis hijau berpanah</strong> → panjang jalur, perkiraan waktu jalan kaki, dan jalan yang dilewati.</li>
               <li><strong>Klik di mana saja</strong> → koordinat titik tersebut, zona wilayahnya, serta petunjuk arah ke titik kumpul.</li>
               <li><strong>Tombol “Di Zona Mana Saya?”</strong> → memakai GPS perangkat untuk menunjukkan posisi dan zona Anda saat ini.</li>
+              <li><strong>Tombol “🧭 Tunjukkan Arah Jalan”</strong> (ada di dalam setiap kotak info,
+                  termasuk kotak posisi GPS Anda) → peta menampilkan <strong>satu alur saja</strong>
+                  dari titik itu sampai titik kumpul, lengkap dengan jarak, perkiraan waktu jalan
+                  kaki, dan <strong>langkah demi langkah</strong> nama jalan serta arah beloknya.
+                  Selama penunjuk arah menyala, jalur evakuasi lain disembunyikan agar tidak
+                  membingungkan. Tekan <strong>“✕”</strong> pada panel penunjuk arah (atau tombol
+                  <kbd>Esc</kbd> di komputer) untuk keluar — seluruh jalur, panah, dan fasilitas
+                  muncul kembali <strong>tepat di tampilan yang sedang Anda lihat</strong>, jadi
+                  Anda tidak perlu mencari lokasinya lagi dari awal.</li>
               <li><strong>Tombol “Layar Penuh”</strong> → memperbesar peta satu layar penuh. Untuk keluar,
                   tekan tombol <strong>“✕ Keluar”</strong> di pojok kanan atas peta (atau tombol
                   <kbd>Esc</kbd> bila memakai komputer).</li>
@@ -621,7 +687,7 @@
 
   <script src="vendor/leaflet/leaflet.js"></script>
   <script src="data/peta-mitigasi-data.js"></script>
-  <script src="js/peta-mitigasi.js?v=3"></script>
+  <script src="js/peta-mitigasi.js?v=5"></script>
   <script>
     // Menu responsif + tahun footer (mandiri, tanpa bergantung pada main.js)
     (function () {

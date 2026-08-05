@@ -566,6 +566,9 @@ Kampung Baru beserta sebagian kelurahan tetangga di sisi kiri dan kanan.
 - **Peta interaktif besar** (Leaflet + citra satelit Esri, bisa diganti ke peta jalan)
   dengan zona **merah / kuning / hijau**, **arah evakuasi berpanah di seluruh jalan**, **titik kumpul**,
   batas kelurahan, nama jalan, dan fasilitas umum.
+- **Penunjuk arah "1 alur"** — dari titik mana pun (atau dari posisi GPS warga),
+  peta menunjukkan **satu alur saja** menuju titik kumpul lengkap dengan langkah
+  demi langkah, lalu kembali ke tampilan semula begitu ditutup.
 - **Instruksi Evakuasi** — 4 langkah yang harus dilakukan warga saat bencana.
 - **Informasi Legenda Map** — arti tiap warna & simbol.
 - **Kelas Bahaya** — tabel data resmi dari dokumen KRB Kota Parepare.
@@ -581,6 +584,63 @@ Kampung Baru beserta sebagian kelurahan tetangga di sisi kiri dan kanan.
 | Garis hijau berpanah | Panjang jalur, perkiraan waktu jalan kaki, jalan yang dilewati |
 | Titik mana pun | Koordinat, zona wilayahnya, dan petunjuk arah ke titik kumpul |
 | Tombol 🧭 "Di Zona Mana Saya?" | Posisi warga lewat GPS + zona tempat ia berdiri |
+| Tombol 🧭 "Tunjukkan Arah Jalan" (di dalam tiap kotak info) | **Penunjuk arah 1 alur** — lihat bagian di bawah |
+
+### Penunjuk Arah "1 Alur"
+
+Setiap kotak info di peta — zona, jalan, titik bebas, fasilitas umum, jalur
+evakuasi, maupun kotak posisi GPS warga sendiri — punya tombol
+**"🧭 Tunjukkan Arah Jalan"**. Menekannya membuat peta menghitung **satu alur
+saja** dari titik itu menuju titik kumpul, lalu masuk ke *mode terfokus*:
+
+- 52 jalur evakuasi lain, panah umum, dan penanda fasilitas **disembunyikan**,
+  sehingga hanya alur yang sedang ditempuh yang tergambar;
+- zona warna **diredupkan** agar garis alur tetap paling menonjol, tetapi
+  konteks merah/kuning/hijaunya tidak hilang;
+- muncul **panel langkah demi langkah**: jarak tempuh, perkiraan waktu jalan
+  kaki, zona awal, dan tiap belokan dengan nama jalannya
+  ("Belok kiri ke Jl. Syamsul Bahri — 275 m"). Mengetuk satu langkah
+  memusatkan peta ke titik belokan itu;
+- judul peta, kotak peringatan, dan legenda ikut disembunyikan supaya tidak ada
+  dua penjelasan yang bersaing di layar sempit.
+
+Menekan **"✕"** (di panel, atau tombol <kbd>Esc</kbd> pada komputer)
+mengembalikan seluruh lapisan peta — jalur evakuasi, panah, dan fasilitas —
+**tepat di tampilan yang sedang dilihat warga**. Letak dan tingkat zoom peta
+sengaja dibiarkan apa adanya: warga baru selesai menelusuri alurnya, jadi
+melemparnya kembali ke tampilan lain hanya membuat ia harus mencari lokasinya
+dari awal. Saklar lapisan yang sebelumnya sengaja dimatikan lewat legenda juga
+tetap mati. Bila mode layar penuh juga sedang menyala, <kbd>Esc</kbd> menutup
+penunjuk arah lebih dulu, baru layar penuhnya pada tekanan berikutnya.
+
+**Cara alurnya dihitung.** Seluruh jalur evakuasi (53 ruas) dirangkai menjadi
+satu graf; titik yang diketuk ditempelkan ke ruas terdekat, lalu jalur
+terpendeknya dicari dengan algoritma **Dijkstra** menuju simpul yang paling
+dekat dengan titik kumpul. Nama jalan tiap langkah diambil dari ruas jaringan
+jalan terdekat, dan arah beloknya dihitung dari perubahan sudut antarruas.
+Semuanya berjalan **di dalam peramban warga** — tidak ada permintaan ke server
+perutean mana pun, jadi fitur ini tetap bekerja walau jaringan sedang buruk.
+Bila titik awalnya agak jauh dari jalur (mis. di tengah halaman atau GPS-nya
+meleset), sebuah ruas putus-putus menunjukkan jalan kaki singkat menuju awal
+alur, dan langkah pertama pada panel menyebutkannya.
+
+Di ponsel tegak panel ini menjadi **lembar di sisi bawah** dengan daftar langkah
+yang bisa dilipat; di layar lebar ia melayang di **sudut kiri atas** peta.
+
+### Kotak info (popup) sengaja dibuat pendek
+
+Saat sebuah kotak info dibuka, Leaflet **menggeser peta** agar kotaknya muat
+seluruhnya — makin tinggi kotaknya, makin jauh peta tersentak dan makin hilang
+titik yang baru saja diketuk warga dari pandangan. Karena itu isinya dipadatkan:
+ketinggian digabung ke baris zona, jarak/arah/waktu jadi satu baris, kalimat
+petunjuk memakai versi pendek, dan di ponsel kedua tombol aksinya berdampingan
+dalam satu baris. Rinciannya tidak hilang — jalur yang dilewati, perkiraan
+waktu, dan tiap belokannya tersaji lengkap di panel penunjuk arah.
+
+Bila isinya tetap tidak muat (mis. ponsel dipegang mendatar), kotak itu bisa
+**digulir di dalam kartunya sendiri**: batang gulirnya dibuat tipis, membulat,
+senada warna kartu, dan diberi jarak dari tombol **✕** supaya keduanya tidak
+pernah bertumpuk.
 
 ### Zona & dasar penyusunannya
 
@@ -699,7 +759,7 @@ ulang. Berkas `vercel.json` sudah menyertakan pengaturan *clean URLs* dan
 >    untuk `/css/` dan `/js/`, jadi peramban selalu memastikan berkasnya masih
 >    yang terbaru sebelum memakainya.
 > 2. `peta-mitigasi-bencana.html` memanggil berkas petanya dengan penanda versi
->    (`css/peta-mitigasi.css?v=3` dan `js/peta-mitigasi.js?v=3`).
+>    (`css/peta-mitigasi.css?v=5` dan `js/peta-mitigasi.js?v=5`).
 >    **Naikkan angka `?v=` itu setiap kali salah satu berkas tersebut diubah.**
 
 ### Alternatif (lewat terminal)
