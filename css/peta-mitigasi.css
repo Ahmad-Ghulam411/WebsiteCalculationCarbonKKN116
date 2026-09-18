@@ -173,10 +173,64 @@
    ditutup atau peta digeser menjauh, kotaknya muncul kembali. Tempatnya tidak
    ikut bergeser (hanya disamarkan) supaya tombol "✕ Keluar" di sebelahnya
    tetap diam di tempat. */
-.pm-peta-kepala, .pm-peringatan, .pm-kontrol { transition: opacity var(--trans); }
+.pm-peta-kepala, .pm-peringatan, .pm-kontrol, .leaflet-control-scale { transition: opacity var(--trans); }
 .pm-peta-bingkai.tumpang-judul .pm-peta-kepala,
 .pm-peta-bingkai.tumpang-peringatan .pm-peringatan,
 .pm-peta-bingkai.tumpang-legenda .pm-kontrol { opacity: 0; pointer-events: none; }
+
+/* =============== Pemberitahuan melayang di dalam peta ======================
+   Tombol "🧭 Di Zona Mana Saya?" bisa ditekan warga yang sedang jauh dari
+   Parepare. Untuk posisi seperti itu peta ini tidak punya data apa pun, jadi
+   warga perlu diberi tahu langsung di dalam bingkai peta — bukan lewat popup
+   Leaflet yang diletakkan pada koordinat warga (di luar batas geser peta,
+   sehingga tidak akan pernah terlihat) dan bukan lewat `alert()` yang
+   memblokir peta tanpa memberi keterangan apa pun.
+
+   Kotak ini duduk di tengah bawah bingkai: di situ ia tidak bertabrakan
+   dengan bilah judul di atas, kotak peringatan zona merah di kanan atas,
+   maupun legenda di kanan bawah. z-index 700 menaruhnya di atas seluruh isi
+   peta (kotak peta sendiri ber-z-index 1) sekaligus di atas tombol "✕ Keluar"
+   layar penuh, sehingga pesannya tidak pernah tertutup. */
+.pm-notif {
+  position: absolute; z-index: 700; left: 50%; bottom: 14px;
+  transform: translateX(-50%);
+  display: flex; align-items: flex-start; gap: 8px;
+  width: max-content; max-width: min(92%, 460px);
+  background: rgba(255, 255, 255, .98); backdrop-filter: blur(4px);
+  border-radius: var(--radius-sm); border-left: 5px solid var(--kuning);
+  box-shadow: var(--bayang-lg);
+  padding: 11px 12px 11px 14px;
+  animation: pmNotifMasuk .22s ease-out;
+}
+/* `display: flex` di atas mengalahkan `display: none` bawaan peramban untuk
+   atribut `hidden`, jadi penyembunyiannya ditegaskan lagi di sini — dengan
+   penyaring atribut yang lebih khusus daripada aturan di atasnya. */
+.pm-notif[hidden] { display: none; }
+.pm-notif-isi { display: flex; flex-direction: column; gap: 3px; min-width: 0; }
+.pm-notif-judul {
+  font-family: 'Poppins', sans-serif; font-size: .86rem; line-height: 1.3;
+  color: var(--zona-kuning-tua);
+}
+.pm-notif-pesan { font-size: .79rem; line-height: 1.45; color: var(--tinta); }
+.pm-notif-koordinat {
+  font-family: 'Courier New', monospace; font-size: .74rem;
+  color: var(--tinta-lembut); word-break: break-word;
+}
+.pm-notif-koordinat[hidden] { display: none; }
+.pm-notif-tutup {
+  flex: 0 0 auto; width: 26px; height: 26px; margin: -2px -2px 0 0;
+  display: flex; align-items: center; justify-content: center;
+  border: 0; border-radius: 50%; background: transparent; cursor: pointer;
+  color: var(--tinta-lembut); font-size: .85rem; line-height: 1;
+  transition: background var(--trans), color var(--trans);
+}
+.pm-notif-tutup:hover, .pm-notif-tutup:focus-visible {
+  background: rgba(14, 60, 36, .1); color: var(--tinta);
+}
+@keyframes pmNotifMasuk {
+  from { opacity: 0; transform: translate(-50%, 10px); }
+  to   { opacity: 1; transform: translate(-50%, 0); }
+}
 
 /* ===================== Penunjuk arah "1 alur" (mode navigasi) ===============
    Saat warga menekan "🧭 Tunjukkan Arah Jalan" di kotak info, peta masuk mode
@@ -704,6 +758,19 @@
   .pm-peta-kepala { max-width: 52%; padding: 7px 10px; }
   .pm-peta-kepala p { display: none; }
   .pm-peringatan { max-width: 132px; font-size: .68rem; padding: 7px 9px; line-height: 1.3; }
+  /* Pemberitahuan posisi di luar area dipadatkan: di layar sempit ia harus
+     tetap terbaca utuh tanpa menutupi hampir seluruh peta. */
+  .pm-notif { bottom: 10px; max-width: calc(100% - 16px); padding: 9px 10px 9px 12px; }
+  .pm-notif-judul { font-size: .8rem; }
+  .pm-notif-pesan { font-size: .75rem; }
+  /* Petanya pendek, jadi kotak pemberitahuan selebar ini pasti bersinggungan
+     dengan legenda lapisan (kanan bawah) dan bar skala (kiri bawah). Keduanya
+     disamarkan hanya selama pesannya tampil — cara yang sama dipakai untuk
+     kotak judul yang tertimpa popup — lalu muncul kembali sendiri begitu
+     pesannya hilang. Di layar lebar keduanya tidak bertabrakan, jadi tidak ada
+     yang disembunyikan. */
+  .pm-peta-bingkai.tumpang-notif .pm-kontrol,
+  .pm-peta-bingkai.tumpang-notif .leaflet-control-scale { opacity: 0; pointer-events: none; }
   .pm-keluar-penuh { padding: 0 13px; font-size: .8rem; }
   .pm-alat-petunjuk { display: none; }
   .pm-kontrol { font-size: .74rem; max-width: 200px; }
@@ -818,12 +885,13 @@
 @media (prefers-reduced-motion: reduce) {
   .pm-tk-titik::after { animation: none; }
   .pm-rute-aliran { animation: none; }
+  .pm-notif { animation: none; }
   .pm-instruksi-item:hover, .pm-zona-kartu:hover, .pm-darurat:hover { transform: none; }
   .pm-arah-tutup:hover { transform: none; }
 }
 
 @media print {
-  .nav, .pm-alat, .footer, .pm-peringatan, .pm-keluar-penuh { display: none !important; }
+  .nav, .pm-alat, .footer, .pm-peringatan, .pm-keluar-penuh, .pm-notif { display: none !important; }
   .pm-peta-bingkai { box-shadow: none; }
   #petaMitigasi { height: 520px; }
 }

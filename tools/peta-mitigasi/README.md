@@ -5,6 +5,7 @@ seluruh lapisan peta yang dipakai `peta-mitigasi-bencana.html`:
 
 | Lapisan | Isi |
 |---|---|
+| `kota` | Batas Kota Parepare — dipakai halaman peta untuk mengenali posisi GPS di luar kota |
 | `batas` | Batas Kelurahan Kampung Baru + 5 kelurahan tetangga |
 | `zona` | Poligon zona merah / kuning / hijau |
 | `jalan` | Jaringan jalan bernama beserta zona & ketinggiannya |
@@ -19,6 +20,8 @@ misalnya saat batas wilayah berubah, ada jalan baru, atau titik kumpul dipindahk
 
 - **Batas kelurahan & jaringan jalan** — OpenStreetMap melalui Overpass API.
   Kelurahan Kampung Baru = relasi OSM `21073124`.
+- **Batas Kota Parepare** — OpenStreetMap (ODbL), relasi OSM `13246109`, diambil
+  lewat Nominatim API dan disederhanakan oleh `build_kota.py`.
 - **Model elevasi permukaan (DEM)** — SRTM 30 m, disampel lewat Open-Elevation API.
 - **Kelas bahaya & luas area terpapar** — Dokumen Kajian Risiko Bencana
   Kota Parepare Tahun 2022–2026 (BPBD Kota Parepare).
@@ -47,11 +50,16 @@ pip install numpy matplotlib shapely
 cd tools/peta-mitigasi
 
 python3 build_boundary.py   # osm_kel.json      -> kelurahan.geojson
+python3 build_kota.py       # Nominatim         -> kota.geojson
 python3 sample_dem.py       # Open-Elevation    -> dem.npz
 python3 build_zones.py      # dem.npz           -> zona.geojson
 python3 build_routes.py     # osm_roads.json    -> jalan.geojson, jalur_evakuasi.geojson
 python3 bundle.py           # semuanya          -> ../../data/peta-mitigasi-data.js
 ```
+
+`bundle.py` memakai `kota.geojson` bila berkas itu ada; tanpa berkas tersebut
+lapisan `kota` tidak disertakan sehingga halaman peta kehilangan kemampuan
+mengenali posisi di luar Kota Parepare.
 
 `build_boundary.py` dan `build_routes.py` membaca `osm_kel.json`, `osm_roads.json`,
 dan `osm_poi.json`. Ambil ulang berkas tersebut dari Overpass API bila diperlukan:
