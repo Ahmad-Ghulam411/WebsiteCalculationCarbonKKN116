@@ -1,6 +1,7 @@
 """Bundle every layer into one JS file the page can load without fetch()."""
 import json
 import math
+import os
 import re
 
 import numpy as np
@@ -13,6 +14,9 @@ KB = shape(next(f for f in kel['features'] if f['properties']['nama'] == 'Kampun
 zona = json.load(open('zona.geojson'))
 jalan = json.load(open('jalan.geojson'))
 jalur = json.load(open('jalur_evakuasi.geojson'))
+# Batas Kota Parepare (lihat build_kota.py) — dipakai halaman peta untuk tahu
+# bahwa posisi GPS warga berada di luar wilayah kota.
+kota = json.load(open('kota.geojson'))['features'][0] if os.path.exists('kota.geojson') else None
 
 dem = np.load('dem.npz')
 DZ, DX, DY = dem['Z'], dem['gx'], dem['gy']
@@ -173,6 +177,7 @@ fasil.sort(key=lambda x: x['jarak_tk_m'])
 print(f'fasilitas: {len(fasil)}')
 
 bundle = {
+    'kota': kota,
     'titikKumpul': {
         'lat': -4.019402, 'lon': 119.626271,
         'nama': 'Titik Kumpul / Assembly Point',
@@ -196,6 +201,7 @@ js = (
     ' *\n'
     ' *  Berkas ini dibuat otomatis (lihat README) dari:\n'
     ' *   - Batas kelurahan & jaringan jalan : OpenStreetMap (Overpass API)\n'
+    ' *   - Batas Kota Parepare             : OpenStreetMap (ODbL), relasi 13246109\n'
     ' *   - Model elevasi (DEM)              : SRTM 30 m, disampel via Open-Elevation\n'
     ' *   - Kelas bahaya & luasan            : Dokumen Kajian Risiko Bencana\n'
     ' *                                        Kota Parepare 2022-2026 (BPBD)\n'
@@ -203,7 +209,6 @@ js = (
     ' * ========================================================================== */\n'
     'window.DATA_PETA_MITIGASI = ' + json.dumps(bundle, ensure_ascii=False, separators=(',', ':')) + ';\n'
 )
-import os
 os.makedirs(os.path.dirname(OUT), exist_ok=True)
 open(OUT, 'w', encoding='utf-8').write(js)
 print(f'wrote {OUT}  ({len(js)/1024:.1f} KB)')

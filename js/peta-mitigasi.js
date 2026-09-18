@@ -168,6 +168,22 @@
     return null;
   }
 
+  /** Apakah koordinat masih berada di dalam wilayah Kota Parepare.
+      Lapisan `kota` berisi batas administrasi kota (lihat tools/peta-mitigasi).
+      Tombol "Di Zona Mana Saya?" memakainya untuk mengenali posisi GPS yang
+      terbaca jauh dari Parepare — misalnya warga menekan tombol itu dari
+      Makassar atau luar Sulawesi. Titik seperti itu bukan cuma di luar
+      Kampung Baru, tetapi di luar seluruh wilayah yang petanya punya data;
+      memberi zona atau arah evakuasi untuknya akan menyesatkan.
+
+      Bila data batas kota tidak tersedia (misalnya peramban masih memakai
+      data/peta-mitigasi-data.js versi lama dari cache), hasilnya `true` supaya
+      tombol ini tetap berperilaku seperti sebelum ada pemeriksaan wilayah. */
+  function diKotaParepare(lat, lon) {
+    if (!D.kota || !D.kota.geometry) return true;
+    return diDalamGeometri(D.kota.geometry, lon, lat);
+  }
+
   /* --------------------------------------------------------------- geometri garis */
 
   /** Titik terdekat pada sebuah ruas garis, beserta jaraknya. */
@@ -1074,6 +1090,51 @@
   });
 
   var penandaSaya = null;
+
+  /* --------------------- pemberitahuan melayang di dalam peta -------------- *
+     Tombol "🧭 Di Zona Mana Saya?" bisa ditekan warga yang sedang jauh dari
+     Parepare. Kotak pesan ini muncul di dalam bingkai peta untuk menjawabnya,
+     karena popup penanda tidak bisa dipakai: penanda itu diletakkan pada
+     koordinat warga, dan koordinat di luar wilayah peta berada di luar batas
+     geser peta (setMaxBounds) sehingga popup-nya tidak akan pernah terlihat.
+     Dulu jawabannya hanya `alert()` — kotak peramban yang memblokir peta dan
+     tidak memberi tahu di mana posisi yang terbaca. */
+  var kotakNotif = document.getElementById('pmNotif');
+  var notifJudul = document.getElementById('pmNotifJudul');
+  var notifPesan = document.getElementById('pmNotifPesan');
+  var notifKoordinat = document.getElementById('pmNotifKoordinat');
+  var tundaNotif = null;
+
+  function sembunyikanNotif() {
+    if (tundaNotif) { clearTimeout(tundaNotif); tundaNotif = null; }
+    if (kotakNotif) kotakNotif.hidden = true;
+    if (bingkai) bingkai.classList.remove('tumpang-notif');
+  }
+
+  /** Tampilkan pesan singkat di dalam peta, lalu sembunyikan sendiri.
+      Teksnya diisi lewat textContent supaya pemberitahuan ini tidak pernah
+      bisa menyisipkan HTML ke halaman. */
+  function tampilkanNotif(judul, pesan, koordinat) {
+    if (!kotakNotif) return;
+    notifJudul.textContent = judul;
+    notifPesan.textContent = pesan;
+    notifKoordinat.textContent = koordinat || '';
+    notifKoordinat.hidden = !koordinat;
+    kotakNotif.hidden = false;
+    /* Di layar sempit kotak ini pasti bersinggungan dengan legenda dan bar
+       skala di sisi bawah peta. Penandanya dipasang di bingkai supaya
+       css/peta-mitigasi.css bisa menyamarkan keduanya selama pesannya tampil
+       (di layar lebar tidak ada yang tertimpa, jadi tidak ada yang disembunyikan). */
+    if (bingkai) bingkai.classList.add('tumpang-notif');
+    if (tundaNotif) clearTimeout(tundaNotif);
+    /* Pesannya dibiarkan cukup lama dibaca (± 12 detik) karena berisi
+       koordinat yang mungkin ingin dicatat warga, tetapi tetap hilang sendiri
+       supaya tidak menutupi peta selamanya. Tombol "✕" menutupnya lebih cepat. */
+    tundaNotif = setTimeout(sembunyikanNotif, 12000);
+  }
+
+  tombol('pmNotifTutup', sembunyikanNotif);
+
   tombol('pmPosisiSaya', function () {
     if (!navigator.geolocation) {
       alert('Perangkat ini tidak mendukung deteksi lokasi.');
@@ -1083,10 +1144,30 @@
     var teksAsli = tbl.textContent;
     tbl.textContent = '⏳ Mencari lokasi…';
     tbl.disabled = true;
+    sembunyikanNotif();
 
     navigator.geolocation.getCurrentPosition(function (pos) {
       tbl.textContent = teksAsli; tbl.disabled = false;
       var latlng = L.latLng(pos.coords.latitude, pos.coords.longitude);
+
+      /* Di luar Kota Parepare: peta ini tidak punya data apa pun untuk titik
+         seperti itu, jadi penanda, zona, dan arah evakuasi sengaja tidak
+         dibuat — semuanya akan menyesatkan. Warga cukup diberi tahu bahwa
+         posisinya terbaca di luar area yang ditentukan. */
+      if (!diKotaParepare(latlng.lat, latlng.lng)) {
+        if (penandaSaya) { peta.removeLayer(penandaSaya); penandaSaya = null; }
+        peta.closePopup();
+        tampilkanNotif(
+          '⚠️ Lokasi di Luar Area yang Ditentukan',
+          'Posisi Anda tidak bisa dideteksi karena berada di luar area yang ' +
+            'ditentukan, yaitu Kota Parepare. Peta ini hanya mencakup Kelurahan ' +
+            'Kampung Baru, Kec. Bacukiki Barat. Ketuk langsung area pada peta ' +
+            'untuk melihat zona dan petunjuk evakuasinya.',
+          'Titik terbaca: ' + fmtKoordinat(latlng.lat, latlng.lng)
+        );
+        return;
+      }
+
       var zona = zonaDi(latlng.lat, latlng.lng);
       var arah = arahKe(latlng, TK_LATLNG);
       var w = zona ? WARNA[zona.zona] : WARNA.hijau;
